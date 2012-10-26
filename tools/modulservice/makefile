@@ -1,40 +1,39 @@
-
 SUBDIRS = ../../sio/linux ../../bus
 OBJS = main.o
 BIN  = modulservice
 ARCH = $(TARGET_ARCH)
 OS = $(TARGET_OS)
 GCC_VERSION = 4.6
+OBJDIR = obj
+BINDIR = bin
 
 ifeq ($(ARCH),i686)
 	ifeq ($(OS),linux)
-		GCC_PREFIX = i686-linux-gnu
+		GCC_PREFIX = i686-linux-gnu-
 	endif
 else ifeq ($(ARCH), arm)
 	ifeq ($(OS),linux)
-		GCC_PREFIX = arm-linux-gnueabi
+		GCC_PREFIX = arm-linux-gnueabi-
 	endif
 endif
 
-ifeq ($(GCC_PREFIX),)
-$(error "TARGET_OS and/or TARGET_ARCH not set properly")
-endif
-
-GCC = $(GCC_PREFIX)-gcc-$(GCC_VERSION)
+GCC = $(GCC_PREFIX)gcc-$(GCC_VERSION)
 
 all: $(OBJS)
 	for d in $(SUBDIRS); do \
 		(cd $$d; make all)  \
 	done
-	$(GCC) $(OBJS) -L ../../sio/linux -L ../../bus -lsio -lbus -lrt -lstdc++ -o bin/$(OS)/$(ARCH)/$(BIN)
+	@mkdir -p $(BINDIR)
+	$(GCC) $(OBJDIR)/$(OBJS) -L ../../sio/linux/bin -L ../../bus/bin -lsio -lbus -lrt -o $(BINDIR)/$(BIN)
 
 %.o: %.c
-	$(GCC) -g -c -Wall -I . -I ../../include -I ../../include/linux $<
+	@mkdir -p $(OBJDIR)
+	$(GCC) -g -c -Wall -I . -I ../../include -I ../../include/linux $< -o $(OBJDIR)/$@
 
 
 .PHONY: clean
 clean:
-	rm -rf bin/$(OS)/$(ARCH)/$(BIN) $(OBJS)
+	rm -rf $(BINDIR) $(OBJDIR)
 	for d in $(SUBDIRS); do \
 		(cd $$d; make clean)  \
 	done
