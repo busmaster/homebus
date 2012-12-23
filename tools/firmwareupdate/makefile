@@ -1,6 +1,6 @@
 SUBDIRS = ../../sio/linux ../../bus
 OBJS = main.o
-BIN  = firmwarupdate
+BIN  = firmwareupdate
 ARCH = $(TARGET_ARCH)
 OS = $(TARGET_OS)
 GCC_VERSION = 4.6
