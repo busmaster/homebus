@@ -80,7 +80,8 @@ typedef enum {
 typedef enum {
    eDigOutShadeClose,
    eDigOutShadeOpen,
-   eDigOutShadeStop
+   eDigOutShadeStop,
+   eDigOutShadeNone
 } TDigOutShadeAction;
  
 
@@ -108,6 +109,8 @@ void DigOutShadeGetConfig(TDigOutShadeNumber number, TDigOutNumber *pOnSwitch, T
 bool DigOutShadeFunction(TDigOutNumber number);
 void DigOutShade(TDigOutShadeNumber number, TDigOutShadeAction action);
 bool DigOutShadeState(TDigOutShadeNumber number, TDigOutShadeAction *pAction);
+bool DigOutShadeSetDelay(TDigOutShadeNumber number, uint32_t delayTimeMs);
+bool DigOutShadeGetState(TDigOutShadeNumber number, uint8_t *pState);
 void DigOutStateCheck(void);
 
 

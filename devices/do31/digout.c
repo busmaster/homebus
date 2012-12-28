@@ -18,7 +18,7 @@
 *  Macros
 */                     
 /* Zeitdauer für Rollladenansteuerung */
-#define SHADE_DELAY        30000 /* ms */       
+#define DEFAULT_SHADE_DELAY        30000 /* ms */       
 
 /* Zeitdauer, um die dirSwitch und onSwitch verzögert geschaltet werden */
 /* (dirSwitch und onSwitch schalten um diese Diff verzögert) */
@@ -49,9 +49,9 @@ typedef enum {
 } TDelayState;
  
 typedef struct {
-   uint32_t       startTimeMs;
-   uint32_t       onDelayMs; 
-   uint32_t       offDelayMs;
+   uint32_t     startTimeMs;
+   uint32_t     onDelayMs; 
+   uint32_t     offDelayMs;
    TDelayState  state;
    bool         shadeFunction;
 } TDigoutDesc;
@@ -59,6 +59,7 @@ typedef struct {
 typedef struct {
    TDigOutNumber onSwitch;
    TDigOutNumber dirSwitch;
+   uint32_t      delayTime;
 } TShadeDesc;
 
 /*-----------------------------------------------------------------------------
@@ -281,6 +282,7 @@ void DigOutShadeConfig(TDigOutShadeNumber number,
    sState[onSwitch].shadeFunction = true;
    sShade[number].dirSwitch = dirSwitch;
    sState[dirSwitch].shadeFunction = true;
+   sShade[number].delayTime = DEFAULT_SHADE_DELAY;
 }
 
 /*-----------------------------------------------------------------------------
@@ -328,8 +330,9 @@ void DigOutShade(TDigOutShadeNumber number, TDigOutShadeAction action) {
          /* 5. Strom (on) AUS */
          /* 6. Richtung (dir) AUS kurz nach Strom AUS */
          DigOutOff(onSwitch);
-         DigOutDelayedOnDelayedOff(dirSwitch, SHADE_DELAY_DIFF, SHADE_DELAY + SHADE_DELAY_DIFF * 2);
-         DigOutDelayedOnDelayedOff(onSwitch, SHADE_DELAY_DIFF * 2, SHADE_DELAY);
+         DigOutDelayedOnDelayedOff(dirSwitch, SHADE_DELAY_DIFF,
+                                   sShade[number].delayTime + SHADE_DELAY_DIFF * 2);
+         DigOutDelayedOnDelayedOff(onSwitch, SHADE_DELAY_DIFF * 2, sShade[number].delayTime);
          break;
       case eDigOutShadeClose:
          /* 1, Strom (on) AUS */
@@ -341,7 +344,7 @@ void DigOutShade(TDigOutShadeNumber number, TDigOutShadeAction action) {
          if (DigOutState(dirSwitch) == true) {
             DigOutDelayedOff(dirSwitch, SHADE_DELAY_DIFF);
          }
-         DigOutDelayedOnDelayedOff(onSwitch, SHADE_DELAY_DIFF * 2, SHADE_DELAY);
+         DigOutDelayedOnDelayedOff(onSwitch, SHADE_DELAY_DIFF * 2, sShade[number].delayTime);
          break;
       case eDigOutShadeStop:
          /* 1. Strom (on) AUS */
@@ -387,6 +390,16 @@ bool DigOutShadeState(TDigOutShadeNumber number, TDigOutShadeAction *pAction) {
    return true;
 }
 
+/*-----------------------------------------------------------------------------
+*  Set delayTime for shader
+*  Use to change default delayTime
+*/
+bool DigOutShadeSetDelay(TDigOutShadeNumber number, uint32_t delayTimeMs) {
+
+   sShade[number].delayTime = delayTimeMs;
+
+   return true;
+}
 /*-----------------------------------------------------------------------------
 *  Statemachine für zeitgesteuerung Aktionen
 *  mit jedem Aufruf wird ein Ausgang bearbeitet

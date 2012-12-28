@@ -51,8 +51,6 @@ void ButtonInit(void) {
       pButton++;
    }           
 }
-
-
 /*----------------------------------------------------------------------------- 
 * Timeoutprüfung der Buttonliste
 * retourniert true bei der ab *pIndex gesuchte Taste, bei der ein Timeout 
@@ -61,14 +59,14 @@ void ButtonInit(void) {
 */
 bool ButtonReleased(uint8_t *pIndex) {
   
-   uint8_t         i;  
+   uint8_t       i;  
    TButtonActive *pButton;
    bool          ret = false;
    bool          activeFound = false;
  
    if (sActiveButtons == false) {
       return false;
-   }    
+   }
    i = *pIndex;
    if (i >= BUTTON_MAX_NUM_ACTIVE) {           
       return false;
@@ -77,7 +75,6 @@ bool ButtonReleased(uint8_t *pIndex) {
    for (; i < BUTTON_MAX_NUM_ACTIVE; i++) {
       if (pButton->addr == 0) {
          pButton++;
-         continue;
       } else if (((uint8_t)(GET_TIME_MS - pButton->timeStamp)) > BUTTON_TIMEOUT) { 
          /* Taster losgelassen */
          ret = true;
@@ -90,12 +87,15 @@ bool ButtonReleased(uint8_t *pIndex) {
    
    /* falls die Suche bei 0 begonnen hat und keine aktiven Tasten gefunden wurde */
    /* wird sActiveButtons auf false gesetzt, wegen schnellerem Durchlauf */
-   if ((*pIndex == 0) &&
+   if ((i == BUTTON_MAX_NUM_ACTIVE) &&
+       (*pIndex == 0) &&
        (activeFound == false)) {
       sActiveButtons = false;
-   } 
+   }
 
-   *pIndex = i;    
+   if (ret == true) {
+      *pIndex = i;    
+   }   
      
    return ret;
 }
@@ -105,20 +105,19 @@ bool ButtonReleased(uint8_t *pIndex) {
 * retourniert true bei neuem Tastendruck
 */
 bool ButtonNew(uint8_t addr, uint8_t buttonNr) {
-  
-   uint8_t         i;  
+
+   uint8_t       i;  
    TButtonActive *pButton;
-   uint8_t         emptyIndex = 0;
+   uint8_t       emptyIndex = 0xff;
    bool          found = false;
    
    sActiveButtons = true;
  
    pButton = &sActiveList[0];
    for (i = 0; i < BUTTON_MAX_NUM_ACTIVE; i++) {     
-      if (pButton->addr == 0) {
+      if ((emptyIndex == 0xff) &&
+          (pButton->addr == 0)) {
          emptyIndex = i;
-         pButton++;
-         continue;
       } else if ((pButton->addr == addr) &&
                  (pButton->buttonNr == buttonNr)) { 
          /* Tastenereignis ist schon bekannt */
@@ -128,7 +127,8 @@ bool ButtonNew(uint8_t addr, uint8_t buttonNr) {
       pButton++;
    }           
 
-   if (found == false) {
+   if ((found == false) && 
+       (emptyIndex != 0xff)) {
       pButton = &sActiveList[emptyIndex];
       pButton->addr = addr;
       pButton->buttonNr = buttonNr;
