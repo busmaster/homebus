@@ -191,27 +191,16 @@ static void PrintUsage(void) {
 */
 static void BusMonRaw(int sioHandle) {
 
-   uint8_t        ch;
-   uint8_t        lastCh = 0;
-   uint8_t        checkSum = 0;
-   bool         charIsInverted = false;
-#ifdef WIN32
-   SYSTEMTIME   sysTime;
-#else
-   struct timespec ts;
-   struct tm       *ptm;
-#endif
-   char         cKb = 0;
+   uint8_t ch;
+   uint8_t lastCh = 0;
+   uint8_t checkSum = 0;
+   bool    charIsInverted = false;
+   char    cKb = 0;
 
    do {
       if (SioRead(sioHandle, &ch, 1) == 1) {
          /* Zeichen empfangen */
          if (ch == STX) {
-#ifdef WIN32
-            GetLocalTime(&sysTime);
-#else
-            clock_gettime(CLOCK_REALTIME, &ts);
-#endif
             /* vorherige Pr�fsumme checken */ 
             checkSum -= lastCh;           
             if (checkSum != lastCh) {
@@ -221,10 +210,19 @@ static void BusMonRaw(int sioHandle) {
             fprintf(spOutput, "\r\n");
             checkSum = CHECKSUM_START; 
 #ifdef WIN32
-            fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour, sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
+            {
+               SYSTEMTIME   sysTime;
+               GetLocalTime(&sysTime);
+               fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour, sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
+            }
 #else
-            ptm = localtime(&ts.tv_sec);
-            fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", ptm->tm_year, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, (int)ts.tv_nsec / 1000000);
+            {
+               struct timespec ts;
+               struct tm       *ptm;
+               clock_gettime(CLOCK_REALTIME, &ts);
+               ptm = localtime(&ts.tv_sec);
+               fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", ptm->tm_year + 1900, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, (int)ts.tv_nsec / 1000000);
+            }
 #endif
          }
          lastCh = ch;
@@ -271,15 +269,15 @@ static void BusMonDecoded(int sioHandle) {
       ret = BusCheck();
       if (ret == BUS_MSG_OK) {
 #ifdef WIN32
-    	  SYSTEMTIME   sysTime;
-    	  GetLocalTime(&sysTime);
-          fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d ", sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour, sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
+    	   SYSTEMTIME   sysTime;
+    	   GetLocalTime(&sysTime);
+         fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d ", sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour, sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
 #else
-    	  struct timespec ts;
-          struct tm       *ptm;
-    	  clock_gettime(CLOCK_REALTIME, &ts);
-          ptm = localtime(&ts.tv_sec);
-          fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", ptm->tm_year, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, (int)ts.tv_nsec / 1000000);
+    	   struct timespec ts;
+         struct tm       *ptm;
+    	   clock_gettime(CLOCK_REALTIME, &ts);
+         ptm = localtime(&ts.tv_sec);
+         fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", ptm->tm_year + 1900, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, (int)ts.tv_nsec / 1000000);
 #endif
 
          fprintf(spOutput, "%4d ", pBusMsg->senderAddr);
