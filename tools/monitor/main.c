@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #ifdef WIN32
 #include <conio.h>
 #include <windows.h>
@@ -50,38 +51,48 @@ static void BusMonDecoded(int sioHandle);
 static void BusMonRaw(int sioHandle);
 
 #ifndef WIN32
+#include <sys/select.h>
 #include <termios.h>
 
+struct termios orig_termios;
 
-int kbhit(void) {
-   struct termios term, oterm;
-   int fd = 0;
-   int c = 0;
-   tcgetattr(fd, &oterm);
-   memcpy(&term, &oterm, sizeof(term));
-   term.c_lflag = term.c_lflag & (!ICANON);
-   term.c_cc[VMIN] = 0;
-   term.c_cc[VTIME] = 1;
-   tcsetattr(fd, TCSANOW, &term);
-   c = getchar();
-   tcsetattr(fd, TCSANOW, &oterm);
-   if (c != -1)
-   ungetc(c, stdin);
-   return ((c != -1) ? 1 : 0);
+void reset_terminal_mode()
+{
+    tcsetattr(0, TCSANOW, &orig_termios);
+}
+
+void set_conio_terminal_mode()
+{
+    struct termios new_termios;
+
+    /* take two copies - one for now, one for later */
+    tcgetattr(0, &orig_termios);
+    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
+
+    /* register cleanup handler, and set the new terminal mode */
+    atexit(reset_terminal_mode);
+    cfmakeraw(&new_termios);
+    tcsetattr(0, TCSANOW, &new_termios);
+}
+
+int kbhit()
+{
+    struct timeval tv = { 0L, 0L };
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(0, &fds);
+    return select(1, &fds, NULL, NULL, &tv);
 }
 
 int getch()
 {
-   static int ch = -1, fd = 0;
-   struct termios neu, alt;
-   fd = fileno(stdin);
-   tcgetattr(fd, &alt);
-   neu = alt;
-   neu.c_lflag &= ~(ICANON|ECHO);
-   tcsetattr(fd, TCSANOW, &neu);
-   ch = getchar();
-   tcsetattr(fd, TCSANOW, &alt);
-   return ch;
+    int r;
+    unsigned char c;
+    if ((r = read(0, &c, sizeof(c))) < 0) {
+        return r;
+    } else {
+        return c;
+    }
 }
 #endif
 
@@ -145,6 +156,10 @@ int main(int argc, char *argv[]) {
       printf("logging to console\r\n");
       spOutput = stdout;
    }
+
+#ifndef WIN32
+   set_conio_terminal_mode();
+#endif
       
    SioInit();
    handle = SioOpen(comPort, eSioBaud9600, eSioDataBits8, eSioParityNo, eSioStopBits1, eSioModeHalfDuplex);
