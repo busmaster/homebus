@@ -126,7 +126,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88 1.01";
+char version[] = "Sw88 1.02";
 
 static TBusTelegramm *spRxBusMsg;
 static TBusTelegramm sTxBusMsg;
@@ -167,16 +167,11 @@ static uint8_t GetInputState(void);
 */
 int main(void) {                      
 
-   uint8_t   data;
    int     sioHandle;
-   uint8_t   inputState;
+   uint8_t inputState;
 
    MCUSR = 0;
    wdt_disable();
-
-   /* get oscillator correction value from EEPROM */
-   data = eeprom_read_byte((const uint8_t *)OSCCAL_CORR);
-   OSCCAL += data;
 
    /* get module address from EEPROM */
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
