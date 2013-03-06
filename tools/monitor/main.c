@@ -236,7 +236,7 @@ static void BusMonRaw(int sioHandle) {
                struct tm       *ptm;
                clock_gettime(CLOCK_REALTIME, &ts);
                ptm = localtime(&ts.tv_sec);
-               fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", ptm->tm_year + 1900, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, (int)ts.tv_nsec / 1000000);
+               fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, (int)ts.tv_nsec / 1000000);
             }
 #endif
          }
@@ -292,7 +292,7 @@ static void BusMonDecoded(int sioHandle) {
          struct tm       *ptm;
     	   clock_gettime(CLOCK_REALTIME, &ts);
          ptm = localtime(&ts.tv_sec);
-         fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", ptm->tm_year + 1900, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, (int)ts.tv_nsec / 1000000);
+         fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, (int)ts.tv_nsec / 1000000);
 #endif
 
          fprintf(spOutput, "%4d ", pBusMsg->senderAddr);
