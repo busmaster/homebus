@@ -538,7 +538,6 @@ ISR(USART1_RX_vect) {
 static void RxcInt(int handle) {
  
    uint8_t wrIdx;
-   uint8_t dummy;
    uint8_t rxBufSize;
    TChanDesc  *pChan = &sChan[handle];
 
@@ -553,7 +552,7 @@ static void RxcInt(int handle) {
       wrIdx--;
       wrIdx &= (rxBufSize - 1);
       /* must read character to quit interrupt */
-      dummy = *pChan->udr;
+      *pChan->udr;
    }  
    pChan->rxBufWrIdx = wrIdx;
    /* do not go idle when characters are in rxbuffer */
@@ -561,4 +560,3 @@ static void RxcInt(int handle) {
       pChan->idleFunc(false);
    }
 }
-

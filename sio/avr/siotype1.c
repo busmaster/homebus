@@ -369,7 +369,6 @@ ISR(USART_TX_vect) {
 ISR(USART_RX_vect) {
 
    uint8_t wrIdx;
-   uint8_t dummy;
 
    wrIdx = sRxBufWrIdx;
    wrIdx++;                    
@@ -381,7 +380,7 @@ ISR(USART_RX_vect) {
       wrIdx--;
       wrIdx &= (SIO_RX_BUF_SIZE - 1);
       /* Zeichen muss gelesen werden, sonst bleibt Interrupt stehen */
-      dummy = UDR0;
+      UDR0;
    }  
    sRxBufWrIdx = wrIdx;
    /* do not go idle when characters are in rxbuffer */

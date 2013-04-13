@@ -103,7 +103,10 @@
 #define BUS_TRANSCEIVER_POWER_UP \
    PORTD &= ~(1 << 5)
    
-   
+/* button telegram state machine */
+#define BUTTON_TX_OFF     0
+#define BUTTON_TX_ON      1
+#define BUTTON_TX_TIMEOUT 2
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -126,7 +129,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88 1.02";
+char version[] = "Sw88 1.03";
 
 static TBusTelegramm *spRxBusMsg;
 static TBusTelegramm sTxBusMsg;
@@ -407,10 +410,10 @@ static void ProcessSwitch(uint8_t switchState) {
 */
 static void ProcessButton(uint8_t buttonState) {
 
-   static bool   sSequenceStart = true;
+   static uint8_t  sSequenceState = BUTTON_TX_OFF;
    static uint16_t sStartTimeS;
    static uint8_t  sTimeStampMs;
-   bool          pressed = true;
+   bool            pressed;
    uint16_t        actualTimeS;
    uint8_t         actualTimeMs;
 
@@ -418,36 +421,57 @@ static void ProcessButton(uint8_t buttonState) {
    switch (buttonState) {
       case 0:
          sTxBusMsg.type = eBusButtonPressed1_2;
+         pressed = true;
          break;
       case 1:
          sTxBusMsg.type = eBusButtonPressed2;
+         pressed = true;
          break;
       case 2:
          sTxBusMsg.type = eBusButtonPressed1;
+         pressed = true;
          break;
       default:
          pressed = false;
          break;
    }
 
-   if (pressed) {
-      sTxBusMsg.senderAddr = MY_ADDR; 
-      if (sSequenceStart) {
-         GET_TIME_S(sStartTimeS);
-         sSequenceStart = false;
-         sTimeStampMs = GET_TIME_MS;
-         BusSend(&sTxBusMsg);  
-      }
-      GET_TIME_S(actualTimeS);
-      if ((uint16_t)(actualTimeS - sStartTimeS) < BUTTON_TELEGRAM_REPEAT_TIMEOUT) {
-         actualTimeMs = GET_TIME_MS; 
-         if ((uint8_t)(actualTimeMs - sTimeStampMs) >= BUTTON_TELEGRAM_REPEAT_DIFF) {
+   switch (sSequenceState) {
+      case BUTTON_TX_OFF:
+         if (pressed) {
+            /* begin transmission of eBusButtonPressed* telegram */
+            GET_TIME_S(sStartTimeS);
             sTimeStampMs = GET_TIME_MS;
+            sTxBusMsg.senderAddr = MY_ADDR;
             BusSend(&sTxBusMsg);
+            sSequenceState = BUTTON_TX_ON;
          }
-      }
-   } else {
-      sSequenceStart = true;      
+         break;
+      case BUTTON_TX_ON:
+         if (pressed) {
+            GET_TIME_S(actualTimeS);
+            if ((uint16_t)(actualTimeS - sStartTimeS) < BUTTON_TELEGRAM_REPEAT_TIMEOUT) {
+               actualTimeMs = GET_TIME_MS; 
+               if ((uint8_t)(actualTimeMs - sTimeStampMs) >= BUTTON_TELEGRAM_REPEAT_DIFF) {
+                  sTimeStampMs = GET_TIME_MS;
+                  sTxBusMsg.senderAddr = MY_ADDR;
+                  BusSend(&sTxBusMsg);
+               }
+            } else {
+               sSequenceState = BUTTON_TX_TIMEOUT;
+            }
+         } else {
+            sSequenceState = BUTTON_TX_OFF;
+         }
+         break;
+      case BUTTON_TX_TIMEOUT:
+         if (!pressed) {
+            sSequenceState = BUTTON_TX_OFF;
+         }
+         break;
+      default:
+         sSequenceState = BUTTON_TX_OFF;
+         break;
    }
 }
 
@@ -685,4 +709,3 @@ ISR(TIMER0_OVF_vect) {
      gTimeS++;
   }
 }
-
