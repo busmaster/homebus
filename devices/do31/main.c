@@ -1,10 +1,26 @@
-/*-----------------------------------------------------------------------------
-*  main.c
-*/
+/*
+ * main.c
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -24,6 +40,7 @@
 #include "button.h"
 #include "led.h"
 #include "digout.h"
+#include "shader.h"
 #include "application.h"
 
 /*-----------------------------------------------------------------------------
@@ -67,8 +84,8 @@ volatile uint16_t gTimeMs16 = 0;
 volatile uint32_t gTimeMs32 = 0;  
 volatile uint16_t gTimeS = 0;    
 
-static TBusTelegramm *spBusMsg;            
-static TBusTelegramm  sTxBusMsg;        
+static TBusTelegram *spBusMsg;            
+static TBusTelegram  sTxBusMsg;        
 
 static const uint8_t *spNextPtrToEeprom;
 static uint8_t         sMyAddr;
@@ -106,7 +123,8 @@ int main(void) {
    LedInit();
    TimerInit();           
    ButtonInit();
-   DigOutInit();    
+   DigOutInit();
+   ShaderInit();    
    ApplicationInit();
    
    SioInit();
@@ -144,7 +162,8 @@ int main(void) {
       ret = BusCheck();
       ProcessBus(ret);
       CheckButton();
-      DigOutStateCheck(); 
+      DigOutStateCheck();
+      ShaderCheck(); 
       LedCheck();
       ApplicationCheck();
    } 
@@ -269,6 +288,7 @@ static void ProcessBus(uint8_t ret) {
    union {
       TBusDevRespInfo        *pInfo;
       TBusDevRespGetState    *pGetState;
+      TBusDevRespActualValue *pActVal;
    } p;
 
    if (ret == BUS_MSG_OK) {
@@ -305,15 +325,15 @@ static void ProcessBus(uint8_t ret) {
                strncpy((char *)(p.pInfo->version), ApplicationVersion(), sizeof(p.pInfo->version)); 
                p.pInfo->version[sizeof(p.pInfo->version) - 1] = '\0';
                for (i = 0; i < BUS_DO31_NUM_SHADER; i++) {
-                  DigOutShadeGetConfig(i, &(p.pInfo->devInfo.do31.onSwitch[i]), &(p.pInfo->devInfo.do31.dirSwitch[i]));
+                  ShaderGetConfig(i, &(p.pInfo->devInfo.do31.onSwitch[i]), &(p.pInfo->devInfo.do31.dirSwitch[i]));
                }
                BusSend(&sTxBusMsg);  
             }
             break;
          case eBusDevReqGetState:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-               TDigOutShadeAction action;
-               uint8_t              state;
+               TShaderState  shaderState;
+               uint8_t       state;
                 
                /* Anwortpaket zusammenstellen */
                p.pGetState = &sTxBusMsg.msg.devBus.x.devResp.getState;
@@ -328,16 +348,16 @@ static void ProcessBus(uint8_t ret) {
                   p.pGetState->state.do31.shader[i] = 0;
                }
                
-               for (i = 0; i < eDigOutShadeNum; i++) {
-                  if (DigOutShadeState(i, &action) == true) {
-                     switch (action) {
-                        case eDigOutShadeClose:
+               for (i = 0; i < eShaderNum; i++) {
+                  if (ShaderGetState(i, &shaderState) == true) {
+                     switch (shaderState) {
+                        case eShaderClosing:
                            state = 0x02;
                            break;
-                        case eDigOutShadeOpen:
+                        case eShaderOpening:
                            state = 0x01;
                            break;
-                        case eDigOutShadeStop:
+                        case eShaderStopped:
                            state = 0x03;
                            break;
                         default:
@@ -363,7 +383,7 @@ static void ProcessBus(uint8_t ret) {
 
                for (i = 0; i < eDigOutNum; i++) {
                   /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */ 
-                  if (!DigOutShadeFunction(i)) {
+                  if (!DigOutGetShaderFunction(i)) {
                      uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.digOut[i / 4] >> 
                                     ((i % 4) * 2)) & 0x03;
                      switch (action) {
@@ -381,7 +401,7 @@ static void ProcessBus(uint8_t ret) {
                      }
                   }
                }
-               for (i = 0; i < eDigOutShadeNum; i++) {
+               for (i = 0; i < eShaderNum; i++) {
                   uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.shader[i / 4] >> 
                                  ((i % 4) * 2)) & 0x03;
                   switch (action) {
@@ -389,23 +409,103 @@ static void ProcessBus(uint8_t ret) {
                          /* keine Aktion */
                          break;
                       case 0x01:
-                         DigOutShade(i, eDigOutShadeOpen);
+                         ShaderSetAction(i, eShaderOpen);
                          break;
                       case 0x02:
-                         DigOutShade(i, eDigOutShadeClose);
+                         ShaderSetAction(i, eShaderClose);
                          break;
                       case 0x03:
-                         DigOutShade(i, eDigOutShadeStop);
+                         ShaderSetAction(i, eShaderStop);
                          break;
                       default:
                          break;
                   }
                }
                /* Anwortpaket zusammenstellen */
-               sTxBusMsg.type = eBusDevRespSetState;  
+               sTxBusMsg.type = eBusDevRespSetState;
+               sTxBusMsg.senderAddr = MY_ADDR;
+               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+               BusSend(&sTxBusMsg);
+            }
+            break;
+         case eBusDevReqActualValue:
+            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
+               TShaderState shaderState;
+               uint8_t      state;
+                
+               /* Anwortpaket zusammenstellen */
+               p.pActVal = &sTxBusMsg.msg.devBus.x.devResp.actualValue;
+               sTxBusMsg.type = eBusDevRespActualValue;  
                sTxBusMsg.senderAddr = MY_ADDR; 
                sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+               p.pActVal->devType = eBusDevTypeDo31;
+               DigOutStateAll(p.pActVal->actualValue.do31.digOut, BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE); 
+
+               /* init of array */
+               for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
+                  p.pActVal->actualValue.do31.shader[i] = 0;
+               }
+               
+               for (i = 0; i < eShaderNum; i++) {
+                  state = 252; /* not configured */
+                  if (ShaderGetState(i, &shaderState) == true) {
+                     switch (shaderState) {
+                     case eShaderStopped:
+                        ShaderGetPosition(i, &state);
+                        break;
+                     case eShaderClosing:
+                        state = 253;
+                        break;
+                     case eShaderOpening:
+                        state = 254;
+                        break;
+                     }
+                  }   
+                  p.pActVal->actualValue.do31.shader[i] = state;
+               }
                BusSend(&sTxBusMsg);  
+            }
+            break;
+         case eBusDevReqSetValue:
+            if ((spBusMsg->msg.devBus.receiverAddr == MY_ADDR) && 
+                (spBusMsg->msg.devBus.x.devReq.setValue.devType == eBusDevTypeDo31)) {
+
+               for (i = 0; i < eDigOutNum; i++) {
+                  /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */ 
+                  if (!DigOutGetShaderFunction(i)) {
+                     uint8_t action = (spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.digOut[i / 4] >> 
+                                    ((i % 4) * 2)) & 0x03;
+                     switch (action) {
+                        case 0x00:
+                           break;
+                        case 0x01:
+                           DigOutTrigger(i);
+                           break;
+                        case 0x02:
+                           DigOutOff(i);
+                           break;
+                        case 0x03:
+                           DigOutOn(i);
+                           break;
+                        default:
+                           break;
+                     }
+                  }
+               }
+               for (i = 0; i < eShaderNum; i++) {
+                  uint8_t position = spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i];
+                  if (position <= 100) {
+                     ShaderSetPosition(i, position);
+                  } else if (position == 255) {
+                     // stop
+                     ShaderSetAction(i, eShaderStop);
+                  } 
+               }
+               /* Anwortpaket zusammenstellen */
+               sTxBusMsg.type = eBusDevRespSetValue;
+               sTxBusMsg.senderAddr = MY_ADDR;
+               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+               BusSend(&sTxBusMsg);
             }
             break;
          case eBusDevReqSwitchState:

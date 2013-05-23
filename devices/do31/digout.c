@@ -1,10 +1,26 @@
-/*-----------------------------------------------------------------------------
-*  digout.c
-*/
+/*
+ * digout.c
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -15,15 +31,8 @@
 #include "digout.h"
 
 /*-----------------------------------------------------------------------------
-*  Macros
+*  macros
 */                     
-/* Zeitdauer für Rollladenansteuerung */
-#define DEFAULT_SHADE_DELAY        30000 /* ms */       
-
-/* Zeitdauer, um die dirSwitch und onSwitch verzögert geschaltet werden */
-/* (dirSwitch und onSwitch schalten um diese Diff verzögert) */
-#define SHADE_DELAY_DIFF   200  /* ms */
-
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -53,14 +62,8 @@ typedef struct {
    uint32_t     onDelayMs; 
    uint32_t     offDelayMs;
    TDelayState  state;
-   bool         shadeFunction;
+   bool         shaderFunction;
 } TDigoutDesc;
-
-typedef struct {
-   TDigOutNumber onSwitch;
-   TDigOutNumber dirSwitch;
-   uint32_t      delayTime;
-} TShadeDesc;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -105,29 +108,54 @@ static const TAccessFunc sDigOutFuncs[NUM_DIGOUT] PROGMEM = {
 };
 
 static TDigoutDesc sState[eDigOutNum];
-static TShadeDesc  sShade[eDigOutShadeNum];
           
 /*-----------------------------------------------------------------------------
-*  Initialisierung
+*  init
 */
 void DigOutInit(void) {
    uint8_t i;
    TDigoutDesc *pState;
-   TShadeDesc  *pShade;
 
    pState = sState;
    for (i = 0; i < NUM_DIGOUT; i++) {
       pState->state = eDigOutNoDelay;
-      pState->shadeFunction = false;
+      pState->shaderFunction = false;
       pState++;
    }                   
-   pShade = sShade;
-   for (i = 0; i < eDigOutShadeNum; i++) {
-      pShade->onSwitch = eDigOutInvalid;
-      pShade->dirSwitch = eDigOutInvalid;
-      pShade++;                   
+}
+
+/*-----------------------------------------------------------------------------
+*  special shader function for digout
+*/
+bool DigOutGetShaderFunction(TDigOutNumber number) {
+   
+   if (number < NUM_DIGOUT) {
+      return sState[number].shaderFunction;
+   } else {
+      return false;
    }
 }
+
+bool DigOutSetShaderFunction(TDigOutNumber number) {
+   
+   if (number < NUM_DIGOUT) {
+      sState[number].shaderFunction = true;
+      return true;
+    } else {
+      return false;
+   }
+}
+
+bool DigOutClearShaderFunction(TDigOutNumber number) {
+
+   if (number < NUM_DIGOUT) {
+      sState[number].shaderFunction = false;
+      return true;
+   } else {
+      return false;
+   }
+}
+
 /*-----------------------------------------------------------------------------
 *  Ausgang einschalten
 */
@@ -271,144 +299,35 @@ void DigOutDelayedOnDelayedOff(TDigOutNumber number, uint32_t onDelayMs, uint32_
 }
 
 /*-----------------------------------------------------------------------------
-*  Zuordnung der Ausgänge für einen Rollladen
-*  onSwitch schaltet das Stromversorgungsrelais
-*  dirSwitch schaltet das Richtungsrelais
+
 */
-void DigOutShadeConfig(TDigOutShadeNumber number, 
-                       TDigOutNumber onSwitch, 
-                       TDigOutNumber dirSwitch) {
-   sShade[number].onSwitch = onSwitch;
-   sState[onSwitch].shadeFunction = true;
-   sShade[number].dirSwitch = dirSwitch;
-   sState[dirSwitch].shadeFunction = true;
-   sShade[number].delayTime = DEFAULT_SHADE_DELAY;
+void DigOutDelayCancel(TDigOutNumber number)  {
+   sState[number].state = eDigOutNoDelay;
 }
 
 /*-----------------------------------------------------------------------------
-*  Zuordnung der Ausgänge für einen Rollladen lesen
+
 */
-void DigOutShadeGetConfig(TDigOutShadeNumber number, TDigOutNumber *pOnSwitch, TDigOutNumber *pDirSwitch) {
-
-   *pOnSwitch = sShade[number].onSwitch;
-   *pDirSwitch = sShade[number].dirSwitch;
-}
-
-
-/*-----------------------------------------------------------------------------
-*  Abfrage, ob Ausgäng für Rollladenfunktion konfiguriert ist
-*/
-bool DigOutShadeFunction(TDigOutNumber number) {
-   return sState[number].shadeFunction;
+bool DigOutIsDelayed(TDigOutNumber number)  {
+   return (sState[number].state != eDigOutNoDelay);
 }
 
 /*-----------------------------------------------------------------------------
-*  Ausgang für Rollladen einschalten
-*  Schaltet sich nach 30 s automatisch ab
+*  trigger output pulse
 */
-void DigOutShade(TDigOutShadeNumber number, TDigOutShadeAction action) {
-   TDigOutNumber onSwitch;
-   TDigOutNumber dirSwitch;
-
-   onSwitch = sShade[number].onSwitch;
-   dirSwitch = sShade[number].dirSwitch;
-   if ((onSwitch == eDigOutInvalid) ||
-       (dirSwitch == eDigOutInvalid)) {
-      return;
-   }
-
-   switch (action) {
-      case eDigOutShadeOpen:
-         /* Richtungsrelais soll sich ebenfalls ausschalten        */
-         /* mit größerer Verzögerung, damit sichergestellt ist, dass  */  
-         /* nicht bei abschalten kurz in die andere Richtung gefahren */
-         /* wird */
-         /* 1. Strom (on) AUS */
-         /* 2. Richtung (dir) EIN mit Verzögerung */
-         /* 3. Strom (on) EIN mit Verzögerung kurz nach Richtung EIN */
-         /* 4. Warten (30 s) */
-         /* 5. Strom (on) AUS */
-         /* 6. Richtung (dir) AUS kurz nach Strom AUS */
-         DigOutOff(onSwitch);
-         DigOutDelayedOnDelayedOff(dirSwitch, SHADE_DELAY_DIFF,
-                                   sShade[number].delayTime + SHADE_DELAY_DIFF * 2);
-         DigOutDelayedOnDelayedOff(onSwitch, SHADE_DELAY_DIFF * 2, sShade[number].delayTime);
-         break;
-      case eDigOutShadeClose:
-         /* 1, Strom (on) AUS */
-         /* 2. Richtung (dir) AUS mit Verzögerung falls vorher EIN) */
-         /* 3. Strom (on) EIN mit Verzögerung kurz nach Richtung AUS */
-         /* 4. Warten (30 s) */
-         /* 5. Strom (on) AUS */
-         DigOutOff(onSwitch);
-         if (DigOutState(dirSwitch) == true) {
-            DigOutDelayedOff(dirSwitch, SHADE_DELAY_DIFF);
-         }
-         DigOutDelayedOnDelayedOff(onSwitch, SHADE_DELAY_DIFF * 2, sShade[number].delayTime);
-         break;
-      case eDigOutShadeStop:
-         /* 1. Strom (on) AUS */
-         /* 2. Richtung (dir) AUS mit Verzögerung falls vorher EIN */
-         /* Ausschaltverzögerung deaktivieren und sofort abschalten */
-         DigOutOff(onSwitch);
-         sState[onSwitch].state = eDigOutNoDelay;
-         /* dirSwitch verzögert abschalten */
-         if (DigOutState(dirSwitch) == true) {
-            DigOutDelayedOff(dirSwitch, SHADE_DELAY_DIFF);
-         }
-         break;
-      default:
-         break;
-   }
+void DigOutTrigger(TDigOutNumber number) {
+   DigOutDelayedOff(number, 1000);
 }
 
-/*-----------------------------------------------------------------------------
-*  Ermittlung, ob Rollladenausgang aktiv (fährt gerade AUF oder ZU)
-*  Wird verwendet, um bei Tastenbetätigung zwischen AUF/ZU und STOP unter-
-*  scheiden zu können
-*/
-bool DigOutShadeState(TDigOutShadeNumber number, TDigOutShadeAction *pAction) {
-
-   TDigOutNumber onSwitch;
-   TDigOutNumber dirSwitch;
-
-   onSwitch = sShade[number].onSwitch;
-   dirSwitch = sShade[number].dirSwitch;
-   if ((onSwitch == eDigOutInvalid) ||
-       (dirSwitch == eDigOutInvalid)) {
-      return false;
-   }
-
-   if (DigOutState(onSwitch) == false) {
-      /* abgeschaltet*/
-      *pAction = eDigOutShadeStop;
-   } else if (DigOutState(dirSwitch) == false) {
-      *pAction = eDigOutShadeClose;
-   } else {
-      *pAction = eDigOutShadeOpen;
-   }
-   return true;
-}
-
-/*-----------------------------------------------------------------------------
-*  Set delayTime for shader
-*  Use to change default delayTime
-*/
-bool DigOutShadeSetDelay(TDigOutShadeNumber number, uint32_t delayTimeMs) {
-
-   sShade[number].delayTime = delayTimeMs;
-
-   return true;
-}
 /*-----------------------------------------------------------------------------
 *  Statemachine für zeitgesteuerung Aktionen
 *  mit jedem Aufruf wird ein Ausgang bearbeitet
 */
 void DigOutStateCheck(void) {
-   static uint8_t  sDigoutNum = 0;   
-   TDigoutDesc   *pState; 
-   TDelayState   delayState;
-   uint32_t        actualTime;
+   static uint8_t sDigoutNum = 0;   
+   TDigoutDesc    *pState; 
+   TDelayState    delayState;
+   uint32_t       actualTime;
 
    GET_TIME_MS32(actualTime);
    pState = &sState[sDigoutNum];

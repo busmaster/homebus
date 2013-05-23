@@ -1,15 +1,32 @@
-/*-----------------------------------------------------------------------------
-*  DigOut.h
-*/
+/*
+ * digout.h
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 #ifndef _DIGOUT_H
 #define _DIGOUT_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -56,35 +73,6 @@ typedef enum {
    eDigOutInvalid = 255
 } TDigOutNumber;       
 
-
-typedef enum {
-   eDigOutShade0 = 0,
-   eDigOutShade1 = 1,
-   eDigOutShade2 = 2,
-   eDigOutShade3 = 3,
-   eDigOutShade4 = 4,
-   eDigOutShade5 = 5,
-   eDigOutShade6 = 6,
-   eDigOutShade7 = 7,
-   eDigOutShade8 = 8,
-   eDigOutShade9 = 9,
-   eDigOutShade10 = 10,
-   eDigOutShade11 = 11,
-   eDigOutShade12 = 12,
-   eDigOutShade13 = 13,
-   eDigOutShade14 = 14,
-   eDigOutShadeNum = 15,
-   eDigOutShadeInvalid = 255
-} TDigOutShadeNumber;
-
-typedef enum {
-   eDigOutShadeClose,
-   eDigOutShadeOpen,
-   eDigOutShadeStop,
-   eDigOutShadeNone
-} TDigOutShadeAction;
- 
-
 /*-----------------------------------------------------------------------------
 *  Variables
 */                                
@@ -104,13 +92,12 @@ void DigOutToggle(TDigOutNumber number);
 void DigOutDelayedOn(TDigOutNumber number, uint32_t onDelayMs);
 void DigOutDelayedOff(TDigOutNumber number, uint32_t offDelayMs);
 void DigOutDelayedOnDelayedOff(TDigOutNumber number, uint32_t onDelayMs, uint32_t offDelayMs);
-void DigOutShadeConfig(TDigOutShadeNumber number, TDigOutNumber onSwitch, TDigOutNumber dirSwitch);
-void DigOutShadeGetConfig(TDigOutShadeNumber number, TDigOutNumber *pOnSwitch, TDigOutNumber *pDirSwitch);
-bool DigOutShadeFunction(TDigOutNumber number);
-void DigOutShade(TDigOutShadeNumber number, TDigOutShadeAction action);
-bool DigOutShadeState(TDigOutShadeNumber number, TDigOutShadeAction *pAction);
-bool DigOutShadeSetDelay(TDigOutShadeNumber number, uint32_t delayTimeMs);
-bool DigOutShadeGetState(TDigOutShadeNumber number, uint8_t *pState);
+void DigOutDelayCancel(TDigOutNumber number);
+bool DigOutIsDelayed(TDigOutNumber number);
+void DigOutTrigger(TDigOutNumber number);
+bool DigOutGetShaderFunction(TDigOutNumber number);
+bool DigOutSetShaderFunction(TDigOutNumber number);
+bool DigOutClearShaderFunction(TDigOutNumber number);
 void DigOutStateCheck(void);
 
 

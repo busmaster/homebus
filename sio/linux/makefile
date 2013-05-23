@@ -2,7 +2,6 @@ OBJS = sio.o
 BIN  = libsio.a
 ARCH = $(TARGET_ARCH)
 OS = $(TARGET_OS)
-GCC_VERSION = 4.6
 OBJDIR = obj
 BINDIR = bin
 
@@ -16,7 +15,7 @@ else ifeq ($(ARCH), arm)
 	endif
 endif
 
-GCC = $(GCC_PREFIX)gcc-$(GCC_VERSION)
+GCC = $(GCC_PREFIX)gcc
 AR = ar
 
 %.o : %.c

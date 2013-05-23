@@ -1,10 +1,26 @@
-/*-----------------------------------------------------------------------------
-*  Main.c
-*/
+/*
+ * main.c
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -104,17 +120,18 @@ int main(int argc, char *argv[]) {
    int            handle;
    int            i;
    FILE           *pLogFile = 0;
-   char           *pStr;
    char           comPort[SIZE_COMPORT] = "";
    char           logFile[MAX_NAME_LEN] = "";
    bool           raw = false;
 
+
    /* COM-Port ermitteln */
    for (i = 1; i < argc; i++) {
-      pStr = strstr(argv[i], "-c"); 
-      if (pStr != 0) {
-         pStr += 2;
-         strncpy(comPort, pStr, sizeof(comPort) - 1);
+      if (strcmp(argv[i], "-c") == 0) {
+         if (argc > i) {
+            strncpy(comPort, argv[i + 1], sizeof(comPort) - 1);
+            comPort[sizeof(comPort) - 1] = 0;
+         }
          break;
       } 
    }    
@@ -125,23 +142,22 @@ int main(int argc, char *argv[]) {
           
    /* Name des Logfile ermittlen */
    for (i = 1; i < argc; i++) {
-      pStr = strstr(argv[i], "-l"); 
-      if (pStr != 0) {
-         pStr += 2;
-         strncpy(logFile, pStr, sizeof(logFile));
+      if (strcmp(argv[i], "-f") == 0) {
+         if (argc > i) {
+            strncpy(logFile, argv[i + 1], sizeof(logFile) - 1);
+            logFile[sizeof(logFile) - 1] = 0;
+         }
          break;
       }
    }    
 
    /* raw-Modus? */
    for (i = 1; i < argc; i++) {
-      pStr = strstr(argv[i], "-raw"); 
-      if (pStr != 0) {
+      if (strcmp(argv[i], "-raw") == 0) {
          raw = true;
          break;
       }
    }    
-          
 
    if (strlen(logFile) != 0) {
       pLogFile = fopen(logFile, "wb");
@@ -195,7 +211,7 @@ int main(int argc, char *argv[]) {
 static void PrintUsage(void) {
 
    printf("\r\nUsage:");
-   printf("busmonitor -cport [-lfile] [-raw]\r\n");
+   printf("busmonitor -c port [-l file] [-raw]\r\n");
    printf("port: com1 com2 ..\r\n");
    printf("file, if no logfile: log to console\r\n");
    printf("-raw: log hex data");
@@ -274,7 +290,7 @@ static void BusMonDecoded(int sioHandle) {
 
    int            i;
    uint8_t        ret;   
-   TBusTelegramm  *pBusMsg;
+   TBusTelegram   *pBusMsg;
    char           cKb = 0;
 
    BusInit(sioHandle);
@@ -565,6 +581,41 @@ static void BusMonDecoded(int sioHandle) {
             case eBusDevRespSetAddr:
                fprintf(spOutput, "response set address ");
                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+               break;
+            case eBusDevReqEepromRead:
+               fprintf(spOutput, "request read eeprom ");
+               fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+               fprintf(spOutput, SPACE "address %04x", pBusMsg->msg.devBus.x.devReq.readEeprom.addr);
+               break;
+            case eBusDevRespEepromRead:
+               fprintf(spOutput, "request read eeprom ");
+               fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+               fprintf(spOutput, SPACE "data %02x", pBusMsg->msg.devBus.x.devResp.readEeprom.data);
+               break;
+            case eBusDevReqEepromWrite:
+               fprintf(spOutput, "request write eeprom ");
+               fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+               fprintf(spOutput, SPACE "address %04x, data %02x", pBusMsg->msg.devBus.x.devReq.writeEeprom.addr,
+                                                                  pBusMsg->msg.devBus.x.devReq.writeEeprom.data);
+               break;
+            case eBusDevRespEepromWrite:
+               fprintf(spOutput, "response write eeprom ");
+               break;
+            case eBusDevReqSetValue:
+               fprintf(spOutput, "request set value");
+               // todo
+               break;
+            case eBusDevRespSetValue:
+               fprintf(spOutput, "response set value");
+               // todo
+               break;
+            case eBusDevReqActualValue:
+               fprintf(spOutput, "request actual value");
+               // todo
+               break;
+            case eBusDevRespActualValue:
+               fprintf(spOutput, "response actual value");
+               // todo
                break;
             case eBusDevStartup:
                fprintf(spOutput, "device startup ");

@@ -1,10 +1,26 @@
-/*-----------------------------------------------------------------------------
-*  main.c
-*/
+/*
+ * main.c
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -22,10 +38,10 @@
 /* eigene Adresse am Bus */
 #define MY_ADDR    0
 
-/* timeout für Wiederholung */
+/* timeout fï¿½r Wiederholung */
 
 #define TIMEOUT_MS_STARTUP_RESP      2000
-#define TIMEOUT_MS_UPD_ENTER_RESP    10000  /* braucht länger, weil Eeprom und Flash gelöscht werden */
+#define TIMEOUT_MS_UPD_ENTER_RESP    10000  /* braucht lï¿½nger, weil Eeprom und Flash gelï¿½scht werden */
 #define TIMEOUT_MS_UPD_DATA_RESP     1000
 #define TIMEOUT_MS_UPD_TERM_RESP     1000
 #define TIMEOUT_MS_REBOOT_RESP       2000
@@ -54,12 +70,12 @@
 *  Variables
 */
 
-static TBusTelegramm  *spBusMsg;
+static TBusTelegram  *spBusMsg;
 static uint8_t         sFwuState;
 static FILE           *spFile;
 static uint16_t       sLastWordAddr;
 static bool           sFileTransferComplete = false;
-static bool           sFileEmpty = false;
+//static bool           sFileEmpty = false;
 static unsigned int   sTimeStamp;
 static uint8_t        sTargetAddr;
 
@@ -78,9 +94,9 @@ static unsigned long GetTickCount(void);
 */
 int main(int argc, char *argv[]) {
 
-   int            handle;
-   uint8_t          ret;
-   TBusTelegramm  txBusMsg;
+   int           handle;
+   uint8_t       ret;
+   TBusTelegram  txBusMsg;
 
    if (argc != 4) {
       PrintUsage();
@@ -89,7 +105,7 @@ int main(int argc, char *argv[]) {
 
    sTargetAddr = atoi(argv[3]);
 
-   /* File mit Firmware öffnen */
+   /* File mit Firmware ï¿½ffnen */
    spFile = fopen(FIRMWARE_FILE, "rb");
    if (spFile == 0) {
       printf("cannot open %s\r\n", FIRMWARE_FILE);
@@ -150,9 +166,9 @@ int main(int argc, char *argv[]) {
 */
 static void ProcessBus(uint8_t ret) {
 
-   TBusMsgType   msgType;
-   TBusTelegramm txBusMsg;
-   static int    sRetryCnt = 0;
+   TBusMsgType  msgType;
+   TBusTelegram txBusMsg;
+   static int   sRetryCnt = 0;
 
    if (ret == BUS_MSG_OK) {
       sTimeStamp = GetTickCount();
@@ -176,7 +192,7 @@ static void ProcessBus(uint8_t ret) {
                printf("send data (bytes):        ");
                /* erstes Datenpaket senden */
                if (SendDataPacket(true) == false) {
-                  /* File hat Länge 0 */
+                  /* File hat Lï¿½nge 0 */
                   sFileTransferComplete = true;
                   printf("\r\nERROR: file is empty\r\n");
                } else {
@@ -192,7 +208,7 @@ static void ProcessBus(uint8_t ret) {
                sRetryCnt = 0;
 
                if (spBusMsg->msg.devBus.x.devResp.updData.wordAddr == sLastWordAddr) {
-                  /* Antwort OK -> nächstes Paket */
+                  /* Antwort OK -> nï¿½chstes Paket */
                   if (SendDataPacket(true) == false) {
                      /* keine Daten mehr zu senden -> Update beenden */
                      txBusMsg.type = eBusDevReqUpdTerm;
@@ -211,7 +227,7 @@ static void ProcessBus(uint8_t ret) {
             if ((msgType == eBusDevRespUpdTerm) &&
                 (spBusMsg->msg.devBus.receiverAddr == MY_ADDR)) {
                printf("\r\ntransfer OK\r\n");
-               /* reboot auslösen */
+               /* reboot auslï¿½sen */
                txBusMsg.type = eBusDevReqReboot;
                txBusMsg.senderAddr = MY_ADDR;
                txBusMsg.msg.devBus.receiverAddr = TARGET_ADDR;
@@ -305,7 +321,7 @@ static void ProcessBus(uint8_t ret) {
 */
 static bool SendDataPacket(bool next) {
 
-   TBusTelegramm txBusMsg;
+   TBusTelegram    txBusMsg;
    static uint16_t sNextWordAddr = 0;
 
    txBusMsg.type = eBusDevReqUpdData;
@@ -334,13 +350,13 @@ static bool SendDataPacket(bool next) {
    int len = fread(txBusMsg.msg.devBus.x.devReq.updData.data, 1, lenToRead, spFile);
 
    if (len == 0) {
-      /* Fileende - alle Daten sind übertragen */
+      /* Fileende - alle Daten sind ï¿½bertragen */
       return false;
    } else {
-      printf("\b\b\b\b\b\b%6d", txBusMsg.msg.devBus.x.devReq.updData.wordAddr * 2 + len); 
+      printf("\b\b\b\b\b\b%6d", txBusMsg.msg.devBus.x.devReq.updData.wordAddr * 2 + len);
       fflush(stdout);
 
-      /* falls Fileende erreicht, ist letztes Paket kann nicht mehr so groß wie Puffer */  
+      /* falls Fileende erreicht, ist letztes Paket kann nicht mehr so groï¿½ wie Puffer */  
       /* nicht def. Daten werden auf 0xff gesetzt */
       memset((void *)((int)txBusMsg.msg.devBus.x.devReq.updData.data + len), 0xff, lenToRead - len);
       BusSend(&txBusMsg);

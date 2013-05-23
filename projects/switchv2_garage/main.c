@@ -36,6 +36,7 @@
 #include "sio.h"
 #include "sysdef.h"
 #include "bus.h"
+#include "button.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros  
@@ -49,31 +50,32 @@
 /* configure unused pins to output low                                 */
 #define PORT_C_CONFIG_DIR     2  /* bitmask for port c:                */
                                  /* 1 output, 0 input                  */
-                                 /* switch/button:   0b11111100 = 0xfc */
-                                 /* motion detector: 0b11111111 = 0xff */
+                                 /* 0b11111110 = 0xfe */
 #define PORT_C_CONFIG_PORT    3  /* bitmask for port c:                */
                                  /* 1 pullup, 0 hi-z for inputs        */
-                                 /* switch/button:   0b00000011 = 0x03 */
-                                 /* motion detector: 0b00000000 = 0x00 */
+                                 /* 0b00000011 = 0x01 */
 
 /* RXD und INT0 input without pullup                                   */
-/* TXD output high, motion detector input without pullup               */
+/* TXD output high                                                     */
 /* other pins output low                                               */
 #define PORT_D_CONFIG_DIR     4  /* bitmask for port d:                */
                                  /* 1 output, 0 input                  */
-                                 /* switch/button:   0b11111010 = 0xfa */
-                                 /* motion detector: 0b11110010 = 0xf2 */
+                                 /* 0b11111010 = 0xfa */
 #define PORT_D_CONFIG_PORT    5  /* bitmask for port d:                */
                                  /* 1 pullup, 0 hi-z for inputs        */
-                                 /* switch/button:   0b00100010 = 0x22 */
-                                 /* motion detector: 0b00100010 = 0x22 */
-                                
-                                
-#define INPUT_TYPE            6  /* 0: button at portc 0/1       */
-                                 /* 1: switch at portc 0/1       */
-                                 /* 2: switch at portd 3         */
+                                 /* 0b00100010 = 0x22 */
+
+/* offset 6 unused */                                
 
 #define CLIENT_ADDRESS_BASE   7
+
+/* application button: 3 bytes per button:     */
+/* 1 byte for button addres                    */  
+/* 1 byte for input number (1 or 2)            */
+/* 1 byte for pressed delay in 100 msecs       */
+#define APPLICATION_BUTTON_BASE              (CLIENT_ADDRESS_BASE + BUS_MAX_CLIENT_NUM)
+#define MAX_NUM_APPLICATION_BUTTONS          3  /* uses 3 * 3 = 9 bytes */
+#define SIZE_APPLICATION_BUTTON_DESC         3
 
 #define STARTUP_DELAY  10 /* delay in seconds */
 
@@ -104,13 +106,9 @@
 
 #define IDLE_SIO  0x01
 
-#define INPUT_TYPE_DUAL_BUTTON        0
-#define INPUT_TYPE_DUAL_SWITCH        1
-#define INPUT_TYPE_MOTION_DETECTOR    2
-
-#define INPUT_BUTTON           (PINC & 0b00000011) /* two lower bits on port C*/
-#define INPUT_SWITCH           (~PINC & 0b00000011) /* two lower bits on port C*/
-#define INPUT_MOTION_DETECTOR  ((PIND & 0b00001000) >> 3) /* port D pin 3 */
+#define INPUT_PIN           (~PINC & 0b00000001) /* bit0 on port C*/
+#define OUTPUT_PIN_ON       PORTC |=  0b00000010  /* bit1 on port C*/
+#define OUTPUT_PIN_OFF      PORTC &= ~0b00000010  /* bit1 on port C*/
 
 /* Port D bit 5 controls bus transceiver power down */
 #define BUS_TRANSCEIVER_POWER_DOWN \
@@ -119,11 +117,6 @@
 #define BUS_TRANSCEIVER_POWER_UP \
    PORTD &= ~(1 << 5)
    
-/* button telegram state machine */
-#define BUTTON_TX_OFF     0
-#define BUTTON_TX_ON      1
-#define BUTTON_TX_TIMEOUT 2
-
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */  
@@ -141,11 +134,18 @@ typedef struct {
    uint16_t requestTimeStamp;
 } TClient;
 
+typedef struct {
+   uint8_t  address;
+   uint8_t  inputNum;
+   uint16_t pressedDelayMs;
+   uint16_t pressedTimeStamp;
+   bool     isPressed;
+} TApplicationButton;
 
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88 1.03";
+char version[] = "Sw88_garage 0.00";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -154,16 +154,16 @@ volatile uint8_t  gTimeMs;
 volatile uint16_t gTimeMs16;
 volatile uint16_t gTimeS;
 
-static TClient sClient[BUS_MAX_CLIENT_NUM];
+static TClient   sClient[BUS_MAX_CLIENT_NUM];
 
 static uint8_t   sMyAddr;
-
-static uint8_t   sInputType;
 
 static uint8_t   sSwitchStateOld;
 static uint8_t   sSwitchStateActual;
 
 static uint8_t   sIdle = 0;
+
+static TApplicationButton sApplicationButton[MAX_NUM_APPLICATION_BUTTONS];
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -172,14 +172,16 @@ static void PortInit(void);
 static void TimerInit(void);
 static void Idle(void);
 static void ProcessSwitch(uint8_t switchState);
-static void ProcessButton(uint8_t buttonState);
 static void ProcessBus(void);
 static uint8_t GetUnconfirmedClient(uint8_t actualClient);
 static void SendStartupMsg(void);
 static void IdleSio(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
-static uint8_t GetInputState(void);
-
+static void ButtonEvent(uint8_t address, uint8_t button);
+static void CheckButton(void);
+static void ApplicationEventButton(TButtonEvent *pButtonEvent);
+static void ApplicationButtonInit(void);
+static void CheckApplication(void);
 
 /*-----------------------------------------------------------------------------
 *  program start
@@ -195,12 +197,9 @@ int main(void) {
    /* get module address from EEPROM */
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
 
-   sInputType = eeprom_read_byte((const uint8_t *)INPUT_TYPE);
-   if (sInputType > INPUT_TYPE_MOTION_DETECTOR) {
-      sInputType = INPUT_TYPE_DUAL_BUTTON;
-   }
    PortInit();
    TimerInit();
+   ButtonInit();
    SioInit();
    sioHandle = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
                        eSioStopBits1, eSioModeHalfDuplex);
@@ -217,33 +216,116 @@ int main(void) {
 
    SendStartupMsg();
    
-   if ((sInputType == INPUT_TYPE_DUAL_SWITCH) ||
-       (sInputType == INPUT_TYPE_MOTION_DETECTOR)) {
-      /* wait for controller startup delay for sending first state telegram */
-      DELAY_S(STARTUP_DELAY);
-   }
+   /* wait for controller startup delay for sending first state telegram */
+   DELAY_S(STARTUP_DELAY);
 
-   if ((sInputType == INPUT_TYPE_DUAL_SWITCH) ||
-       (sInputType == INPUT_TYPE_MOTION_DETECTOR)) {
-      inputState = GetInputState();
-      sSwitchStateOld = ~inputState;
-      ProcessSwitch(inputState);
-   }
+   ApplicationButtonInit();
+
+   inputState = INPUT_PIN;
+   sSwitchStateOld = ~inputState;
+   ProcessSwitch(inputState);
 
    while (1) { 
       Idle();
-   
-      inputState = GetInputState(); 
-      if ((sInputType == INPUT_TYPE_DUAL_SWITCH) ||
-          (sInputType == INPUT_TYPE_MOTION_DETECTOR)) {
-         ProcessSwitch(inputState);
-      } else if (sInputType == INPUT_TYPE_DUAL_BUTTON) {
-         ProcessButton(inputState);
-      }
-
+      inputState = INPUT_PIN; 
+      ProcessSwitch(inputState);
       ProcessBus();
+      CheckButton();
+      CheckApplication();
    }
    return 0;  /* never reached */
+}
+
+/*-----------------------------------------------------------------------------
+*  check for button release
+*/
+static void CheckButton(void) {
+   uint8_t        i = 0;
+   TButtonEvent buttonEventData;
+
+   while (ButtonReleased(&i) == true) {
+      if (ButtonGetReleaseEvent(i, &buttonEventData) == true) {
+         ApplicationEventButton(&buttonEventData);
+      }
+   } 
+}
+
+/*-----------------------------------------------------------------------------
+*  create button event for application
+*/
+static void ButtonEvent(uint8_t address, uint8_t button) { 
+   TButtonEvent buttonEventData;
+
+   if (ButtonNew(address, button) == true) {
+      buttonEventData.address = spRxBusMsg->senderAddr;
+      buttonEventData.pressed = true;   
+      buttonEventData.buttonNr = button;
+      ApplicationEventButton(&buttonEventData);
+   }
+} 
+
+/*-----------------------------------------------------------------------------
+*  read application button data from eeprom
+*/
+static void ApplicationButtonInit(void) {
+
+   uint8_t i;
+   TApplicationButton *pAppButton = sApplicationButton;
+
+   for (i = 0; 
+        i < (MAX_NUM_APPLICATION_BUTTONS * SIZE_APPLICATION_BUTTON_DESC); 
+        i += SIZE_APPLICATION_BUTTON_DESC) {
+      pAppButton->address = eeprom_read_byte((const uint8_t *)(APPLICATION_BUTTON_BASE + i));
+      pAppButton->inputNum = eeprom_read_byte((const uint8_t *)(APPLICATION_BUTTON_BASE + i + 1));
+      pAppButton->pressedDelayMs = eeprom_read_byte((const uint8_t *)(APPLICATION_BUTTON_BASE + i + 2)) * 100;
+      pAppButton->isPressed = false;
+      
+      pAppButton++;
+   }
+}
+   
+
+static void ApplicationEventButton(TButtonEvent *pButtonEvent) {
+ 
+   uint8_t i;
+   TApplicationButton *pAppButton = sApplicationButton;
+   
+   for (i = 0; i < MAX_NUM_APPLICATION_BUTTONS; i ++) {
+      if ((pAppButton->address == pButtonEvent->address) &&
+          (pAppButton->inputNum == pButtonEvent->buttonNr)) {
+         if (pButtonEvent->pressed) {
+            pAppButton->isPressed = true;
+            if (pAppButton->pressedDelayMs == 0) {
+               OUTPUT_PIN_ON;
+            } else {
+               GET_TIME_MS16(pAppButton->pressedTimeStamp);
+            }
+         } else {
+            OUTPUT_PIN_OFF;
+            pAppButton->isPressed = false;
+         }
+      }
+      pAppButton++;
+   }
+}
+
+static void CheckApplication(void) {
+
+   uint8_t i;
+   TApplicationButton *pAppButton = sApplicationButton;
+   uint16_t actualTime16;
+
+   for (i = 0; i < MAX_NUM_APPLICATION_BUTTONS; i ++) {
+      if ((pAppButton->isPressed) && 
+          (pAppButton->pressedDelayMs > 0)) {
+         GET_TIME_MS16(actualTime16);
+         if (((uint16_t)(actualTime16 - pAppButton->pressedTimeStamp)) >= pAppButton->pressedDelayMs) {
+            OUTPUT_PIN_ON;
+            pAppButton->isPressed = false;
+         }
+      }
+      pAppButton++;
+   }
 }
 
 /*-----------------------------------------------------------------------------
@@ -261,30 +343,6 @@ static void Idle(void) {
    } else {
       sei();
    }
-}
-
-/*-----------------------------------------------------------------------------
-*  get the button or switch state
-*/
-static uint8_t GetInputState(void) {
-   
-   uint8_t state;
-   
-   switch (sInputType) {
-      case INPUT_TYPE_DUAL_BUTTON:
-         state = INPUT_BUTTON;
-         break;
-      case INPUT_TYPE_DUAL_SWITCH:
-         state = INPUT_SWITCH;
-         break;
-      case INPUT_TYPE_MOTION_DETECTOR:
-         state = INPUT_MOTION_DETECTOR;
-         break;
-      default:
-         state = 0xff;
-         break;
-   }
-   return state;   
 }
 
 /*-----------------------------------------------------------------------------
@@ -319,7 +377,7 @@ static void BusTransceiverPowerDown(bool powerDown) {
 *  - if there is no confirmation from client within RESPONSE_TIMEOUT2
 *    the next client in list is processed
 *  - telegrams to clients without response are repeated again and again
-*    til telegrams to all clients in list are confirmed
+*    till telegrams to all clients in list are confirmed
 *  - if switchStateChanged occurs while client confirmations are missing
 *    actual client process is canceled and the new state telegram is sent
 *    to clients 
@@ -328,12 +386,12 @@ static void ProcessSwitch(uint8_t switchState) {
 
    static uint8_t   sActualClient = 0xff; /* actual client's index being processed */
    static uint16_t  sChangeTimeStamp;
-   TClient        *pClient;
+   TClient          *pClient;
    uint8_t          i;
    uint16_t         actualTime16;
    uint8_t          actualTime8;
-   bool           switchStateChanged;
-   bool           startProcess;
+   bool             switchStateChanged;
+   bool             startProcess;
    
    if ((switchState ^ sSwitchStateOld) != 0) {
        switchStateChanged = true;
@@ -421,77 +479,6 @@ static void ProcessSwitch(uint8_t switchState) {
 }
 
 /*-----------------------------------------------------------------------------
-*  send button pressed telegram
-*  telegram is repeated every 48 ms for max 8 secs 
-*/
-static void ProcessButton(uint8_t buttonState) {
-
-   static uint8_t  sSequenceState = BUTTON_TX_OFF;
-   static uint16_t sStartTimeS;
-   static uint8_t  sTimeStampMs;
-   bool            pressed;
-   uint16_t        actualTimeS;
-   uint8_t         actualTimeMs;
-
-   /* buttons pull down pins to ground when pressed */
-   switch (buttonState) {
-      case 0:
-         sTxBusMsg.type = eBusButtonPressed1_2;
-         pressed = true;
-         break;
-      case 1:
-         sTxBusMsg.type = eBusButtonPressed2;
-         pressed = true;
-         break;
-      case 2:
-         sTxBusMsg.type = eBusButtonPressed1;
-         pressed = true;
-         break;
-      default:
-         pressed = false;
-         break;
-   }
-
-   switch (sSequenceState) {
-      case BUTTON_TX_OFF:
-         if (pressed) {
-            /* begin transmission of eBusButtonPressed* telegram */
-            GET_TIME_S(sStartTimeS);
-            sTimeStampMs = GET_TIME_MS;
-            sTxBusMsg.senderAddr = MY_ADDR;
-            BusSend(&sTxBusMsg);
-            sSequenceState = BUTTON_TX_ON;
-         }
-         break;
-      case BUTTON_TX_ON:
-         if (pressed) {
-            GET_TIME_S(actualTimeS);
-            if ((uint16_t)(actualTimeS - sStartTimeS) < BUTTON_TELEGRAM_REPEAT_TIMEOUT) {
-               actualTimeMs = GET_TIME_MS; 
-               if ((uint8_t)(actualTimeMs - sTimeStampMs) >= BUTTON_TELEGRAM_REPEAT_DIFF) {
-                  sTimeStampMs = GET_TIME_MS;
-                  sTxBusMsg.senderAddr = MY_ADDR;
-                  BusSend(&sTxBusMsg);
-               }
-            } else {
-               sSequenceState = BUTTON_TX_TIMEOUT;
-            }
-         } else {
-            sSequenceState = BUTTON_TX_OFF;
-         }
-         break;
-      case BUTTON_TX_TIMEOUT:
-         if (!pressed) {
-            sSequenceState = BUTTON_TX_OFF;
-         }
-         break;
-      default:
-         sSequenceState = BUTTON_TX_OFF;
-         break;
-   }
-}
-
-/*-----------------------------------------------------------------------------
 *  get next client array index
 *  if all clients are processed 0xff is returned
 */
@@ -550,9 +537,17 @@ static void ProcessBus(void) {
             if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                msgForMe = true;
             }
+            break;
+         case eBusButtonPressed1:
+         case eBusButtonPressed2:
+         case eBusButtonPressed1_2:
+            msgForMe = true;
+            break;
          default:
             break;
       }
+      
+      
       if (msgForMe == false) {
          return;
       }
@@ -644,9 +639,21 @@ static void ProcessBus(void) {
             eeprom_write_byte((uint8_t *)spRxBusMsg->msg.devBus.x.devReq.readEeprom.addr, *p);
             BusSend(&sTxBusMsg);  
             break;
+         case eBusButtonPressed1:
+            ButtonEvent(spRxBusMsg->senderAddr, 1);
+            break;
+         case eBusButtonPressed2:
+            ButtonEvent(spRxBusMsg->senderAddr, 2);
+            break;
+         case eBusButtonPressed1_2:
+            ButtonEvent(spRxBusMsg->senderAddr, 1);
+            ButtonEvent(spRxBusMsg->senderAddr, 2);
+            break;            
          default:
             break;
       }   
+   } else if (ret == BUS_MSG_ERROR) {
+      ButtonTimeStampRefresh();
    }
 }
 

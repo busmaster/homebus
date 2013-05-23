@@ -1,10 +1,25 @@
-/*-----------------------------------------------------------------------------
-*  bus.c
-*/
-
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
+/*
+ * bus.c
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -21,101 +36,176 @@
 /* size of buffer for SIO receiving */
 #define BUS_SIO_RX_BUF_SIZE                    10
                  
-/* state machine states for telegram decoding */
-/*
-#define WAIT_FOR_STX                           0
-#define WAIT_FOR_ADDR                          1
-#define WAIT_FOR_TYPE                          2      
-#define WAIT_FOR_CHECKSUM                      3        
-#define WAIT_FOR_RECEIVER_ADDR                 4  
-#define WAIT_FOR_UPDREQ_ADDR_LO                5
-#define WAIT_FOR_UPDREQ_ADDR_HI                6
-#define WAIT_FOR_UPD_DATA                      7
-#define WAIT_FOR_UPDRESP_ADDR_LO               8
-#define WAIT_FOR_UPDRESP_ADDR_HI               9
-#define WAIT_FOR_UPDRESP_TERM                 10
-#define WAIT_FOR_INFORESP_DEVTYPE             11
-#define WAIT_FOR_INFORESP_VERSION             12
-#define WAIT_FOR_INFORESP_DO31_DIRSWITCH      13
-#define WAIT_FOR_INFORESP_DO31_ONSWITCH       14
-#define WAIT_FOR_SETSTATEREQ_DEVTYPE          15
-#define WAIT_FOR_SETSTATE_DO31_DIGOUT         16
-#define WAIT_FOR_SETSTATE_DO31_SHADER         17
-#define WAIT_FOR_GETSTATERESP_DEVTYPE         18
-#define WAIT_FOR_GETSTATE_DO31_DIGOUT         19
-#define WAIT_FOR_GETSTATE_DO31_SHADER         20
-*/
-
 #define STX 0x02
 #define ESC 0x1B             
 
 /* start value for checksum calculation */
 #define CHECKSUM_START   0x55        
 
+#define member_sizeof(T,F) sizeof(((T *)0)->F)
+
+#define MSG_BASE_SIZE1  member_sizeof(TBusTelegram, type) + member_sizeof(TBusTelegram, senderAddr)
+#define MSG_BASE_SIZE2  MSG_BASE_SIZE1 + member_sizeof(TBusDev, receiverAddr)
+
+// max number of length options of variable length telegrams 
+#define MAX_NUM_VAR_LEN 2
+
+
+#define L1_WAIT_FOR_STX      0
+#define L1_RX_MSG            1
+#define L1_WAIT_FOR_CHECKSUM 2
+
+#define L2_IN_PROGRESS          0
+#define L2_ERROR                1
+#define L2_COMPLETE             2
+
+#define L2_WAIT_FOR_SENDER_ADDR 0
+#define L2_WAIT_FOR_TYPE        1
+#define L2_WAIT_FOR_MSG         2
+
 /*-----------------------------------------------------------------------------
 *  typedefs
 */
 typedef void* (* TProtoFunc)(uint8_t ch);
 
+typedef struct {
+   uint8_t offset; // offset of TBusDevType element
+   struct {
+      uint8_t value;
+      uint8_t len;
+   } varData[MAX_NUM_VAR_LEN];
+} TVarLenMsg;
+
+typedef struct {
+   uint8_t size;
+   TVarLenMsg *pVarLen;
+} TTelegramSize;
+
 /*-----------------------------------------------------------------------------
 *  Variables
 */                                
 /* buffer for bus telegram just receiving/just received */
-static TBusTelegramm sRxBuffer; 
+static TBusTelegram sRxBuffer; 
 static int sSioHandle;
-static uint8_t sSioRxBuffer[BUS_SIO_RX_BUF_SIZE];
-static uint8_t sCheckSum; 
-static uint8_t *spData;
+
+static TVarLenMsg sRespInfoSize = {
+   MSG_BASE_SIZE2,
+   {
+      {eBusDevTypeDo31, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespInfo, devType) +
+                        member_sizeof(TBusDevRespInfo, version) + 
+                        sizeof(TBusDevInfoDo31)}, 
+      {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespInfo, devType) +
+                        member_sizeof(TBusDevRespInfo, version) + 
+                        sizeof(TBusDevInfoSw8)}
+   }
+};
+
+static TVarLenMsg sReqSetStateSize = {
+   MSG_BASE_SIZE2,
+   {
+      {eBusDevTypeDo31, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqSetState, devType) +
+                        sizeof(TBusDevSetStateDo31)},
+      {0,               0}
+   }
+};
+
+static TVarLenMsg sRespGetStateSize = {
+   MSG_BASE_SIZE2,
+   {
+      {eBusDevTypeDo31, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespGetState, devType) +
+                        sizeof(TBusDevGetStateDo31)}, 
+      {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespGetState, devType) +
+                        sizeof(TBusDevGetStateSw8)}
+   }
+};
+
+static TVarLenMsg sReqSetValueSize = {
+   MSG_BASE_SIZE2,
+   {
+      {eBusDevTypeDo31, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqSetValue, devType) +
+                        sizeof(TBusDevSetValueDo31)},
+      {0,               0}
+   }
+};
+
+static TVarLenMsg sRespActualValueSize = {
+   MSG_BASE_SIZE2,
+   {
+      {eBusDevTypeDo31, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValue, devType) +
+                        sizeof(TBusDevActualValueDo31)},
+      {0,               0}
+
+   }
+};
+
+// telegram sizes without STX and checksum
+// array index + 1 = telegram type (eBusDevStartup is 255 -> gets index 0
+static TTelegramSize sTelegramSize[] = {
+   { MSG_BASE_SIZE1,                                    0                    }, // eBusDevStartup
+   { 0,                                                 0                    }, // unused
+   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                    }, // eBusButtonPressed1
+   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                    }, // eBusButtonPressed2
+   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                    }, // eBusButtonPressed1_2
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqReboot),         0                    }, // eBusDevReqReboot
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdEnter),       0                    }, // eBusDevReqUpdEnter
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdEnter),      0                    }, // eBusDevRespUpdEnter
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdData),        0                    }, // eBusDevReqUpdData
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdData),       0                    }, // eBusDevRespUpdData
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdTerm),        0                    }, // eBusDevReqUpdTerm
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdTerm),       0                    }, // eBusDevRespUpdTerm
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqInfo),           0                    }, // eBusDevReqInfo
+   { 0,                                                 &sRespInfoSize       }, // eBusDevRespInfo
+   { 0,                                                 &sReqSetStateSize    }, // eBusDevReqSetState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetState),      0                    }, // eBusDevRespSetState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqGetState),       0                    }, // eBusDevReqGetState
+   { 0,                                                 &sRespGetStateSize   }, // eBusDevRespGetState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSwitchState),    0                    }, // eBusDevReqSwitchState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSwitchState),   0                    }, // eBusDevRespSwitchState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSetClientAddr),  0                    }, // eBusDevReqSetClientAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetClientAddr), 0                    }, // eBusDevRespSetClientAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqGetClientAddr),  0                    }, // eBusDevReqGetClientAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespGetClientAddr), 0                    }, // eBusDevRespGetClientAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSetAddr),        0                    }, // eBusDevReqSetAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetAddr),       0                    }, // eBusDevRespSetAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqEepromRead),     0                    }, // eBusDevReqEepromRead
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespEepromRead),    0                    }, // eBusDevRespEepromRead
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqEepromWrite),    0                    }, // eBusDevReqEepromWrite
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespEepromWrite),   0                    }, // eBusDevRespEepromWrite
+   { 0,                                                 &sReqSetValueSize    }, // eBusDevReqSetValue
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetValue),      0                    }, // eBusDevRespSetValue
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqActualValue),    0                    }, // eBusDevReqActualValue
+   { 0,                                                 &sRespActualValueSize}, // eBusDevRespActualValue
+};
+
+static struct l2State {
+   uint8_t protoState;
+   uint8_t lastMsgIdx;
+   uint8_t dynMsgTypeIdx;
+   uint8_t chIdx;
+   TVarLenMsg *pVarSize;
+} sL2State;
 
 /*-----------------------------------------------------------------------------
 *  Functions
 */
 static uint8_t BusDecode(uint8_t ch);
-static void  TransmitCharProt(uint8_t data);
-
-static TProtoFunc ProtoWaitForStx(uint8_t ch);
-static TProtoFunc ProtoWaitForAddr(uint8_t ch);
-static TProtoFunc ProtoWaitForType(uint8_t ch);
-static TProtoFunc ProtoWaitForChecksum(uint8_t ch);
-static TProtoFunc ProtoWaitForReceiverAddr(uint8_t ch);
-static TProtoFunc ProtoWaitForReqUpdDataAddrLo(uint8_t ch);
-static TProtoFunc ProtoWaitForReqUpdDataAddrHi(uint8_t ch);
-static TProtoFunc ProtoWaitForUpdData(uint8_t ch);
-static TProtoFunc ProtoWaitForRespUpdDataAddrLo(uint8_t ch);
-static TProtoFunc ProtoWaitForRespUpdDataAddrHi(uint8_t ch);
-static TProtoFunc ProtoWaitForRespUpdTerm(uint8_t ch);
-static TProtoFunc ProtoWaitForRespInfoDevType(uint8_t ch);
-static TProtoFunc ProtoWaitForRespInfoVersion(uint8_t ch);
-static TProtoFunc ProtoWaitForRespInfoDo31Dirswitch(uint8_t ch);
-static TProtoFunc ProtoWaitForRespInfoDo31Onswitch(uint8_t ch);
-static TProtoFunc ProtoWaitForReqSetStateDevType(uint8_t ch);
-static TProtoFunc ProtoWaitForSetStateDo31Digout(uint8_t ch);
-static TProtoFunc ProtoWaitForSetStateDo31Shader(uint8_t ch);
-static TProtoFunc ProtoWaitForRespGetStateDevType(uint8_t ch);
-static TProtoFunc ProtoWaitForGetStateDo31Digout(uint8_t ch);
-static TProtoFunc ProtoWaitForGetStateSw8(uint8_t ch);
-static TProtoFunc ProtoWaitForGetStateDo31Shader(uint8_t ch);
-static TProtoFunc ProtoWaitForReqSwitchState(uint8_t ch);
-static TProtoFunc ProtoWaitForReqSetClientAddr(uint8_t ch);
-static TProtoFunc ProtoWaitForRespGetClientAddr(uint8_t ch);
-static TProtoFunc ProtoWaitForRespSwitchState(uint8_t ch);
-static TProtoFunc ProtoWaitForReqSetAddr(uint8_t ch);
-static TProtoFunc ProtoWaitForReqReadEepromAddrLo(uint8_t ch);
-static TProtoFunc ProtoWaitForReqReadEepromAddrHi(uint8_t ch);
-static TProtoFunc ProtoWaitForRespReadEeprom(uint8_t ch);
-static TProtoFunc ProtoWaitForReqWriteEepromAddrLo(uint8_t ch);
-static TProtoFunc ProtoWaitForReqWriteEepromAddrHi(uint8_t ch);
-static TProtoFunc ProtoWaitForReqWriteEepromAddrData(uint8_t ch);
-
-static TProtoFunc ProtoMsgOK(uint8_t ch);
-static TProtoFunc ProtoMsgErr(uint8_t ch);
-   
+static void    TransmitCharProt(uint8_t data);
+static void    L2StateInit(uint8_t protoState);
+ 
 /*----------------------------------------------------------------------------
-*   init	 
+*   init    
 */
 void BusInit(int sioHandle) {
    
    sSioHandle = sioHandle;
+   L2StateInit(L2_WAIT_FOR_SENDER_ADDR);
 }
 
 /*-----------------------------------------------------------------------------
@@ -150,8 +240,93 @@ uint8_t BusCheck(void) {
 * buffer is valid when BUS_MSG_OK is returned by BusCheck til next call 
 * of BusCheck
 */
-TBusTelegramm *BusMsgBufGet(void) {
+TBusTelegram *BusMsgBufGet(void) {
    return &sRxBuffer;
+}
+
+/*-----------------------------------------------------------------------------
+* L2 init
+*/
+static void L2StateInit(uint8_t protoState) {
+
+   sL2State.protoState = protoState;
+   sL2State.chIdx = 1;
+   sL2State.lastMsgIdx = 0xff;
+   sL2State.dynMsgTypeIdx = 0;
+   sL2State.pVarSize = 0;
+}
+
+/*-----------------------------------------------------------------------------
+* L2 Rx state machine
+*/
+static uint8_t L2StateMachine(uint8_t ch) {
+   
+   uint8_t           rc = L2_ERROR;
+   uint8_t           numTypes;
+   TTelegramSize     *pSize;
+   uint8_t           i;
+   struct l2State   *pL2State = &sL2State;
+   
+   switch (pL2State->protoState) {
+      case L2_WAIT_FOR_SENDER_ADDR:
+         sRxBuffer.senderAddr = ch;
+         L2StateInit(L2_WAIT_FOR_TYPE);
+         rc = L2_IN_PROGRESS;
+         break;
+      case L2_WAIT_FOR_TYPE:
+         sRxBuffer.type = (TBusMsgType)ch;
+         pL2State->chIdx = 2;
+         // find expected length of message
+         numTypes = ARRAY_CNT(sTelegramSize);
+         if (((uint8_t)(ch + 1)) < numTypes) {
+            pSize = &sTelegramSize[(uint8_t)(ch + 1)];
+            pL2State->lastMsgIdx = pSize->size - 1;
+            if (pL2State->lastMsgIdx == 1) {
+               rc = L2_COMPLETE;
+               pL2State->protoState = L2_WAIT_FOR_SENDER_ADDR;
+            } else if (pL2State->lastMsgIdx == 0xff) {
+               // sMsgLen is dynamically
+               // sMsgLen can be calculated when character at sDynMsgTypeOffset
+               // is read
+               pL2State->pVarSize = pSize->pVarLen;
+               if (pL2State->pVarSize != 0) {
+                 pL2State->dynMsgTypeIdx = pL2State->pVarSize->offset;
+                 pL2State->protoState = L2_WAIT_FOR_MSG;
+                  rc = L2_IN_PROGRESS;
+               }
+            } else {
+               pL2State->protoState = L2_WAIT_FOR_MSG;
+               rc = L2_IN_PROGRESS;
+            }
+         }
+         break;
+      case L2_WAIT_FOR_MSG:
+         *((uint8_t *)&sRxBuffer + pL2State->chIdx) = ch;
+         if (pL2State->chIdx == pL2State->lastMsgIdx) {
+            rc = L2_COMPLETE;
+            pL2State->protoState = L2_WAIT_FOR_SENDER_ADDR;
+         } else if (pL2State->chIdx == pL2State->dynMsgTypeIdx) {
+            for (i = 0; i < MAX_NUM_VAR_LEN; i++) {
+               if (pL2State->pVarSize->varData[i].value == ch) {
+                  pL2State->lastMsgIdx = pL2State->pVarSize->varData[i].len - 1;
+                  break;
+               }
+            }
+            if (pL2State->lastMsgIdx != 0xff) {
+               rc = L2_IN_PROGRESS;
+            }
+         } else {
+             rc = L2_IN_PROGRESS;
+         }
+         pL2State->chIdx++;
+         break;
+      default:
+         break;
+   }
+   if (rc == L2_ERROR) {
+     pL2State->protoState = L2_WAIT_FOR_SENDER_ADDR;
+   }
+   return rc;
 }
 
 /*-----------------------------------------------------------------------------
@@ -165,330 +340,133 @@ TBusTelegramm *BusMsgBufGet(void) {
 */
 static uint8_t BusDecode(uint8_t numRxChar) {
 
-   static TProtoFunc sProtoState = (TProtoFunc)ProtoWaitForStx;
-   static bool       sStuffByte = false;
-   uint8_t             numRead;    
-   uint8_t             *pBuf = sSioRxBuffer;
-   uint8_t             ret = BUS_MSG_RXING;
-   uint8_t             i; 
-   uint8_t             ch;
+   static uint8_t    sL1ProtoState = L1_WAIT_FOR_STX;
+   static uint8_t    sSioRxBuffer[BUS_SIO_RX_BUF_SIZE];
+   static uint8_t    sCheckSum; 
+   static bool       sStuffByte;
+   uint8_t           *pBuf = sSioRxBuffer;
+   uint8_t           numRead;    
+   uint8_t           rc = BUS_MSG_RXING;
+   uint8_t           i; 
+   uint8_t           ch;
+   uint8_t           l2State;
 
    numRead = SioRead(sSioHandle, pBuf, min(sizeof(sSioRxBuffer), numRxChar));
    for (i = 0; i < numRead; i++) {
+      if (rc != BUS_MSG_RXING) {
+         break;
+      }
       ch = *(pBuf + i);
-      if (sProtoState != (TProtoFunc)ProtoWaitForStx) {
-         if (ch == ESC) {
-            sStuffByte = true; 
-            continue; 
-         }
-         if (ch == STX) {
-            sStuffByte = false;
-            /* unexpected telegram start detected */
-            ret = BUS_MSG_ERROR;
-            i--;  /* work also when i == 0, cause always 1 is added to i below */
+      switch (sL1ProtoState) {
+         case L1_WAIT_FOR_STX:
+            if (ch == STX) {
+               sL1ProtoState = L1_RX_MSG;
+               sCheckSum = CHECKSUM_START + ch;
+               sStuffByte = false;
+            } else {
+               // no STX at start
+               rc = BUS_MSG_ERROR;
+               // skip all chars till next STX
+               i++;
+               while (i < numRead) {
+                   ch = *(pBuf + i);
+                   if (ch == STX) {
+                      break;
+                   }
+                 i++;
+               }
+               i--;
+            }
             break;
-         }
-         if (sStuffByte == true) {
-            /* invert character */
-            ch = ~ch;
-            sStuffByte = false;
-         }                  
-      } 
-      sCheckSum += ch;
-      sProtoState = (TProtoFunc)sProtoState(ch);
-      if (sProtoState == (TProtoFunc)ProtoMsgOK) {
-         ret = BUS_MSG_OK;
-         break;
-      } else if (sProtoState == (TProtoFunc)ProtoMsgErr) {
-         ret = BUS_MSG_ERROR;
-         break;
-      } 
-   }
-
-   if (ret != BUS_MSG_RXING) {
-      sProtoState = (TProtoFunc)ProtoWaitForStx;
-      if (((uint8_t)(i + 1)) < numRead) {
-          SioUnRead(sSioHandle, pBuf + i + 1, numRead - (i + 1));
+         case L1_RX_MSG:
+         case L1_WAIT_FOR_CHECKSUM:
+            if (ch == STX) {
+               // unexpected STX
+               rc = BUS_MSG_ERROR;
+               i--;
+            } else if (ch == ESC) {
+               sStuffByte = true;
+            } else {
+               if (sStuffByte == true) {
+                  /* invert character */
+                  ch = ~ch;
+                  sStuffByte = false;
+               }
+               if (sL1ProtoState == L1_RX_MSG) {
+               l2State = L2StateMachine(ch);
+               sCheckSum += ch;
+               if (l2State == L2_COMPLETE) {
+                 sL1ProtoState = L1_WAIT_FOR_CHECKSUM;
+               } else if (l2State == L2_ERROR) {
+                 rc = BUS_MSG_ERROR;
+               }
+               } else {
+                  if (ch == sCheckSum) {
+                        rc = BUS_MSG_OK;
+                    } else {
+                        rc = BUS_MSG_ERROR;
+                     }
+               }
+            }
+            break;
+         default:
+            break;
       }
    }
-   return ret;
+
+   if (rc != BUS_MSG_RXING) {
+      sL1ProtoState = L1_WAIT_FOR_STX;
+      if (i < numRead) {
+         SioUnRead(sSioHandle, pBuf + i, numRead - i);
+      }
+   }
+   if (rc == BUS_MSG_ERROR) {
+      L2StateInit(L2_WAIT_FOR_SENDER_ADDR);
+   }
+   return rc;
 }           
 
 /*-----------------------------------------------------------------------------
 * send bus telegram
 */
-void BusSend(TBusTelegramm *pMsg) {
+void BusSend(TBusTelegram *pMsg) {
   
    uint8_t ch;            
    uint8_t checkSum = CHECKSUM_START;
    uint8_t i;
-             
+   TTelegramSize *pSize;
+   TVarLenMsg    *pVarSize;
+   uint8_t len = 0;
+   uint8_t numTypes;
+
+   numTypes = ARRAY_CNT(sTelegramSize);
+   if ((pMsg->type + 1) >= numTypes) {
+      return; // error
+   }
+   pSize = &sTelegramSize[(uint8_t)pMsg->type + 1];
+   len = pSize->size;
+   if (len == 0) {
+      pVarSize = pSize->pVarLen;
+      if (pVarSize == 0) {
+         return; // error
+      }
+      for (i = 0; i < MAX_NUM_VAR_LEN; i++) {
+         if (pVarSize->varData[i].value == *((uint8_t *)pMsg + pVarSize->offset)) {
+            len = pVarSize->varData[i].len;
+            break;
+         }
+      }
+   }
+   if (len == 0) {
+      return; // error
+   }           
    ch = STX;   
    SioWrite(sSioHandle, &ch, sizeof(ch));
    checkSum += ch;
-
-   ch = pMsg->senderAddr;
-   TransmitCharProt(ch);
-   checkSum += ch;
-
-   ch = pMsg->type;
-   TransmitCharProt(ch);
-   checkSum += ch;
-  
-   switch(pMsg->type) {
-      case eBusDevStartup:    
-         break;
-      case eBusDevReqReboot:    
-      case eBusDevReqUpdTerm:    
-      case eBusDevReqUpdEnter: 
-      case eBusDevReqInfo:
-      case eBusDevReqGetState: 
-      case eBusDevReqGetClientAddr:
-         ch = pMsg->msg.devBus.receiverAddr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         break;
-      case eBusDevRespUpdEnter:   
-      case eBusDevRespSetState: 
-      case eBusDevRespSetClientAddr:
-      case eBusDevRespSetAddr:
-      case eBusDevRespEepromWrite:
-         ch = pMsg->msg.devBus.receiverAddr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         break;
-      case eBusDevReqUpdData:    
-         ch = pMsg->msg.devBus.receiverAddr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         /* first the low byte */
-         ch = pMsg->msg.devBus.x.devReq.updData.wordAddr & 0xff;
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* then high byte */
-         ch = pMsg->msg.devBus.x.devReq.updData.wordAddr >> 8;
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         for (i = 0; i < BUS_FWU_PACKET_SIZE / 2; i++) {
-            ch = pMsg->msg.devBus.x.devReq.updData.data[i] & 0xff;
-            TransmitCharProt(ch);
-            checkSum += ch;   
-            ch = pMsg->msg.devBus.x.devReq.updData.data[i] >> 8;
-            TransmitCharProt(ch);
-            checkSum += ch;   
-         }
-         break;
-      case eBusDevRespUpdData:    
-         ch = pMsg->msg.devBus.receiverAddr;                
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* first the low byte */
-         ch = pMsg->msg.devBus.x.devResp.updData.wordAddr & 0xff;
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* the high byte */
-         ch = pMsg->msg.devBus.x.devResp.updData.wordAddr >> 8;
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         break;
-      case eBusDevRespUpdTerm:    
-         ch = pMsg->msg.devBus.receiverAddr;                
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         ch = pMsg->msg.devBus.x.devResp.updTerm.success;
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         break;
-      case eBusDevRespInfo:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;                
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* device type */
-         ch = (uint8_t)pMsg->msg.devBus.x.devResp.info.devType;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         /* version info */
-         for (i = 0; i < BUS_DEV_INFO_VERSION_LEN; i++) {
-             ch = pMsg->msg.devBus.x.devResp.info.version[i];
-             TransmitCharProt(ch);
-             checkSum += ch;
-         }
-         switch (pMsg->msg.devBus.x.devResp.info.devType) {
-            case eBusDevTypeDo31:
-               for (i = 0; i < BUS_DO31_NUM_SHADER; i++) {
-                  ch = pMsg->msg.devBus.x.devResp.info.devInfo.do31.dirSwitch[i];
-                  TransmitCharProt(ch);
-                  checkSum += ch;
-               }
-               for (i = 0; i < BUS_DO31_NUM_SHADER; i++) {
-                  ch = pMsg->msg.devBus.x.devResp.info.devInfo.do31.onSwitch[i];
-                  TransmitCharProt(ch);
-                  checkSum += ch;
-               }
-               break;
-            case eBusDevTypeSw8:
-               break;
-            default:
-               break;
-         }  
-         break;
-      case eBusDevReqSetState:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;                
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* device type */
-         ch = (uint8_t)pMsg->msg.devBus.x.devReq.setState.devType;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         switch (pMsg->msg.devBus.x.devReq.setState.devType) {
-            case eBusDevTypeDo31:
-               for (i = 0; i < BUS_DO31_DIGOUT_SIZE_SET; i++) {
-                  ch = pMsg->msg.devBus.x.devReq.setState.state.do31.digOut[i];
-                  TransmitCharProt(ch);
-                  checkSum += ch;
-               }
-               for (i = 0; i < BUS_DO31_SHADER_SIZE_SET; i++) {
-                  ch = pMsg->msg.devBus.x.devReq.setState.state.do31.shader[i];
-                  TransmitCharProt(ch);
-                  checkSum += ch;
-               }
-               break;
-            default:
-               break;
-         }
-         break;
-      case eBusDevRespGetState:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;                
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* device type */
-         ch = (uint8_t)pMsg->msg.devBus.x.devResp.getState.devType;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         switch (pMsg->msg.devBus.x.devResp.getState.devType) {
-            case eBusDevTypeDo31:
-               for (i = 0; i < BUS_DO31_DIGOUT_SIZE_GET; i++) {
-                  ch = pMsg->msg.devBus.x.devResp.getState.state.do31.digOut[i];
-                  TransmitCharProt(ch);
-                  checkSum += ch;
-               }
-               for (i = 0; i < BUS_DO31_SHADER_SIZE_GET; i++) {
-                  ch = pMsg->msg.devBus.x.devResp.getState.state.do31.shader[i];
-                  TransmitCharProt(ch);
-                  checkSum += ch;
-               }
-               break;
-            case eBusDevTypeSw8:
-               ch = pMsg->msg.devBus.x.devResp.getState.state.sw8.switchState;
-               TransmitCharProt(ch);
-               checkSum += ch;
-               break;
-            default:
-               break;
-         }
-         break;
-      case eBusDevReqSwitchState:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;                
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* switch state */
-         ch = (uint8_t)pMsg->msg.devBus.x.devReq.switchState.switchState;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         break;
-      case eBusDevReqSetClientAddr:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;                
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* array of client addresses */
-         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
-             ch = pMsg->msg.devBus.x.devReq.setClientAddr.clientAddr[i];
-             TransmitCharProt(ch);
-             checkSum += ch;
-         }
-         break;
-      case eBusDevRespGetClientAddr:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;                
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* array of client addresses */
-         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
-             ch = pMsg->msg.devBus.x.devResp.getClientAddr.clientAddr[i];
-             TransmitCharProt(ch);
-             checkSum += ch;
-         }
-         break;
-      case eBusDevRespSwitchState:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         /* switch state */
-         ch = (uint8_t)pMsg->msg.devBus.x.devResp.switchState.switchState;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         break;
-      case eBusDevReqSetAddr:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         /* new address */
-         ch = (uint8_t)pMsg->msg.devBus.x.devReq.setAddr.addr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         break;
-      case eBusDevReqEepromRead:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         /* eeprom address */
-         /* the low byte first */
-         ch = (uint8_t)pMsg->msg.devBus.x.devReq.readEeprom.addr & 0xff;
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* then high byte */
-         ch = (uint8_t)(pMsg->msg.devBus.x.devReq.readEeprom.addr >> 8);
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         break;
-      case eBusDevRespEepromRead:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         ch = (uint8_t)pMsg->msg.devBus.x.devResp.readEeprom.data;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         break;
-      case eBusDevReqEepromWrite:
-         /* receiver address */
-         ch = pMsg->msg.devBus.receiverAddr;
-         TransmitCharProt(ch);
-         checkSum += ch;
-         /* eeprom address */
-         /* the low byte first */
-         ch = (uint8_t)pMsg->msg.devBus.x.devReq.writeEeprom.addr & 0xff;
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* then high byte */
-         ch = (uint8_t)(pMsg->msg.devBus.x.devReq.writeEeprom.addr >> 8);
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         /* data to write to eeprom */
-         ch = pMsg->msg.devBus.x.devReq.writeEeprom.data;
-         TransmitCharProt(ch);
-         checkSum += ch;   
-         break;
-      default: 
-         break;   
+   for (i = 0; i < len; i++) {
+      ch = *((uint8_t *)pMsg + i);
+      TransmitCharProt(ch);
+      checkSum += ch;
    }
    TransmitCharProt(checkSum);
 }
@@ -516,482 +494,3 @@ static void TransmitCharProt(uint8_t data) {
       SioWrite(sSioHandle, &data, sizeof(data));
    }   
 }
-
-/*-----------------------------------------------------------------------------
-* protocol functions
-*/
-static TProtoFunc ProtoWaitForStx(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForStx;
-
-   if (ch == STX) {
-      sCheckSum = CHECKSUM_START + STX;
-      ret = (TProtoFunc)ProtoWaitForAddr;
-   }
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForAddr(uint8_t ch) {
-
-   sRxBuffer.senderAddr = ch;
-   return (TProtoFunc)ProtoWaitForType;
-}
-
-static TProtoFunc ProtoWaitForType(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForStx;
-
-   sRxBuffer.type = (TBusMsgType)ch;
-   switch (sRxBuffer.type) {
-      case eBusButtonPressed1:
-      case eBusButtonPressed2:
-      case eBusButtonPressed1_2:
-      case eBusDevStartup:
-         ret = (TProtoFunc)ProtoWaitForChecksum;
-         break;   
-      case eBusDevReqReboot:
-      case eBusDevReqUpdEnter:
-      case eBusDevRespUpdEnter:
-      case eBusDevReqUpdData:
-      case eBusDevRespUpdData:
-      case eBusDevReqUpdTerm:
-      case eBusDevRespUpdTerm:
-      case eBusDevReqInfo:
-      case eBusDevRespInfo:
-      case eBusDevReqSetState:
-      case eBusDevRespSetState:
-      case eBusDevReqGetState:
-      case eBusDevRespGetState:
-      case eBusDevReqSwitchState:
-      case eBusDevRespSwitchState:
-      case eBusDevReqSetClientAddr:
-      case eBusDevRespSetClientAddr:
-      case eBusDevReqGetClientAddr:
-      case eBusDevRespGetClientAddr:
-      case eBusDevReqSetAddr:
-      case eBusDevRespSetAddr:
-      case eBusDevReqEepromRead:
-      case eBusDevRespEepromRead:
-      case eBusDevReqEepromWrite:
-      case eBusDevRespEepromWrite:
-         ret = (TProtoFunc)ProtoWaitForReceiverAddr;
-         break;
-      default:
-         /* unknown telegram type */
-         break;
-   } 
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForChecksum(uint8_t ch) {
-   
-   TProtoFunc ret = (TProtoFunc)ProtoMsgErr;
-
-   sCheckSum -= ch;
-   if (ch == sCheckSum) {
-      ret = (TProtoFunc)ProtoMsgOK;
-   } 
-   return ret;
-}
-
-
-static TProtoFunc ProtoWaitForReceiverAddr(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForStx;
-
-   /* save receiver address */
-   sRxBuffer.msg.devBus.receiverAddr = ch;
-   switch (sRxBuffer.type) {
-      case eBusDevReqUpdData:
-         /* address low is next */
-         ret = (TProtoFunc)ProtoWaitForReqUpdDataAddrLo;
-         break;
-      case eBusDevReqReboot:
-      case eBusDevReqUpdEnter:
-      case eBusDevReqUpdTerm:
-      case eBusDevReqInfo:
-      case eBusDevReqGetState:
-      case eBusDevReqGetClientAddr:
-         /* in this cases just the checksum is missing */                                             
-         ret = (TProtoFunc)ProtoWaitForChecksum;
-         break;
-      case eBusDevRespSetClientAddr:
-      case eBusDevRespUpdEnter:
-      case eBusDevRespSetState:
-      case eBusDevRespSetAddr:
-      case eBusDevRespEepromWrite:
-         /* in this casees just the checksum is missing */                                             
-         ret = (TProtoFunc)ProtoWaitForChecksum;
-         break;
-      case eBusDevRespUpdData:
-         /* address low is next */
-         ret = (TProtoFunc)ProtoWaitForRespUpdDataAddrLo;
-         break;
-      case eBusDevRespUpdTerm:
-         /* return code is next */
-         ret = (TProtoFunc)ProtoWaitForRespUpdTerm;
-         break;
-      case eBusDevRespInfo:
-         ret = (TProtoFunc)ProtoWaitForRespInfoDevType;
-         break; 
-      case eBusDevReqSetState:
-         ret = (TProtoFunc)ProtoWaitForReqSetStateDevType;
-         break;
-      case eBusDevRespGetState:
-         ret = (TProtoFunc)ProtoWaitForRespGetStateDevType;
-         break;
-      case eBusDevReqSwitchState:
-         ret = (TProtoFunc)ProtoWaitForReqSwitchState;
-         break;
-      case eBusDevRespSwitchState:
-         ret = (TProtoFunc)ProtoWaitForRespSwitchState;
-         break;
-      case eBusDevReqSetClientAddr:
-         ret = (TProtoFunc)ProtoWaitForReqSetClientAddr;
-         spData = (uint8_t *)sRxBuffer.msg.devBus.x.devReq.setClientAddr.clientAddr;
-         break;
-      case eBusDevRespGetClientAddr:
-         ret = (TProtoFunc)ProtoWaitForRespGetClientAddr;
-         spData = (uint8_t *)sRxBuffer.msg.devBus.x.devResp.getClientAddr.clientAddr;
-         break;
-      case eBusDevReqSetAddr:
-         ret = (TProtoFunc)ProtoWaitForReqSetAddr;
-         break;
-      case eBusDevReqEepromRead:
-         ret = (TProtoFunc)ProtoWaitForReqReadEepromAddrLo;
-         break;
-      case eBusDevRespEepromRead:
-         ret = (TProtoFunc)ProtoWaitForRespReadEeprom;
-         break;
-      case eBusDevReqEepromWrite:
-         ret = (TProtoFunc)ProtoWaitForReqWriteEepromAddrLo;
-         break;
-      default:
-         /* unknown telegram type */
-         break;
-   }
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForReqUpdDataAddrLo(uint8_t ch) {
-   /* save address low byte */ 
-   sRxBuffer.msg.devBus.x.devReq.updData.wordAddr = ch;
-   return (TProtoFunc)ProtoWaitForReqUpdDataAddrHi;
-}
-
-static TProtoFunc ProtoWaitForReqUpdDataAddrHi(uint8_t ch) {
-   /* save address high byte */ 
-   sRxBuffer.msg.devBus.x.devReq.updData.wordAddr += ch * 256;
-   spData = (uint8_t *)sRxBuffer.msg.devBus.x.devReq.updData.data;
-   return (TProtoFunc)ProtoWaitForUpdData;
-}
-
-static TProtoFunc ProtoWaitForUpdData(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForUpdData;
-
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devReq.updData.data) == BUS_FWU_PACKET_SIZE) {
-      /* packet complete */
-      ret = (TProtoFunc)ProtoWaitForChecksum;
-   } 
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForRespUpdDataAddrLo(uint8_t ch) {
-   /* save address low byte */ 
-   sRxBuffer.msg.devBus.x.devResp.updData.wordAddr = ch;
-   return (TProtoFunc)ProtoWaitForRespUpdDataAddrHi; 
-}
-
-static TProtoFunc ProtoWaitForRespUpdDataAddrHi(uint8_t ch) {
-   /* save address high byte */ 
-   sRxBuffer.msg.devBus.x.devResp.updData.wordAddr += ch * 256;
-   return (TProtoFunc)ProtoWaitForChecksum; 
-}
-
-static TProtoFunc ProtoWaitForRespUpdTerm(uint8_t ch) {
-   /* save return code */ 
-   sRxBuffer.msg.devBus.x.devResp.updTerm.success = ch;
-   return (TProtoFunc)ProtoWaitForChecksum; 
-}
-
-static TProtoFunc ProtoWaitForRespInfoDevType(uint8_t ch) {
-
-   sRxBuffer.msg.devBus.x.devResp.info.devType = (TBusDevType)ch;
-   spData = (uint8_t *)sRxBuffer.msg.devBus.x.devResp.info.version;
-   return (TProtoFunc)ProtoWaitForRespInfoVersion; 
-}
-
-static TProtoFunc ProtoWaitForRespInfoVersion(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForRespInfoVersion;
-
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devResp.info.version) == BUS_DEV_INFO_VERSION_LEN) {
-      /* version complete */
-      switch (sRxBuffer.msg.devBus.x.devResp.info.devType) {
-         case eBusDevTypeDo31:
-            ret = (TProtoFunc)ProtoWaitForRespInfoDo31Dirswitch;
-            spData = (uint8_t *)sRxBuffer.msg.devBus.x.devResp.info.devInfo.do31.dirSwitch;
-            break;
-         case eBusDevTypeSw8:
-            /* version complete - packet complete */
-            ret = (TProtoFunc)ProtoWaitForChecksum; 
-            break;
-         default:
-            /* unknown device type */
-            ret = (TProtoFunc)ProtoWaitForStx;
-            break;
-      }
-   }        
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForRespInfoDo31Dirswitch(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForRespInfoDo31Dirswitch;
- 
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devResp.info.devInfo.do31.dirSwitch) == BUS_DO31_NUM_SHADER) {
-      ret = (TProtoFunc)ProtoWaitForRespInfoDo31Onswitch;
-      spData = (uint8_t *)sRxBuffer.msg.devBus.x.devResp.info.devInfo.do31.onSwitch;
-   }        
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForRespInfoDo31Onswitch(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForRespInfoDo31Onswitch;
-   
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devResp.info.devInfo.do31.onSwitch) == BUS_DO31_NUM_SHADER) {
-      /* config complete - packet complete */
-      ret = (TProtoFunc)ProtoWaitForChecksum; 
-   }        
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForReqSetStateDevType(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForStx;
-
-   sRxBuffer.msg.devBus.x.devReq.setState.devType = (TBusDevType)ch;
-   switch (sRxBuffer.msg.devBus.x.devReq.setState.devType) {
-      case eBusDevTypeDo31:
-         ret = (TProtoFunc)ProtoWaitForSetStateDo31Digout;
-         spData = (uint8_t *)sRxBuffer.msg.devBus.x.devReq.setState.state.do31.digOut;
-         break;
-      default:
-         /* unknown device type */
-         break;
-   }
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForSetStateDo31Digout(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForSetStateDo31Digout;
-
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devReq.setState.state.do31.digOut) == BUS_DO31_DIGOUT_SIZE_SET) {
-      /* digOut complete */
-      ret = (TProtoFunc)ProtoWaitForSetStateDo31Shader;
-      spData = (uint8_t *)sRxBuffer.msg.devBus.x.devReq.setState.state.do31.shader;
-   }        
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForSetStateDo31Shader(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForSetStateDo31Shader;
-
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devReq.setState.state.do31.shader) == BUS_DO31_SHADER_SIZE_SET) {
-      /* packet complete */
-      ret = (TProtoFunc)ProtoWaitForChecksum;
-   }        
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForRespGetStateDevType(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForStx;
-
-   sRxBuffer.msg.devBus.x.devResp.getState.devType = (TBusDevType)ch;
-   switch (sRxBuffer.msg.devBus.x.devResp.getState.devType) {
-      case eBusDevTypeDo31:
-         ret = (TProtoFunc)ProtoWaitForGetStateDo31Digout;
-         spData = (uint8_t *)sRxBuffer.msg.devBus.x.devResp.getState.state.do31.digOut;
-         break;
-      case eBusDevTypeSw8:
-         ret = (TProtoFunc)ProtoWaitForGetStateSw8;
-         break;
-      default:
-         /* unknown device type */
-         break;
-   }
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForGetStateDo31Digout(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForGetStateDo31Digout;
-
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devResp.getState.state.do31.digOut) == BUS_DO31_DIGOUT_SIZE_GET) {
-      /* digOut complete */
-      ret = (TProtoFunc)ProtoWaitForGetStateDo31Shader;
-   }        
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForGetStateDo31Shader(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForGetStateDo31Shader;
-
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devResp.getState.state.do31.shader) == BUS_DO31_SHADER_SIZE_GET) {
-      /* packet complete */
-      ret = (TProtoFunc)ProtoWaitForChecksum;
-   }        
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForGetStateSw8(uint8_t ch) {
-
-   /* save switch state */ 
-   sRxBuffer.msg.devBus.x.devResp.getState.state.sw8.switchState = ch;
-   return (TProtoFunc)ProtoWaitForChecksum;
-}
-
-
-static TProtoFunc ProtoWaitForReqSwitchState(uint8_t ch) {
-
-   /* save switch state */ 
-   sRxBuffer.msg.devBus.x.devReq.switchState.switchState = ch;
-   return (TProtoFunc)ProtoWaitForChecksum; 
-}
-
-static TProtoFunc ProtoWaitForRespSwitchState(uint8_t ch) {
-
-   /* save switch state */ 
-   sRxBuffer.msg.devBus.x.devResp.switchState.switchState = ch;
-   return (TProtoFunc)ProtoWaitForChecksum; 
-}
-
-
-static TProtoFunc ProtoWaitForReqSetClientAddr(uint8_t ch) {
-
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForReqSetClientAddr;
-
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devReq.setClientAddr.clientAddr) == BUS_MAX_CLIENT_NUM) {
-      /* packet complete */
-      ret = (TProtoFunc)ProtoWaitForChecksum;
-   }        
-   return ret;
-}
-
-static TProtoFunc ProtoWaitForRespGetClientAddr(uint8_t ch) {
-       
-   TProtoFunc ret = (TProtoFunc)ProtoWaitForRespGetClientAddr;
-
-   /* save character */ 
-   *spData = ch;
-   spData++;
-   if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devResp.getClientAddr.clientAddr) == BUS_MAX_CLIENT_NUM) {
-      /* packet complete */
-      ret = (TProtoFunc)ProtoWaitForChecksum;
-   }        
-   return ret;
-       
-}
-
-static TProtoFunc ProtoWaitForReqSetAddr(uint8_t ch) {
-
-   /* save new addess */ 
-   sRxBuffer.msg.devBus.x.devReq.setAddr.addr = ch;
-   return (TProtoFunc)ProtoWaitForChecksum; 
-
-}
-
-static TProtoFunc ProtoWaitForReqReadEepromAddrLo(uint8_t ch) {
-
-   /* save address low byte */ 
-   sRxBuffer.msg.devBus.x.devReq.readEeprom.addr = ch;
-   return (TProtoFunc)ProtoWaitForReqReadEepromAddrHi;
-
-}
-
-static TProtoFunc ProtoWaitForReqReadEepromAddrHi(uint8_t ch) {
-
-   /* save address high byte */ 
-   sRxBuffer.msg.devBus.x.devReq.readEeprom.addr += ch * 256;
-   return (TProtoFunc)ProtoWaitForChecksum; 
-
-}
-
-
-static TProtoFunc ProtoWaitForRespReadEeprom(uint8_t ch) {
-
-   sRxBuffer.msg.devBus.x.devResp.readEeprom.data = ch;
-   return (TProtoFunc)ProtoWaitForChecksum; 
-}
-
-static TProtoFunc ProtoWaitForReqWriteEepromAddrLo(uint8_t ch) {
-
-   /* save address low byte */ 
-   sRxBuffer.msg.devBus.x.devReq.writeEeprom.addr = ch;
-   return (TProtoFunc)ProtoWaitForReqWriteEepromAddrHi;
-
-}
-
-static TProtoFunc ProtoWaitForReqWriteEepromAddrHi(uint8_t ch) {
-
-   /* save address high byte */ 
-   sRxBuffer.msg.devBus.x.devReq.writeEeprom.addr += ch * 256;
-   return (TProtoFunc)ProtoWaitForReqWriteEepromAddrData;
-}
-
-static TProtoFunc ProtoWaitForReqWriteEepromAddrData(uint8_t ch) {
-
-   sRxBuffer.msg.devBus.x.devReq.writeEeprom.data = ch;
-   return (TProtoFunc)ProtoWaitForChecksum; 
-}
-
-
-/*-----------------------------------------------------------------------------
-* protocol function for state indication of a correctly received telegram
-* function is used as intermediate state
-*/
-static TProtoFunc ProtoMsgOK(uint8_t ch) {
-   return (TProtoFunc)ProtoWaitForStx;
-}
-
-/*-----------------------------------------------------------------------------
-* protocol function for state indication of a incorrectly received telegram
-* function is used as intermediate state
-*/
-static TProtoFunc ProtoMsgErr(uint8_t ch) {
-   return (TProtoFunc)ProtoWaitForStx;
-}
-

@@ -1,10 +1,26 @@
-/*-----------------------------------------------------------------------------
-*  Application.cpp
-*/
+/*
+ * application.c
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <avr/pgmspace.h>
@@ -14,6 +30,7 @@
 #include "button.h"
 #include "application.h"
 #include "digout.h"
+#include "shader.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros  
@@ -175,18 +192,18 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 
 
 /*----------------------------------------------------------------------------- 
-* Rückgabe der Versioninfo (max. Länge 15 Zeichen)
+* returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus1_V0.01";
+   return "Klaus2_V0.02";
 }
 
 /*----------------------------------------------------------------------------- 
-* Benachrichtungung der Application über Tastenereignis
+* ButtonEvent for Application
 */
 void ApplicationEventButton(TButtonEvent *pButtonEvent) {
                                                    
-   uint8_t          index;    
+   uint8_t        index;    
    TFuncPressed0  fPressed0;
    TFuncPressed1  fPressed1;
    TFuncReleased0 fReleased0;
@@ -198,7 +215,7 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
       return;
    }
  
-   if (pButtonEvent->pressed == true) {
+   if (pButtonEvent->pressed) {
       if (pButtonEvent->buttonNr == 1) {
           fPressed0 = (TFuncPressed0)pgm_read_word(&sApplicationFuncs[index].fPressed0);
           fPressed0();
@@ -219,41 +236,6 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
 
 void ApplicationInit(void) {
 
-   /* Rollladen Wohnzimmer feststehende Doppeltür */
-   DigOutShadeConfig(eDigOutShade0,  eDigOut0,  eDigOut1);
-
-   /* Rolladen Terrassentür Küche */
-   DigOutShadeConfig(eDigOutShade1,  eDigOut2,  eDigOut3);
-
-   /* Markise */
-   DigOutShadeConfig(eDigOutShade2,  eDigOut4,  eDigOut5);
-
-   /* Fenster Ess  */ 
-   DigOutShadeConfig(eDigOutShade3,  eDigOut6,  eDigOut7);
-
-   /* Rollladen Kinderzimmer groß */
-   DigOutShadeConfig(eDigOutShade4,  eDigOut8,  eDigOut9);
-   
-   /* Rollladen Kinderzimmer klein ost */ 
-   DigOutShadeConfig(eDigOutShade5,  eDigOut10, eDigOut11);
-
-   /* Rollladen Kinderzimmer klein nord */ 
-   DigOutShadeConfig(eDigOutShade6,  eDigOut12, eDigOut13);
-
-   /* Rollladen Schrankraum */ 
-   DigOutShadeConfig(eDigOutShade7,  eDigOut14, eDigOut15);
-
-   /* Rollladen Schlafzimmer */ 
-   DigOutShadeConfig(eDigOutShade8,  eDigOut16, eDigOut17);
-
-   /* Rollladen Fenster Küche */ 
-   DigOutShadeConfig(eDigOutShade9,  eDigOut18, eDigOut19);
-
-   /* Rollladen Terrassentür Ess */ 
-   DigOutShadeConfig(eDigOutShade10, eDigOut20, eDigOut21);
-
-   /* Rollladen Arbeitszimmer */ 
-   DigOutShadeConfig(eDigOutShade11, eDigOut22, eDigOut23);
 }
 
 void ApplicationCheck(void) {
@@ -261,239 +243,80 @@ void ApplicationCheck(void) {
 }
 
 
+/*
+
+eDigOut0   Netzteil Stiege
+eDigOut1   Stiege Leuchte 1 (1. Lampe von unten)
+eDigOut2   Stiege Leuchte 2
+eDigOut3   Stiege Leuchte 3
+eDigOut4   Stiege Leuchte 4
+eDigOut5   Stiege Leuchte 5
+eDigOut6   Stiege Leuchte 6 (letze Lampe, ganu oben)
+eDigOut7   Schrankraum
+eDigOut8   Schlafzimmer
+eDigOut9   Garage
+eDigOut10  Bad Spiegel
+eDigOut11  Vorzimmer OG
+eDigOut12  Bad Haengelampe
+eDigOut13  Wohn
+eDigOut14  Gang EG
+eDigOut15  Ess
+eDigOut16  Vorraum EG
+eDigOut17  WC EG
+eDigOut18  Glocke
+eDigOut19  Kueche Haengelampe
+eDigOut20  Terrasse
+
+*/
+
 void ApplicationPressed1_0(void) {}
 void ApplicationReleased1_0(void) {}
 void ApplicationPressed1_1(void) {} 
 void ApplicationReleased1_1(void) {}
 
-void ApplicationPressed2_0(void) {
-
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade0, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade0, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade0, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed2_0(void) {}
 void ApplicationReleased2_0(void) {}
-void ApplicationPressed2_1(void) {
-
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade0, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade0, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade0, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed2_1(void) {}
 void ApplicationReleased2_1(void) {}
 
-void ApplicationPressed3_0(void) {
-
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade9, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade9, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade9, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed3_0(void) {}
 void ApplicationReleased3_0(void) {}
-void ApplicationPressed3_1(void) {
-
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade9, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade9, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade9, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed3_1(void) {}
 void ApplicationReleased3_1(void) {}
                                      
-void ApplicationPressed4_0(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade1, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade1, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade1, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed4_0(void) {}
 void ApplicationReleased4_0(void) {}
-void ApplicationPressed4_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade1, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade1, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade1, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed4_1(void) {}
 void ApplicationReleased4_1(void) {}
 
-void ApplicationPressed5_0(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade6, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade6, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade6, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed5_0(void) {}
 void ApplicationReleased5_0(void) {}
-void ApplicationPressed5_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade6, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade6, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade6, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed5_1(void) {}
 void ApplicationReleased5_1(void) {}
                                      
-void ApplicationPressed6_0(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade5, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade5, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade5, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed6_0(void) {}
 void ApplicationReleased6_0(void) {}
-void ApplicationPressed6_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade5, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade5, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade5, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed6_1(void) {}
 void ApplicationReleased6_1(void) {}
                                      
-void ApplicationPressed7_0(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade4, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade4, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade4, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed7_0(void) {}
 void ApplicationReleased7_0(void) {}
-void ApplicationPressed7_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade4, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade4, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade4, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed7_1(void) {}
 void ApplicationReleased7_1(void) {}
 
-void ApplicationPressed8_0(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade8, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade8, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade8, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed8_0(void) {}
 void ApplicationReleased8_0(void) {}
-void ApplicationPressed8_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade8, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade8, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade8, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed8_1(void) {}
 void ApplicationReleased8_1(void) {}
 
-void ApplicationPressed9_0(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade3, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade3, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade3, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed9_0(void) {}
 void ApplicationReleased9_0(void) {}
-void ApplicationPressed9_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade3, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade3, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade3, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed9_1(void) {}
 void ApplicationReleased9_1(void) {}
 
-void ApplicationPressed10_0(void) {
-
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade10, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade10, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade10, eDigOutShadeStop);
-   } 
-} 
+void ApplicationPressed10_0(void) {} 
 void ApplicationReleased10_0(void) {}
-void ApplicationPressed10_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade10, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade10, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade10, eDigOutShadeStop);
-   } 
-} 
+void ApplicationPressed10_1(void) {} 
 void ApplicationReleased10_1(void) {}
                                      
 void ApplicationPressed11_0(void) {} 
@@ -506,29 +329,9 @@ void ApplicationReleased12_0(void) {}
 void ApplicationPressed12_1(void) {} 
 void ApplicationReleased12_1(void) {}
                                       
-void ApplicationPressed13_0(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade2, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade2, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade2, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed13_0(void) {}
 void ApplicationReleased13_0(void) {}
-void ApplicationPressed13_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade2, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade2, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade2, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed13_1(void) {}
 void ApplicationReleased13_1(void) {}
                                       
 void ApplicationPressed14_0(void) {}
@@ -546,138 +349,303 @@ void ApplicationReleased16_0(void) {}
 void ApplicationPressed16_1(void) {}
 void ApplicationReleased16_1(void) {}
 
-void ApplicationPressed17_0(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade7, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade7, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade7, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed17_0(void) {}
 void ApplicationReleased17_0(void) {}
-void ApplicationPressed17_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade7, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade7, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade7, eDigOutShadeStop);
-   } 
-}
+void ApplicationPressed17_1(void) {}
 void ApplicationReleased17_1(void) {}
-                                      
-void ApplicationPressed18_0(void) {}
+
+
+#define DELAY 300                                      
+void ApplicationPressed18_0(void) {
+   /* Stiege, Taster EG */
+
+   uint32_t delay = 0;
+   bool delayed1 = DigOutIsDelayed(eDigOut1);
+   bool delayed2 = DigOutIsDelayed(eDigOut2);
+   bool delayed3 = DigOutIsDelayed(eDigOut3);
+   bool delayed4 = DigOutIsDelayed(eDigOut4);
+   bool delayed5 = DigOutIsDelayed(eDigOut5);
+   bool delayed6 = DigOutIsDelayed(eDigOut6);
+   
+   if (delayed1 || 
+       delayed2 ||
+       delayed3 ||
+       delayed4 ||
+       delayed5 ||
+       delayed6) {
+      DigOutDelayCancel(eDigOut0);
+      DigOutDelayCancel(eDigOut1);
+      DigOutDelayCancel(eDigOut2);
+      DigOutDelayCancel(eDigOut3);
+      DigOutDelayCancel(eDigOut4);
+      DigOutDelayCancel(eDigOut5);
+      DigOutDelayCancel(eDigOut6);
+   } else if (DigOutState(eDigOut0)) {
+      if (DigOutState(eDigOut6)) {
+         DigOutDelayedOff(eDigOut6, delay);
+         delay += DELAY;
+      }
+      if (DigOutState(eDigOut5)) {
+         DigOutDelayedOff(eDigOut5, delay);
+         delay += DELAY;
+      } 
+      if (DigOutState(eDigOut4)) {
+         DigOutDelayedOff(eDigOut4, delay);
+         delay += DELAY;
+      } 
+      if (DigOutState(eDigOut3)) {
+         DigOutDelayedOff(eDigOut3, delay);
+         delay += DELAY;
+      } 
+      if (DigOutState(eDigOut2)) {
+         DigOutDelayedOff(eDigOut2, delay);
+         delay += DELAY;
+      } 
+      if (DigOutState(eDigOut1)) {
+         DigOutDelayedOff(eDigOut1, delay);
+      } 
+      DigOutDelayedOff(eDigOut0, delay);
+   } else {
+      DigOutOn(eDigOut0);
+      DigOutOn(eDigOut1);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut2, delay);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut3, delay);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut4, delay);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut5, delay);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut6, delay);
+   }
+}
 void ApplicationReleased18_0(void) {}
 void ApplicationPressed18_1(void) {}
 void ApplicationReleased18_1(void) {}
+
+static void StiegeOben(void) {
+   uint32_t delay = 0;
+   bool delayed1 = DigOutIsDelayed(eDigOut1);
+   bool delayed2 = DigOutIsDelayed(eDigOut2);
+   bool delayed3 = DigOutIsDelayed(eDigOut3);
+   bool delayed4 = DigOutIsDelayed(eDigOut4);
+   bool delayed5 = DigOutIsDelayed(eDigOut5);
+   bool delayed6 = DigOutIsDelayed(eDigOut6);
+   
+   if (delayed1 || 
+       delayed2 ||
+       delayed3 ||
+       delayed4 ||
+       delayed5 ||
+       delayed6) {
+      DigOutDelayCancel(eDigOut0);
+      DigOutDelayCancel(eDigOut1);
+      DigOutDelayCancel(eDigOut2);
+      DigOutDelayCancel(eDigOut3);
+      DigOutDelayCancel(eDigOut4);
+      DigOutDelayCancel(eDigOut5);
+      DigOutDelayCancel(eDigOut6);
+   } else if (DigOutState(eDigOut0)) {
+      if (DigOutState(eDigOut1)) {
+         DigOutDelayedOff(eDigOut1, delay);
+         delay += DELAY;
+      }
+      if (DigOutState(eDigOut2)) {
+         DigOutDelayedOff(eDigOut2, delay);
+         delay += DELAY;
+      } 
+      if (DigOutState(eDigOut3)) {
+         DigOutDelayedOff(eDigOut3, delay);
+         delay += DELAY;
+      } 
+      if (DigOutState(eDigOut4)) {
+         DigOutDelayedOff(eDigOut4, delay);
+         delay += DELAY;
+      } 
+      if (DigOutState(eDigOut5)) {
+         DigOutDelayedOff(eDigOut5, delay);
+         delay += DELAY;
+      } 
+      if (DigOutState(eDigOut6)) {
+         DigOutDelayedOff(eDigOut6, delay);
+      } 
+      DigOutDelayedOff(eDigOut0, delay);
+   } else {
+      DigOutOn(eDigOut0);
+      DigOutOn(eDigOut6);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut5, delay);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut4, delay);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut3, delay);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut2, delay);
+      delay += DELAY;
+      DigOutDelayedOn(eDigOut1, delay);
+   }
+}
                                       
-void ApplicationPressed19_0(void) {}
+void ApplicationPressed19_0(void) {
+   /* Stiege, Taster Schlafzimmer */
+   StiegeOben();
+}
 void ApplicationReleased19_0(void) {}
-void ApplicationPressed19_1(void) {}
+void ApplicationPressed19_1(void) {
+   DigOutToggle(eDigOut11);
+}
 void ApplicationReleased19_1(void) {}
                                       
-void ApplicationPressed20_0(void) {}
+void ApplicationPressed20_0(void) {
+   /* Stiege, Taster Kinderzimmer */
+   StiegeOben();
+}
 void ApplicationReleased20_0(void) {}
-void ApplicationPressed20_1(void) {}
+void ApplicationPressed20_1(void) {
+   /* Vorraum OG */
+   DigOutToggle(eDigOut11);
+}
 void ApplicationReleased20_1(void) {}
                                       
-void ApplicationPressed21_0(void) {}
+void ApplicationPressed21_0(void) {
+   /* Schlafzimmer */
+   DigOutToggle(eDigOut8);
+}
 void ApplicationReleased21_0(void) {}
 void ApplicationPressed21_1(void) {}
 void ApplicationReleased21_1(void) {}
                                       
-void ApplicationPressed22_0(void) {}
+void ApplicationPressed22_0(void) {
+   /* Schrankraum */
+   if (DigOutState(eDigOut7)) {
+      DigOutOff(eDigOut7);
+   } else {
+      DigOutDelayedOff(eDigOut7, 600000 /* 10 min */);
+   }
+
+}
 void ApplicationReleased22_0(void) {}
 void ApplicationPressed22_1(void) {}
 void ApplicationReleased22_1(void) {}
                                       
-void ApplicationPressed23_0(void) {}
+void ApplicationPressed23_0(void) {
+   /* Bad Spiegel */
+   DigOutToggle(eDigOut10);
+}
 void ApplicationReleased23_0(void) {}
-void ApplicationPressed23_1(void) {}
+void ApplicationPressed23_1(void) {
+   /* Bad Haengelampe */
+   DigOutToggle(eDigOut12);
+}
 void ApplicationReleased23_1(void) {}
                                       
 void ApplicationPressed24_0(void) {}
 void ApplicationReleased24_0(void) {}
-void ApplicationPressed24_1(void) {}
+void ApplicationPressed24_1(void) {
+   /* Kueche Haengelampe */
+   DigOutToggle(eDigOut19);
+}
 void ApplicationReleased24_1(void) {}
                                       
-void ApplicationPressed25_0(void) {}
+void ApplicationPressed25_0(void) {
+   /* Ess */
+   DigOutToggle(eDigOut15);
+}
 void ApplicationReleased25_0(void) {}
-void ApplicationPressed25_1(void) {}
+void ApplicationPressed25_1(void) {
+   /* Wohn */
+   DigOutToggle(eDigOut13);
+}
 void ApplicationReleased25_1(void) {}
                                       
-void ApplicationPressed26_0(void) {}
+void ApplicationPressed26_0(void) {
+   /* Gang EG */
+   DigOutToggle(eDigOut14);
+}
 void ApplicationReleased26_0(void) {}
-void ApplicationPressed26_1(void) {}
+void ApplicationPressed26_1(void) {
+   /* Ess */
+   DigOutToggle(eDigOut15);
+}
 void ApplicationReleased26_1(void) {}
                                       
-void ApplicationPressed27_0(void) {}
+void ApplicationPressed27_0(void) {
+   /* Vorraum EG */
+   DigOutToggle(eDigOut16);
+}
 void ApplicationReleased27_0(void) {}
-void ApplicationPressed27_1(void) {}
+void ApplicationPressed27_1(void) {
+   /* Gang EG */
+   DigOutToggle(eDigOut14);
+}
 void ApplicationReleased27_1(void) {}
                                       
 void ApplicationPressed28_0(void) {}
 void ApplicationReleased28_0(void) {}
-void ApplicationPressed28_1(void) {}
+void ApplicationPressed28_1(void) {
+   /* Vorraum EG */
+   DigOutToggle(eDigOut16);
+}
 void ApplicationReleased28_1(void) {}
                                       
-void ApplicationPressed29_0(void) {}
-void ApplicationReleased29_0(void) {}
+void ApplicationPressed29_0(void) {
+   /* WC EG */
+   DigOutOn(eDigOut17);
+}
+void ApplicationReleased29_0(void) {
+   /* WC EG */
+   DigOutOff(eDigOut17);
+}
 void ApplicationPressed29_1(void) {}
 void ApplicationReleased29_1(void) {}
                                       
-void ApplicationPressed30_0(void) {}
+void ApplicationPressed30_0(void) {
+   /* Glocke */
+   if (!DigOutIsDelayed(eDigOut18)) {
+      DigOutDelayedOff(eDigOut18, 250);
+   }  
+}
 void ApplicationReleased30_0(void) {}
 void ApplicationPressed30_1(void) {}
 void ApplicationReleased30_1(void) {}
                                       
-void ApplicationPressed31_0(void) {}
+void ApplicationPressed31_0(void) {
+   /* Kueche Haengelampe */
+   DigOutToggle(eDigOut19);
+}
 void ApplicationReleased31_0(void) {}
 void ApplicationPressed31_1(void) {}
 void ApplicationReleased31_1(void) {}
                                       
-void ApplicationPressed32_0(void) {
-
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade11, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade11, eDigOutShadeOpen);
-   } else {
-      DigOutShade(eDigOutShade11, eDigOutShadeStop);
-   }   
-}
+void ApplicationPressed32_0(void) {}
 void ApplicationReleased32_0(void) {}
-void ApplicationPressed32_1(void) {
-   TDigOutShadeAction state;
-
-   DigOutShadeState(eDigOutShade11, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade11, eDigOutShadeClose);
-   } else {
-      DigOutShade(eDigOutShade11, eDigOutShadeStop);
-   }   
-}
+void ApplicationPressed32_1(void) {}
 void ApplicationReleased32_1(void) {}
     
-void ApplicationPressed33_0(void) {}
+void ApplicationPressed33_0(void) {
+   /* Kueche Haengelampe */
+   DigOutToggle(eDigOut19);
+}
 void ApplicationReleased33_0(void) {}
-void ApplicationPressed33_1(void) {}
+void ApplicationPressed33_1(void) {
+   /* Terrasse */
+   DigOutToggle(eDigOut20);
+}
 void ApplicationReleased33_1(void) {}
                                       
-void ApplicationPressed34_0(void) {}
+void ApplicationPressed34_0(void) {
+   /* Garage */
+   DigOutToggle(eDigOut9);
+}
 void ApplicationReleased34_0(void) {}
 void ApplicationPressed34_1(void) {}
 void ApplicationReleased34_1(void) {}
                                       
-void ApplicationPressed35_0(void) {}
+void ApplicationPressed35_0(void) {
+   /* Garage */
+   DigOutToggle(eDigOut9);
+}
 void ApplicationReleased35_0(void) {}
 void ApplicationPressed35_1(void) {}
 void ApplicationReleased35_1(void) {}

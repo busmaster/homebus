@@ -1,10 +1,26 @@
-/*-----------------------------------------------------------------------------
-*  main.c
-*/
+/*
+ * main.c
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -39,6 +55,9 @@
 #define OP_RESET                            4
 #define OP_EEPROM_READ                      5
 #define OP_EEPROM_WRITE                     6
+#define OP_GET_ACTUAL_VALUE                 7
+#define OP_SET_VALUE_DO31                   8
+#define OP_INFO                             9
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -56,12 +75,15 @@
 *  Functions
 */
 static void PrintUsage(void);
-static bool BusModulReset(uint8_t address);  
-static bool BusModulNewAddress(uint8_t address, uint8_t newAddress);  
-static bool BusModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen);  
-static bool BusModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen);  
-static bool BusModulReadEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen, unsigned int eepromAddress);
-static bool BusModulWriteEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen, unsigned int eepromAddress);
+static bool ModulReset(uint8_t address);  
+static bool ModulNewAddress(uint8_t address, uint8_t newAddress);  
+static bool ModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen);  
+static bool ModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen);  
+static bool ModulReadEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen, unsigned int eepromAddress);
+static bool ModulWriteEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen, unsigned int eepromAddress);
+static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf);
+static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pBuf);
+static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf);
 
 #ifndef WIN32
 static unsigned long GetTickCount(void);
@@ -72,19 +94,23 @@ static unsigned long GetTickCount(void);
 int main(int argc, char *argv[]) {
 
    int            handle;
-   int   i;   
-   int   j;
-   int   k;
+   int            i;   
+   int            j;
+   int            k;
    char           comPort[SIZE_COMPORT] = "";
-   uint8_t          operation = OP_INVALID;
-   uint8_t          clientList[SIZE_CLIENT_LIST];
-   uint8_t          eepromData[SIZE_EEPROM_BUF];
-   uint8_t          moduleAddr;
-   uint8_t          newModuleAddr;
+   uint8_t        operation = OP_INVALID;
+   uint8_t        clientList[SIZE_CLIENT_LIST];
+   uint8_t        eepromData[SIZE_EEPROM_BUF];
+   uint8_t        moduleAddr;
+   uint8_t        newModuleAddr;
    unsigned int   eepromAddress;
    unsigned int   eepromLength;
-   uint8_t          *pBuf;
+   uint8_t        *pBuf;
    bool           ret = false;
+   uint8_t        mask;
+   TBusDevRespActualValue actVal;
+   TBusDevReqSetValue     setVal;
+   TBusDevRespInfo        info;
 
    /* get com interface */
    for (i = 1; i < argc; i++) {
@@ -111,65 +137,76 @@ int main(int argc, char *argv[]) {
       } 
    }
    
-   /* get requestet operation */
+   /* get requested operation */
    
-   /* set new module address */
-   for (i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "-na") == 0) {
-         if (argc > i) {
+   if (operation == OP_INVALID) {
+      /* set new module address */
+      for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-na") == 0) {
+          if (argc > i) {
             operation = OP_SET_NEW_ADDRESS;
             newModuleAddr = atoi(argv[i + 1]);
-         }
-         break;
-      } 
-   }
-   
-   /* set client address list */
-   for (i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "-setcl") == 0) { 
-         memset(clientList, 0xff, sizeof(clientList));
-         operation = OP_SET_CLIENT_ADDRESS_LIST;
-         for (j = i + 1, k = 0; (j < argc) && (k < (int)sizeof(clientList)); j++, k++) {
-            clientList[k] = atoi(argv[j]);
-         }
-         break;
-      } 
-   }   
-       
-   /* get client address list  */
-   for (i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "-getcl") == 0) {
-         operation = OP_GET_CLIENT_ADDRESS_LIST;
-         break;
-      } 
+          }
+          break;
+        }
+      }
    }
 
-   /* reset module */
-   for (i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "-reset") == 0) {
-         operation = OP_RESET;
-         break;
-      } 
+   if (operation == OP_INVALID) {
+      /* set client address list */
+      for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-setcl") == 0) {
+          memset(clientList, 0xff, sizeof(clientList));
+          operation = OP_SET_CLIENT_ADDRESS_LIST;
+          for (j = i + 1, k = 0; (j < argc) && (k < (int)sizeof(clientList)); j++, k++) {
+            clientList[k] = atoi(argv[j]);
+          }
+          break;
+        }
+      }
+   }
+       
+   if (operation == OP_INVALID) {
+      /* get client address list  */
+      for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-getcl") == 0) {
+          operation = OP_GET_CLIENT_ADDRESS_LIST;
+          break;
+        }
+      }
+   }
+
+   if (operation == OP_INVALID) {
+      /* reset module */
+      for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-reset") == 0) {
+          operation = OP_RESET;
+          break;
+        }
+      }
    }
    
-   /* read EEPROM */
-   for (i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "-eerd") == 0) { 
-         if (argc > i) {
+   if (operation == OP_INVALID) {
+      /* read EEPROM */
+      for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-eerd") == 0) {
+          if (argc > i) {
             eepromAddress = atoi(argv[i + 1]);
             if (argc > (i + 1)) {
                eepromLength = atoi(argv[i + 2]);
                operation = OP_EEPROM_READ;
             }
-         }
-         break;
-      } 
-   }   
+          }
+          break;
+        }
+      }
+   }
    
-   /* write EEPROM */
-   for (i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "-eewr") == 0) { 
-         if (argc > i) {
+   if (operation == OP_INVALID) {
+      /* write EEPROM */
+      for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-eewr") == 0) {
+          if (argc > i) {
             eepromAddress = atoi(argv[i + 1]);
             operation = OP_EEPROM_WRITE;
             eepromLength = 0;
@@ -178,10 +215,67 @@ int main(int argc, char *argv[]) {
                eepromLength++;
             }
             break;
+          }
+        }
+      }
+   }
+   
+   if (operation == OP_INVALID) {
+      /* get actual value */
+      for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-actval") == 0) {
+          operation = OP_GET_ACTUAL_VALUE;
+          break;
+        }
+      }
+   }
+
+   if (operation == OP_INVALID) {
+      /* set value digout*/
+      for (i = 1; i < argc; i++) {
+         if (strcmp(argv[i], "-setvaldo31_do") == 0) {
+            if (argc > i) {
+               setVal.devType = eBusDevTypeDo31;
+               operation = OP_SET_VALUE_DO31;
+               memset(setVal.setValue.do31.digOut, 0, sizeof(setVal.setValue.do31.digOut)); // default: no change
+               memset(setVal.setValue.do31.shader, 254, sizeof(setVal.setValue.do31.shader)); // default: no change
+               for (j = i + 1, k = 0; (j < argc) && (k < (int)(sizeof(setVal.setValue.do31.digOut) * 4 - 1)); j++, k++) {
+                  setVal.setValue.do31.digOut[k / 4] |= ((uint8_t)atoi(argv[j]) & 0x03) << ((k % 4) * 2);
+               }
+               break;
+            }
          }
-      } 
-   }   
-     
+      }
+   }
+
+   if (operation == OP_INVALID) {
+      /* set value shader */
+      for (i = 1; i < argc; i++) {
+         if (strcmp(argv[i], "-setvaldo31_sh") == 0) {
+            if (argc > i) {
+               setVal.devType = eBusDevTypeDo31;
+               operation = OP_SET_VALUE_DO31;
+               memset(setVal.setValue.do31.digOut, 0, sizeof(setVal.setValue.do31.digOut)); // default: no change
+               memset(setVal.setValue.do31.shader, 254, sizeof(setVal.setValue.do31.shader)); // default: no change
+               for (j = i + 1, k = 0; (j < argc) && (k < (int)sizeof(setVal.setValue.do31.shader)); j++, k++) {
+                  setVal.setValue.do31.shader[k] = (uint8_t)atoi(argv[j]);
+               }
+               break;
+            }
+         }
+      }
+   }
+
+   if (operation == OP_INVALID) {
+      /* get info */
+      for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-info") == 0) {
+          operation = OP_INFO;
+          break;
+        }
+      }
+   }
+
    SioInit();
 
    handle = SioOpen(comPort, eSioBaud9600, eSioDataBits8, eSioParityNo, eSioStopBits1, eSioModeHalfDuplex);
@@ -199,19 +293,19 @@ int main(int argc, char *argv[]) {
 
    switch (operation) {
       case OP_SET_NEW_ADDRESS:
-         ret = BusModulNewAddress(moduleAddr, newModuleAddr);
+         ret = ModulNewAddress(moduleAddr, newModuleAddr);
          if (ret) {
             printf("OK\r\n");   
          }
          break;
       case OP_SET_CLIENT_ADDRESS_LIST:
-         ret = BusModulSetClientAddress(moduleAddr, clientList, sizeof(clientList));  
+         ret = ModulSetClientAddress(moduleAddr, clientList, sizeof(clientList));  
          if (ret) {
             printf("OK\r\n");   
          }
          break;  
       case OP_GET_CLIENT_ADDRESS_LIST:
-         ret = BusModulReadClientAddress(moduleAddr, clientList, sizeof(clientList));  
+         ret = ModulReadClientAddress(moduleAddr, clientList, sizeof(clientList));  
          if (ret) {
             printf("client list: ");
             for (i = 0; i < (int)sizeof(clientList); i++) {
@@ -221,7 +315,7 @@ int main(int argc, char *argv[]) {
          } 
          break;
       case OP_RESET:
-         ret = BusModulReset(moduleAddr);
+         ret = ModulReset(moduleAddr);
          if (ret) {
             printf("OK\r\n");   
          }
@@ -229,7 +323,7 @@ int main(int argc, char *argv[]) {
       case OP_EEPROM_READ:
          pBuf = (uint8_t *)malloc(eepromLength);
          if (pBuf != 0) {
-            ret = BusModulReadEeprom(moduleAddr, pBuf, eepromLength, eepromAddress);
+            ret = ModulReadEeprom(moduleAddr, pBuf, eepromLength, eepromAddress);
             if (ret) {
                eepromLength += eepromAddress % 16;
                printf("eeprom dump:");
@@ -251,9 +345,79 @@ int main(int argc, char *argv[]) {
          }
          break;
       case OP_EEPROM_WRITE:
-         ret = BusModulWriteEeprom(moduleAddr, eepromData, eepromLength, eepromAddress);
+         ret = ModulWriteEeprom(moduleAddr, eepromData, eepromLength, eepromAddress);
          if (ret) {
             printf("OK\r\n");
+         }
+         break;
+      case OP_GET_ACTUAL_VALUE:
+         ret = ModulGetActualValue(moduleAddr, &actVal);
+         if (ret) {
+            printf("devType: ");
+            switch (actVal.devType) {
+               case eBusDevTypeDo31:
+                  printf("DO31");
+                  break;
+               case eBusDevTypeSw8:
+                  printf("SW8");
+                  break;
+               default:
+                  break;
+            }
+            
+            switch (actVal.devType) {
+               case eBusDevTypeDo31:
+                  printf("\r\ndigout: ");
+                  for (i = 0; i < sizeof(actVal.actualValue.do31.digOut); i++) {
+                     for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
+                        if ((i == 3) && (j == 7)) {
+                           // DO31 has 31 outputs, dont display last bit
+                           break; 
+                        }
+                        if (actVal.actualValue.do31.digOut[i] & mask) {
+                           printf("1");
+                        } else {
+                           printf("0");
+                        }
+                     }
+                     printf(" ");
+                  }
+                  printf("\r\nshader: ");
+                  for (i = 0; i < sizeof(actVal.actualValue.do31.shader); i++) {
+                     printf("%02x ", actVal.actualValue.do31.shader[i]);
+                  }
+                  printf("\r\n");
+                  break;
+               default:
+                  break;
+            }
+            printf("OK\r\n");
+         }
+         break;
+      case OP_SET_VALUE_DO31:
+         ret = ModulSetValue(moduleAddr, &setVal);
+         if (ret) {
+            printf("OK\r\n");
+         }
+         break;
+      case OP_INFO:
+         ret = ModulInfo(moduleAddr, &info);
+         if (ret) {
+            printf("devType: ");
+            switch (info.devType) {
+               case eBusDevTypeDo31:
+                  printf("DO31");
+                  break;
+               case eBusDevTypeSw8:
+                  printf("SW8");
+                  break;
+               default:
+                  break;
+            }
+            printf("\r\n");
+            printf("version: %s\r\n", info.version);
+         } else {
+             printf("ERROR\r\n");
          }
          break;
       default:
@@ -272,15 +436,164 @@ int main(int argc, char *argv[]) {
 
 
 /*-----------------------------------------------------------------------------
-*  bus module reset
+*  set value
 */
-static bool BusModulReset(uint8_t address) {
+static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pSetVal) {
 
-   TBusTelegramm   txBusMsg;
-   uint8_t           ret;  
+   TBusTelegram    txBusMsg;
+   uint8_t         ret;   
    unsigned long   startTimeMs;   
    unsigned long   actualTimeMs;
-   TBusTelegramm   *pBusMsg;
+   TBusTelegram    *pBusMsg;
+   bool            responseOk = false;
+   bool            timeOut = false;
+
+   txBusMsg.type = eBusDevReqSetValue;
+   txBusMsg.senderAddr = MY_ADDR;
+   txBusMsg.msg.devBus.receiverAddr = address;
+   memcpy(&txBusMsg.msg.devBus.x.devReq.setValue, pSetVal, sizeof(txBusMsg.msg.devBus.x.devReq.setValue));
+   BusSend(&txBusMsg);
+   startTimeMs = GetTickCount();
+   do {
+      actualTimeMs = GetTickCount();
+      ret = BusCheck();
+      if (ret == BUS_MSG_OK) {
+         pBusMsg = BusMsgBufGet();
+         if ((pBusMsg->type == eBusDevRespSetValue) &&
+             (pBusMsg->senderAddr == address)) {
+            responseOk = true;
+         }
+      } else {
+         if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+            timeOut = true;
+         }
+      }
+   } while (!responseOk && !timeOut);
+ 
+   if (responseOk) {
+      return true;
+   } else {
+      return false;    
+   }  
+}
+
+/*-----------------------------------------------------------------------------
+*  read info
+*/
+static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf) {
+   
+   TBusTelegram    txBusMsg;
+   uint8_t         ret;  
+   unsigned long   startTimeMs;   
+   unsigned long   actualTimeMs;
+   TBusTelegram    *pBusMsg;
+   bool            responseOk = false;
+   bool            timeOut = false;
+  
+   txBusMsg.type = eBusDevReqInfo;
+   txBusMsg.senderAddr = MY_ADDR;
+   txBusMsg.msg.devBus.receiverAddr = address;
+   BusSend(&txBusMsg);
+   startTimeMs = GetTickCount();
+   do {
+      actualTimeMs = GetTickCount();
+      ret = BusCheck();
+      if (ret == BUS_MSG_OK) {
+         pBusMsg = BusMsgBufGet();
+         if ((pBusMsg->type == eBusDevRespInfo) &&
+             (pBusMsg->senderAddr == address)) {
+            responseOk = true;
+         }
+      } else {
+         if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+            timeOut = true;
+         }
+      }
+   } while (!responseOk && !timeOut);
+   
+   if (responseOk) {
+      pBuf->devType = pBusMsg->msg.devBus.x.devResp.info.devType;
+       memcpy(pBuf->version , pBusMsg->msg.devBus.x.devResp.info.version, sizeof(pBuf->version));
+      switch (pBuf->devType) {
+         case eBusDevTypeDo31:
+           memcpy(&pBuf->devInfo.do31 , &pBusMsg->msg.devBus.x.devResp.info.devInfo.do31, sizeof(pBuf->devInfo.do31));
+            break;
+         case eBusDevTypeSw8:
+            memcpy(&pBuf->devInfo.sw8 , &pBusMsg->msg.devBus.x.devResp.info.devInfo.sw8, sizeof(pBuf->devInfo.sw8));
+            break;
+         default:
+            break;
+      }
+      return true;
+   } else {
+      return false;    
+   }
+}
+
+/*-----------------------------------------------------------------------------
+*  read actual value
+*/
+static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
+   
+   TBusTelegram    txBusMsg;
+   uint8_t         ret;  
+   unsigned long   startTimeMs;   
+   unsigned long   actualTimeMs;
+   TBusTelegram    *pBusMsg;
+   bool            responseOk = false;
+   bool            timeOut = false;
+  
+   txBusMsg.type = eBusDevReqActualValue;
+   txBusMsg.senderAddr = MY_ADDR;
+   txBusMsg.msg.devBus.receiverAddr = address;
+   BusSend(&txBusMsg);
+   startTimeMs = GetTickCount();
+   do {
+      actualTimeMs = GetTickCount();
+      ret = BusCheck();
+      if (ret == BUS_MSG_OK) {
+         pBusMsg = BusMsgBufGet();
+         if ((pBusMsg->type == eBusDevRespActualValue) &&
+             (pBusMsg->senderAddr == address)) {
+            responseOk = true;
+         }
+      } else {
+         if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+            timeOut = true;
+         }
+      }
+   } while (!responseOk && !timeOut);
+   
+   if (responseOk) {
+      pBuf->devType = pBusMsg->msg.devBus.x.devResp.actualValue.devType;
+      switch (pBuf->devType) {
+         case eBusDevTypeDo31:
+            memcpy(pBuf->actualValue.do31.digOut,
+                   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do31.digOut,
+                   sizeof(pBuf->actualValue.do31.digOut));
+            memcpy(pBuf->actualValue.do31.shader,
+                   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do31.shader,
+                   sizeof(pBuf->actualValue.do31.shader));
+            break;
+         default:
+            break;
+      }
+      return true;
+   } else {
+      return false;    
+   }
+}
+
+/*-----------------------------------------------------------------------------
+*  module reset
+*/
+static bool ModulReset(uint8_t address) {
+
+   TBusTelegram    txBusMsg;
+   uint8_t         ret;  
+   unsigned long   startTimeMs;   
+   unsigned long   actualTimeMs;
+   TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
   
@@ -315,13 +628,13 @@ static bool BusModulReset(uint8_t address) {
 /*-----------------------------------------------------------------------------
 *  set new bus module address
 */
-static bool BusModulNewAddress(uint8_t address, uint8_t newAddress) {
+static bool ModulNewAddress(uint8_t address, uint8_t newAddress) {
 
-   TBusTelegramm   txBusMsg;
-   uint8_t           ret;  
+   TBusTelegram    txBusMsg;
+   uint8_t         ret;  
    unsigned long   startTimeMs;   
    unsigned long   actualTimeMs;
-   TBusTelegramm   *pBusMsg;
+   TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
 
@@ -359,13 +672,13 @@ static bool BusModulNewAddress(uint8_t address, uint8_t newAddress) {
 /*-----------------------------------------------------------------------------
 *  read client address list from bus module
 */
-static bool BusModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen) {
+static bool ModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen) {
 
-   TBusTelegramm   txBusMsg;
+   TBusTelegram    txBusMsg;
    uint8_t         ret;   
    unsigned long   startTimeMs;   
    unsigned long   actualTimeMs;
-   TBusTelegramm   *pBusMsg;
+   TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
    int             i;
@@ -406,13 +719,13 @@ static bool BusModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t l
 /*-----------------------------------------------------------------------------
 *  set new client address list
 */
-static bool BusModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen) {
+static bool ModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen) {
        
-   TBusTelegramm   txBusMsg;
+   TBusTelegram    txBusMsg;
    uint8_t         ret;   
    unsigned long   startTimeMs;   
    unsigned long   actualTimeMs;
-   TBusTelegramm   *pBusMsg;
+   TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
    int             i;
@@ -453,17 +766,17 @@ static bool BusModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t li
 /*-----------------------------------------------------------------------------
 *  read eeprom data from bus module
 */
-static bool BusModulReadEeprom(
+static bool ModulReadEeprom(
    uint8_t address, 
    uint8_t *pBuf, 
    unsigned int bufLen,
    unsigned int eepromAddress) {
 
-   TBusTelegramm   txBusMsg;
-   uint8_t           ret;   
+   TBusTelegram    txBusMsg;
+   uint8_t         ret;   
    unsigned long   startTimeMs;   
    unsigned long   actualTimeMs;
-   TBusTelegramm   *pBusMsg;
+   TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
    unsigned int    currentAddress = eepromAddress;
@@ -513,17 +826,17 @@ static bool BusModulReadEeprom(
 /*-----------------------------------------------------------------------------
 *  write eeprom data from bus module
 */
-static bool BusModulWriteEeprom(
+static bool ModulWriteEeprom(
    uint8_t address, 
    uint8_t *pBuf, 
    unsigned int bufLen,
    unsigned int eepromAddress) {
 
-   TBusTelegramm   txBusMsg;
-   uint8_t           ret;   
+   TBusTelegram    txBusMsg;
+   uint8_t         ret;   
    unsigned long   startTimeMs;   
    unsigned long   actualTimeMs;
-   TBusTelegramm   *pBusMsg;
+   TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
    unsigned int    currentAddress = eepromAddress;
@@ -594,7 +907,11 @@ static void PrintUsage(void) {
    printf("                                 -getcl                         |\r\n");
    printf("                                 -reset                         |\r\n");
    printf("                                 -eerd addr len                 |\r\n");
-   printf("                                 -eewr addr data1 .. dataN)      \r\n");
+   printf("                                 -eewr addr data1 .. dataN)     |\r\n");
+   printf("                                 -actval                        |\r\n");
+   printf("                                 -setvaldo31_do do0 .. do30     |\r\n");
+   printf("                                 -setvaldo31_sh sh0 .. sh14     |\r\n");
+   printf("                                 -info)                          \r\n");
    printf("-c port: com1 com2 ..\r\n");
    printf("-a addr: addr = address of module\r\n");
    printf("-na addr: set new address, addr = new address\r\n");
@@ -603,5 +920,9 @@ static void PrintUsage(void) {
    printf("-reset: reset module\r\n");
    printf("-eerd addr len: read EEPROM data from offset addr with number len\r\n");
    printf("-eewr addr data1 .. dataN: write EEPROM data from offset\r\n");
+   printf("-actval: read actual values from modul\r\n");
+   printf("-setvaldo31_do do0 .. do30: set value for dig out\r\n");
+   printf("-setvaldo31_sh sh0 .. sh14: set value for shader\r\n");
+   printf("-info: read type and version string from modul\r\n");
 }
 

@@ -37,10 +37,10 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Include Directories
-INCLUDES = -I . -I ../../include -I ../../include/avr -I ../../include/do31
+INCLUDES = -I . -I ../../include -I ../../include/avr -I ../../include/devices/do31 -I ../../include/devices/common
 
 ## Objects that must be built in order to link
-OBJECTS = application.o bus.o main.o button.o digout.o led.o siotype2.o 
+OBJECTS = application.o bus.o main.o button.o digout.o shader.o led.o siotype2.o 
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
@@ -58,10 +58,13 @@ bus.o: ../../bus/bus.c
 main.o: ../../devices/do31/main.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-button.o: ../../devices/do31/button.c
+digout.o: ../../devices/do31/digout.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-digout.o: ../../devices/do31/digout.c
+button.o: ../../devices/common/button.c
+	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
+
+shader.o: ../../devices/common/shader.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 led.o: ../../devices/do31/led.c

@@ -1,21 +1,19 @@
 ###############################################################################
-# Makefile for the project klaus241
+# Makefile for the project switchv2_garage
 ###############################################################################
 
 ## General Flags
-PROJECT = klaus241
-MCU = atmega128
-TARGET = klaus241.elf
+PROJECT = switchv2_garage
+MCU = atmega88
+TARGET = switchv2_garage.elf
 CC = avr-gcc
-
-CPP = avr-g++
 
 ## Options common to compile, link and assembly rules
 COMMON = -mmcu=$(MCU)
 
 ## Compile options common for all C compilation units.
 CFLAGS = $(COMMON)
-CFLAGS += -Wall -gdwarf-2                                                             -DF_CPU=3686400UL -O2 -fsigned-char -funsigned-bitfields -fshort-enums
+CFLAGS += -Wall -gdwarf-2                                                            -DF_CPU=1000000UL -O2 -fsigned-char -fshort-enums
 CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d 
 
 ## Assembly specific flags
@@ -25,11 +23,11 @@ ASMFLAGS += -x assembler-with-cpp -Wa,-gdwarf2
 
 ## Linker flags
 LDFLAGS = $(COMMON)
-LDFLAGS +=  -Wl,-Map=klaus241.map
+LDFLAGS += 
 
 
 ## Intel Hex file production flags
-HEX_FLASH_FLAGS = -R .eeprom -R .fuse -R .lock -R .signature
+HEX_FLASH_FLAGS = -R .eeprom
 
 HEX_EEPROM_FLAGS = -j .eeprom
 HEX_EEPROM_FLAGS += --set-section-flags=.eeprom="alloc,load"
@@ -37,40 +35,28 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Include Directories
-INCLUDES = -I . -I ../../include -I ../../include/avr -I ../../include/devices/do31 -I ../../include/devices/common
+INCLUDES = -I ../../include/avr -I ../../include/devices/common -I ../../include 
 
 ## Objects that must be built in order to link
-OBJECTS = application.o bus.o main.o button.o digout.o shader.o led.o siotype2.o 
+OBJECTS = main.o bus.o siotype1.o button.o
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
 
 ## Build
-all: $(TARGET) kaus241.hex klaus241.eep size
+all: $(TARGET) switchv2_garage.hex switchv2_garage.eep size
 
 ## Compile
-application.o: application.c
+main.o: main.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 bus.o: ../../bus/bus.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-main.o: ../../devices/do31/main.c
+siotype1.o: ../../sio/avr/siotype1.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 button.o: ../../devices/common/button.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-digout.o: ../../devices/do31/digout.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-shader.o: ../../devices/common/shader.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-led.o: ../../devices/do31/led.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-siotype2.o: ../../sio/avr/siotype2.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
@@ -93,8 +79,7 @@ size: ${TARGET}
 ## Clean target
 .PHONY: clean
 clean:
-	-rm -rf $(OBJECTS) klaus241.elf dep/* klaus241.hex klaus241.eep klaus241.map
-
+	-rm -rf $(OBJECTS) switchv2_garage.elf dep/* switchv2_garage.hex switchv2_garage.eep
 
 ## Other dependencies
 -include $(shell mkdir dep 2>/dev/null) $(wildcard dep/*)

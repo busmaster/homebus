@@ -1,10 +1,26 @@
-/*-----------------------------------------------------------------------------
-*  Application.c
-*/
+/*
+ * application.c
+ * 
+ * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
 
-/*-----------------------------------------------------------------------------
-*  Includes
-*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <avr/pgmspace.h>
@@ -14,6 +30,7 @@
 #include "button.h"
 #include "application.h"
 #include "digout.h"
+#include "shader.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros  
@@ -175,14 +192,14 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 
 
 /*----------------------------------------------------------------------------- 
-* R¸ckgabe der Versioninfo (max. L‰nge 15 Zeichen)
+* Rueckgabe der Versioninfo (max. Laenge 15 Zeichen)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus1_V0.01";
+   return "Klaus1_V0.03";
 }
 
 /*----------------------------------------------------------------------------- 
-* Benachrichtungung der Application ¸ber Tastenereignis
+* Benachrichtungung der Application ueber Tastenereignis
 */
 void ApplicationEventButton(TButtonEvent *pButtonEvent) {
                                                    
@@ -219,50 +236,48 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
 
 void ApplicationInit(void) {
 
-   /* Rollladen Wohnzimmer feststehende Doppelt¸r */
-   DigOutShadeConfig(eDigOutShade0,  eDigOut0,  eDigOut1);
+   /* Rollladen Wohnzimmer feststehende Doppeltuer */
+   ShaderSetConfig(eShader0,  eDigOut0,  eDigOut1, 28500, 27000);
 
-   /* Rolladen Terrassent¸r K¸che */
-   DigOutShadeConfig(eDigOutShade1,  eDigOut2,  eDigOut3);
+   /* Rolladen Terrassentuer Kueche */
+   ShaderSetConfig(eShader1,  eDigOut2,  eDigOut3, 28500, 26800);
 
    /* Markise */
-   DigOutShadeConfig(eDigOutShade2,  eDigOut4,  eDigOut5);
+   ShaderSetConfig(eShader2,  eDigOut4,  eDigOut5, 45000, 45000);
 
    /* Fenster Ess  */ 
-   DigOutShadeConfig(eDigOutShade3,  eDigOut6,  eDigOut7);
+   ShaderSetConfig(eShader3,  eDigOut6,  eDigOut7, 18800, 18400);
 
-   /* Rollladen Kinderzimmer groﬂ */
-   DigOutShadeConfig(eDigOutShade4,  eDigOut8,  eDigOut9);
+   /* Rollladen Kinderzimmer gross */
+   ShaderSetConfig(eShader4,  eDigOut8,  eDigOut9, 19200, 18300);
    
    /* Rollladen Kinderzimmer klein ost */ 
-   DigOutShadeConfig(eDigOutShade5,  eDigOut10, eDigOut11);
+   ShaderSetConfig(eShader5,  eDigOut10, eDigOut11, 19000, 18700);
 
    /* Rollladen Kinderzimmer klein nord */ 
-   DigOutShadeConfig(eDigOutShade6,  eDigOut12, eDigOut13);
+   ShaderSetConfig(eShader6,  eDigOut12, eDigOut13, /*19200*/ 16300, 17700);
 
    /* Rollladen Schrankraum */ 
-   DigOutShadeConfig(eDigOutShade7,  eDigOut14, eDigOut15);
+   ShaderSetConfig(eShader7,  eDigOut14, eDigOut15, 19200, 18500);
 
    /* Rollladen Schlafzimmer */ 
-   DigOutShadeConfig(eDigOutShade8,  eDigOut16, eDigOut17);
+   ShaderSetConfig(eShader8,  eDigOut16, eDigOut17, 28200, 26700);
 
-   /* Rollladen Fenster K¸che */ 
-   DigOutShadeConfig(eDigOutShade9,  eDigOut18, eDigOut19);
+   /* Rollladen Fenster Kueche */ 
+   ShaderSetConfig(eShader9,  eDigOut18, eDigOut19, 19200, 18700);
 
-   /* Rollladen Terrassent¸r Ess */ 
-   DigOutShadeConfig(eDigOutShade10, eDigOut20, eDigOut21);
+   /* Rollladen Terrassentuer Ess */ 
+   ShaderSetConfig(eShader10, eDigOut20, eDigOut21, 29800, 28000);
 
    /* Rollladen Arbeitszimmer */ 
-   DigOutShadeConfig(eDigOutShade11, eDigOut22, eDigOut23);
+   ShaderSetConfig(eShader11, eDigOut22, eDigOut23, 19000, 18200);
 }
 
-static bool               sButton2_1Pressed = false;
-static uint16_t           sButton2_1PressTime;
-static TDigOutShadeAction sButton2_1LongPressedAction = eDigOutShadeNone;
+static bool      sButton13_1Pressed = false;
+static uint16_t  sButton13_1PressTime;
+static uint8_t   sButton13_1LongPressedSetPosition = 0xff;
 
 #define PRESSED_DELAY_CLOSE_SHADE2   2000
-#define DELAY_OPEN_SHADE2            45000
-#define DELAY_CLOSE_SHADE2           27000
 
 void ApplicationCheck(void) {
 
@@ -272,350 +287,364 @@ void ApplicationCheck(void) {
 
    /* Markise */
    /* das Ausfahren der Markise wird gestartet wenn */
-   /* die Taste > 2000 ms gedr¸ckt ist              */
-   if ((sButton2_1LongPressedAction == eDigOutShadeClose) &&
-       (sButton2_1Pressed == true) && 
-       ((actualTime - sButton2_1PressTime) > PRESSED_DELAY_CLOSE_SHADE2)) {
-      DigOutShadeSetDelay(eDigOutShade2, DELAY_CLOSE_SHADE2);
-      DigOutShade(eDigOutShade2, sButton2_1LongPressedAction);
-      sButton2_1LongPressedAction = eDigOutShadeNone;
+   /* die Taste > 2000 ms gedr√ºckt ist              */
+   if ((sButton13_1LongPressedSetPosition <= 100) &&
+       (sButton13_1Pressed == true) && 
+       (((uint16_t)(actualTime - sButton13_1PressTime)) > PRESSED_DELAY_CLOSE_SHADE2)) {
+      ShaderSetPosition(eShader2, sButton13_1LongPressedSetPosition);
+      sButton13_1LongPressedSetPosition = 0xff;
    }
 }
 
 
-void ApplicationPressed1_0(void) {
-
-   DigOutToggle(eDigOut29);
-
-}
-void ApplicationReleased1_0(void) {
-
-}
-void ApplicationPressed1_1(void) {
-
-   DigOutToggle(eDigOut30);
-
-} 
-void ApplicationReleased1_1(void) {
-
-
-}
+void ApplicationPressed1_0(void) {}
+void ApplicationReleased1_0(void) {}
+void ApplicationPressed1_1(void) {} 
+void ApplicationReleased1_1(void) {}
 
 
 void ApplicationPressed2_0(void) {
 
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade2, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShadeSetDelay(eDigOutShade2, DELAY_OPEN_SHADE2);
-      DigOutShade(eDigOutShade2, eDigOutShadeOpen);
+   ShaderGetState(eShader0, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader0, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade2, eDigOutShadeStop);
+      ShaderSetAction(eShader0, eShaderStop);
    } 
 }
 void ApplicationReleased2_0(void) { }
-
 void ApplicationPressed2_1(void) {
 
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   GET_TIME_MS16(sButton2_1PressTime);
-   sButton2_1Pressed = true;
-
-   DigOutShadeState(eDigOutShade2, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      sButton2_1LongPressedAction = eDigOutShadeClose;
+   ShaderGetState(eShader0, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader0, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade2, eDigOutShadeStop);
-      sButton2_1LongPressedAction = eDigOutShadeNone;
+      ShaderSetAction(eShader0, eShaderStop);
    } 
 }
-void ApplicationReleased2_1(void) {
-
-   sButton2_1Pressed = false;
-}
+void ApplicationReleased2_1(void) {}
 
 void ApplicationPressed3_0(void) {
 
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade9, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade9, eDigOutShadeOpen);
+   ShaderGetState(eShader9, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader9, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade9, eDigOutShadeStop);
+      ShaderSetAction(eShader9, eShaderStop);
    } 
 }
 void ApplicationReleased3_0(void) {}
 void ApplicationPressed3_1(void) {
 
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade9, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade9, eDigOutShadeClose);
+   ShaderGetState(eShader9, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader9, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade9, eDigOutShadeStop);
+      ShaderSetAction(eShader9, eShaderStop);
    } 
 }
 void ApplicationReleased3_1(void) {}
                                      
 void ApplicationPressed4_0(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade1, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade1, eDigOutShadeOpen);
+   ShaderGetState(eShader1, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader1, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade1, eDigOutShadeStop);
+      ShaderSetAction(eShader1, eShaderStop);
    } 
 }
 void ApplicationReleased4_0(void) {}
 void ApplicationPressed4_1(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade1, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade1, eDigOutShadeClose);
+   ShaderGetState(eShader1, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader1, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade1, eDigOutShadeStop);
+      ShaderSetAction(eShader1, eShaderStop);
    } 
 }
 void ApplicationReleased4_1(void) {}
 
 void ApplicationPressed5_0(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade6, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade6, eDigOutShadeOpen);
+   ShaderGetState(eShader6, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader6, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade6, eDigOutShadeStop);
+      ShaderSetAction(eShader6, eShaderStop);
    } 
 }
 void ApplicationReleased5_0(void) {}
 void ApplicationPressed5_1(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade6, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade6, eDigOutShadeClose);
+   ShaderGetState(eShader6, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader6, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade6, eDigOutShadeStop);
+      ShaderSetAction(eShader6, eShaderStop);
    } 
 }
 void ApplicationReleased5_1(void) {}
                                      
 void ApplicationPressed6_0(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade5, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade5, eDigOutShadeOpen);
+   ShaderGetState(eShader5, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader5, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade5, eDigOutShadeStop);
+      ShaderSetAction(eShader5, eShaderStop);
    } 
 }
 void ApplicationReleased6_0(void) {}
 void ApplicationPressed6_1(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade5, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade5, eDigOutShadeClose);
+   ShaderGetState(eShader5, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader5, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade5, eDigOutShadeStop);
+      ShaderSetAction(eShader5, eShaderStop);
    } 
 }
 void ApplicationReleased6_1(void) {}
                                      
 void ApplicationPressed7_0(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade4, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade4, eDigOutShadeOpen);
+   ShaderGetState(eShader4, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader4, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade4, eDigOutShadeStop);
+      ShaderSetAction(eShader4, eShaderStop);
    } 
 }
 void ApplicationReleased7_0(void) {}
 void ApplicationPressed7_1(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade4, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade4, eDigOutShadeClose);
+   ShaderGetState(eShader4, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader4, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade4, eDigOutShadeStop);
+      ShaderSetAction(eShader4, eShaderStop);
    } 
 }
 void ApplicationReleased7_1(void) {}
 
 void ApplicationPressed8_0(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade8, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade8, eDigOutShadeOpen);
+   ShaderGetState(eShader8, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader8, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade8, eDigOutShadeStop);
+      ShaderSetAction(eShader8, eShaderStop);
    } 
 }
 void ApplicationReleased8_0(void) {}
 void ApplicationPressed8_1(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade8, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade8, eDigOutShadeClose);
+   ShaderGetState(eShader8, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader8, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade8, eDigOutShadeStop);
+      ShaderSetAction(eShader8, eShaderStop);
    } 
 }
 void ApplicationReleased8_1(void) {}
 
 void ApplicationPressed9_0(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade3, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade3, eDigOutShadeOpen);
+   ShaderGetState(eShader3, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader3, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade3, eDigOutShadeStop);
+      ShaderSetAction(eShader3, eShaderStop);
    } 
 }
 void ApplicationReleased9_0(void) {}
 void ApplicationPressed9_1(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade3, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade3, eDigOutShadeClose);
+   ShaderGetState(eShader3, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader3, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade3, eDigOutShadeStop);
+      ShaderSetAction(eShader3, eShaderStop);
    } 
 }
 void ApplicationReleased9_1(void) {}
 
 void ApplicationPressed10_0(void) {
 
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade10, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade10, eDigOutShadeOpen);
-      DigOutShade(eDigOutShade0, eDigOutShadeOpen);
+   ShaderGetState(eShader10, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader10, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade10, eDigOutShadeStop);
-      DigOutShade(eDigOutShade0, eDigOutShadeStop);
+      ShaderSetAction(eShader10, eShaderStop);
    } 
 } 
 void ApplicationReleased10_0(void) {}
 void ApplicationPressed10_1(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade10, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade10, eDigOutShadeClose);
-      DigOutShade(eDigOutShade0, eDigOutShadeClose);
+   ShaderGetState(eShader10, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader10, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade10, eDigOutShadeStop);
-      DigOutShade(eDigOutShade0, eDigOutShadeStop);
+      ShaderSetAction(eShader10, eShaderStop);
    } 
 } 
 void ApplicationReleased10_1(void) {}
                                      
-void ApplicationPressed11_0(void) {} 
+void ApplicationPressed11_0(void) {
+   /* Speis */
+   if (DigOutState(eDigOut24) == true) {
+      DigOutOff(eDigOut24);
+   } else {
+      DigOutDelayedOff(eDigOut24, 300000 /* 5 min */);
+   }
+} 
 void ApplicationReleased11_0(void) {}
 void ApplicationPressed11_1(void) {} 
 void ApplicationReleased11_1(void) {}
                                      
-void ApplicationPressed12_0(void) {} 
+void ApplicationPressed12_0(void) {
+   /* Arbeitszimmer */
+   DigOutToggle(eDigOut26);
+} 
 void ApplicationReleased12_0(void) {}
 void ApplicationPressed12_1(void) {} 
 void ApplicationReleased12_1(void) {}
                                       
 void ApplicationPressed13_0(void) {
-   TDigOutShadeAction state;
 
-   DigOutShadeState(eDigOutShade2, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade2, eDigOutShadeOpen);
+   TShaderState state;
+
+   ShaderGetState(eShader2, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader2, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade2, eDigOutShadeStop);
+      ShaderSetAction(eShader2, eShaderStop);
    } 
 }
 void ApplicationReleased13_0(void) {}
 void ApplicationPressed13_1(void) {
-   TDigOutShadeAction state;
 
-   DigOutShadeState(eDigOutShade2, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade2, eDigOutShadeClose);
+   TShaderState state;
+   uint8_t position;
+
+   GET_TIME_MS16(sButton13_1PressTime);
+   sButton13_1Pressed = true;
+
+   ShaderGetState(eShader2, &state);
+   ShaderGetPosition(eShader2, &position);
+
+   if ((state == eShaderStopped) || 
+       (state == eShaderOpening)) {
+      if (position == 100) {
+         // wenn ganz eingezogen dann auf 75% ausfahren
+         sButton13_1LongPressedSetPosition = 25;
+      } else {
+         // ganz ausfahren
+         sButton13_1LongPressedSetPosition = 0;
+      }
    } else {
-      DigOutShade(eDigOutShade2, eDigOutShadeStop);
+      ShaderSetAction(eShader2, eShaderStop);
+      sButton13_1LongPressedSetPosition = 0xff;
    } 
 }
-void ApplicationReleased13_1(void) {}
+void ApplicationReleased13_1(void) {
+
+   sButton13_1Pressed = false;
+}
                                       
-void ApplicationPressed14_0(void) {}
+void ApplicationPressed14_0(void) {
+   /* Kinderzimmer gro√ü */
+   DigOutToggle(eDigOut27);
+}
 void ApplicationReleased14_0(void) {}
 void ApplicationPressed14_1(void) {}
 void ApplicationReleased14_1(void) {}
                                       
-void ApplicationPressed15_0(void) {}
+void ApplicationPressed15_0(void) {
+   /* WC OG */
+   if (DigOutState(eDigOut29) == true) {
+      DigOutOff(eDigOut29);
+   } else {
+      DigOutDelayedOff(eDigOut29, 7200000 /* 2 h */);
+   }
+}
 void ApplicationReleased15_0(void) {}
 void ApplicationPressed15_1(void) {}
 void ApplicationReleased15_1(void) {}
                                       
-void ApplicationPressed16_0(void) {}
+void ApplicationPressed16_0(void) {
+   /* Kinderzimmer klein */
+   DigOutToggle(eDigOut28);
+}
 void ApplicationReleased16_0(void) {}
 void ApplicationPressed16_1(void) {}
 void ApplicationReleased16_1(void) {}
 
 void ApplicationPressed17_0(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade7, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade7, eDigOutShadeOpen);
+   ShaderGetState(eShader7, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader7, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade7, eDigOutShadeStop);
+      ShaderSetAction(eShader7, eShaderStop);
    } 
 }
 void ApplicationReleased17_0(void) {}
 void ApplicationPressed17_1(void) {
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade7, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade7, eDigOutShadeClose);
+   ShaderGetState(eShader7, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader7, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade7, eDigOutShadeStop);
+      ShaderSetAction(eShader7, eShaderStop);
    } 
 }
 void ApplicationReleased17_1(void) {}
@@ -650,7 +679,10 @@ void ApplicationReleased23_0(void) {}
 void ApplicationPressed23_1(void) {}
 void ApplicationReleased23_1(void) {}
                                       
-void ApplicationPressed24_0(void) {}
+void ApplicationPressed24_0(void) {
+   /* Kueche Wandlampe bei Speis */
+   DigOutToggle(eDigOut30);
+}
 void ApplicationReleased24_0(void) {}
 void ApplicationPressed24_1(void) {}
 void ApplicationReleased24_1(void) {}
@@ -692,27 +724,28 @@ void ApplicationReleased31_1(void) {}
                                       
 void ApplicationPressed32_0(void) {
 
-   TDigOutShadeAction state;
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade11, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeClose)) {
-      DigOutShade(eDigOutShade11, eDigOutShadeOpen);
+   ShaderGetState(eShader11, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderClosing)) {
+      ShaderSetAction(eShader11, eShaderOpen);
    } else {
-      DigOutShade(eDigOutShade11, eDigOutShadeStop);
+      ShaderSetAction(eShader11, eShaderStop);
    }   
 }
 void ApplicationReleased32_0(void) {}
 void ApplicationPressed32_1(void) {
-   TDigOutShadeAction state;
+   
+   TShaderState state;
 
-   DigOutShadeState(eDigOutShade11, &state);
-   if ((state == eDigOutShadeStop) ||
-       (state == eDigOutShadeOpen)) {
-      DigOutShade(eDigOutShade11, eDigOutShadeClose);
+   ShaderGetState(eShader11, &state);
+   if ((state == eShaderStopped) ||
+       (state == eShaderOpening)) {
+      ShaderSetAction(eShader11, eShaderClose);
    } else {
-      DigOutShade(eDigOutShade11, eDigOutShadeStop);
-   }   
+      ShaderSetAction(eShader11, eShaderStop);
+   } 
 }
 void ApplicationReleased32_1(void) {}
     
