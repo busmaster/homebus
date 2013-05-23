@@ -63,7 +63,7 @@ typedef void* (* TProtoFunc)(uint8_t ch);
 *  Variables
 */                                
 /* buffer for bus telegram just receiving/just received */
-static TBusTelegramm sRxBuffer; 
+static TBusTelegram sRxBuffer; 
 static uint8_t sCheckSum; 
 static uint8_t *spData;
 
@@ -120,7 +120,7 @@ uint8_t BusCheck(void) {
 * buffer is valid when BUS_MSG_OK is returned by BusCheck til next call 
 * of BusCheck
 */
-TBusTelegramm *BusMsgBufGet(void) {
+TBusTelegram *BusMsgBufGet(void) {
    return &sRxBuffer;
 }
 
@@ -170,7 +170,7 @@ static uint8_t BusDecode(uint8_t ch) {
 /*-----------------------------------------------------------------------------
 * send bus telegram
 */
-void BusSend(TBusTelegramm *pMsg) {
+void BusSend(TBusTelegram *pMsg) {
   
    uint8_t ch;            
    uint8_t checkSum = CHECKSUM_START;

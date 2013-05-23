@@ -37,7 +37,7 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Include Directories
-INCLUDES = -I . -I ../../include -I ../../include/avr -I ../../include/do31
+INCLUDES = -I . -I ../../include -I ../../include/avr -I ../../include/devices/do31 -I ../../include/devices/common
 
 ## Objects that must be built in order to link
 OBJECTS = main.o bus.o siotype2.o flashasm.o applasm.o flash.o led.o 

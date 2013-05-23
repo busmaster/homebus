@@ -97,9 +97,8 @@ uint8_t SioRead(uint8_t *pCh) {
 */
 void SioReadFlush(void) {
    
-   uint8_t dummy;
    while (UCSRA & (1<<RXC)) {
-      dummy = UDR;
+      UDR;
    }
 }
 

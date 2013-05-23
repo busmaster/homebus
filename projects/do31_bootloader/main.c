@@ -112,11 +112,11 @@ volatile uint8_t  gTimeMs = 0;
 volatile uint16_t gTimeMs16 = 0;  
 volatile uint16_t gTimeS = 0;        
 
-static TBusTelegramm  *spBusMsg;    
-static TBusTelegramm  sTxBusMsg;        
-static uint8_t sFwuState = WAIT_FOR_UPD_ENTER_TIMEOUT;
-static uint8_t sMyAddr;
-static uint8_t   sIdle = 0;
+static TBusTelegram  *spBusMsg;    
+static TBusTelegram  sTxBusMsg;        
+static uint8_t       sFwuState = WAIT_FOR_UPD_ENTER_TIMEOUT;
+static uint8_t       sMyAddr;
+static uint8_t       sIdle = 0;
 
 /* auf wordaddressbereich 0xff80 .. 0xfffe im Flash sind 255 Byte für den Versionstring reserviert */
 char version[] __attribute__ ((section (".version")));
