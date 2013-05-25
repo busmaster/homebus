@@ -604,9 +604,17 @@ void ApplicationPressed30_0(void) {
    /* Glocke */
    if (!DigOutIsDelayed(eDigOut18)) {
       DigOutDelayedOff(eDigOut18, 250);
-   }  
+   }
+   
+   /* Licht in Ess- und Wohnzimmer kurz umschalten */
+   DigOutToggle(eDigOut13);
+   DigOutToggle(eDigOut15);
 }
-void ApplicationReleased30_0(void) {}
+void ApplicationReleased30_0(void) {
+   /* Licht in Ess- und Wohnzimmer kurz umschalten */
+   DigOutToggle(eDigOut13);
+   DigOutToggle(eDigOut15);
+}
 void ApplicationPressed30_1(void) {}
 void ApplicationReleased30_1(void) {}
                                       
