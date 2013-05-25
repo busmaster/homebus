@@ -516,8 +516,12 @@ static void ProcessBus(uint8_t ret) {
                   SwitchEvent(spBusMsg->senderAddr, 1, true);
                } else {
                   SwitchEvent(spBusMsg->senderAddr, 1, false);
-               }               
-
+               }
+               if ((switchState & 0x02) != 0) {
+                  SwitchEvent(spBusMsg->senderAddr, 2, true);
+               } else {
+                  SwitchEvent(spBusMsg->senderAddr, 2, false);
+               }                
                /* Anwortpaket zusammenstellen */
                sTxBusMsg.type = eBusDevRespSwitchState;  
                sTxBusMsg.senderAddr = MY_ADDR; 
