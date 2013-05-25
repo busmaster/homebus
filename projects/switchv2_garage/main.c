@@ -110,6 +110,8 @@
 #define OUTPUT_PIN_ON       PORTC |=  0b00000010  /* bit1 on port C*/
 #define OUTPUT_PIN_OFF      PORTC &= ~0b00000010  /* bit1 on port C*/
 
+#define IO_STATE            (INPUT_PIN | (PINC & 0b00000010))
+
 /* Port D bit 5 controls bus transceiver power down */
 #define BUS_TRANSCEIVER_POWER_DOWN \
    PORTD |= (1 << 5)
@@ -145,7 +147,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88_garage 0.00";
+char version[] = "Sw88_grg 0.00";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -528,6 +530,7 @@ static void ProcessBus(void) {
          case eBusDevReqReboot:
          case eBusDevRespSwitchState:
          case eBusDevReqGetState:
+         case eBusDevReqActualValue:
          case eBusDevReqSetClientAddr:
          case eBusDevReqGetClientAddr:
          case eBusDevReqInfo:
@@ -583,6 +586,14 @@ static void ProcessBus(void) {
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
             sTxBusMsg.msg.devBus.x.devResp.getState.devType = eBusDevTypeSw8;
             sTxBusMsg.msg.devBus.x.devResp.getState.state.sw8.switchState = sSwitchStateActual;
+            BusSend(&sTxBusMsg);  
+            break;
+         case eBusDevReqActualValue:
+            sTxBusMsg.senderAddr = MY_ADDR; 
+            sTxBusMsg.type = eBusDevRespActualValue;
+            sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
+            sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeSw8;
+            sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.sw8.state = IO_STATE;
             BusSend(&sTxBusMsg);  
             break;
          case eBusDevReqSetClientAddr:

@@ -140,7 +140,9 @@ static TVarLenMsg sRespActualValueSize = {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValue, devType) +
                         sizeof(TBusDevActualValueDo31)},
-      {0,               0}
+      {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValue, devType) +
+                        sizeof(TBusDevActualValueSw8)}
 
    }
 };

@@ -388,6 +388,17 @@ int main(int argc, char *argv[]) {
                   }
                   printf("\r\n");
                   break;
+               case eBusDevTypeSw8:
+                  printf("\r\n iostate: ");
+                  for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
+                     if (actVal.actualValue.sw8.state & mask) {
+                        printf("1");
+                     } else {
+                        printf("0");
+                     }
+                  }
+                  printf("\r\n");
+                  break;
                default:
                   break;
             }
@@ -574,6 +585,9 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
             memcpy(pBuf->actualValue.do31.shader,
                    pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do31.shader,
                    sizeof(pBuf->actualValue.do31.shader));
+            break;
+         case eBusDevTypeSw8:
+            pBuf->actualValue.sw8.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw8.state;
             break;
          default:
             break;

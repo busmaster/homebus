@@ -243,10 +243,15 @@ typedef struct {
                                                      /*                    255:     error                      */
 } __attribute__ ((packed)) TBusDevActualValueDo31;
 
+typedef struct {
+   uint8_t state;
+} __attribute__ ((packed)) TBusDevActualValueSw8;
+
 typedef struct {        
    TBusDevType devType;
    union {
       TBusDevActualValueDo31 do31;
+      TBusDevActualValueSw8  sw8;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
