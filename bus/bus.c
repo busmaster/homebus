@@ -48,7 +48,7 @@
 #define MSG_BASE_SIZE2  MSG_BASE_SIZE1 + member_sizeof(TBusDev, receiverAddr)
 
 // max number of length options of variable length telegrams 
-#define MAX_NUM_VAR_LEN 2
+#define MAX_NUM_VAR_LEN 3
 
 
 #define L1_WAIT_FOR_STX      0
@@ -98,7 +98,11 @@ static TVarLenMsg sRespInfoSize = {
       {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
                         member_sizeof(TBusDevRespInfo, version) + 
-                        sizeof(TBusDevInfoSw8)}
+                        sizeof(TBusDevInfoSw8)},
+      {eBusDevTypeLum,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespInfo, devType) +
+                        member_sizeof(TBusDevRespInfo, version) + 
+                        sizeof(TBusDevInfoLum)}
    }
 };
 
@@ -108,6 +112,7 @@ static TVarLenMsg sReqSetStateSize = {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetState, devType) +
                         sizeof(TBusDevSetStateDo31)},
+      {0,               0},
       {0,               0}
    }
 };
@@ -120,7 +125,8 @@ static TVarLenMsg sRespGetStateSize = {
                         sizeof(TBusDevGetStateDo31)}, 
       {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespGetState, devType) +
-                        sizeof(TBusDevGetStateSw8)}
+                        sizeof(TBusDevGetStateSw8)},
+      {0,               0}
    }
 };
 
@@ -130,6 +136,7 @@ static TVarLenMsg sReqSetValueSize = {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetValue, devType) +
                         sizeof(TBusDevSetValueDo31)},
+      {0,               0},
       {0,               0}
    }
 };
@@ -142,8 +149,10 @@ static TVarLenMsg sRespActualValueSize = {
                         sizeof(TBusDevActualValueDo31)},
       {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValue, devType) +
-                        sizeof(TBusDevActualValueSw8)}
-
+                        sizeof(TBusDevActualValueSw8)},
+      {eBusDevTypeLum,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValue, devType) +
+                        sizeof(TBusDevActualValueLum)}
    }
 };
 

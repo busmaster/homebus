@@ -361,10 +361,12 @@ int main(int argc, char *argv[]) {
                case eBusDevTypeSw8:
                   printf("SW8");
                   break;
+               case eBusDevTypeLum:
+                  printf("LUM");
+                  break;
                default:
                   break;
             }
-            
             switch (actVal.devType) {
                case eBusDevTypeDo31:
                   printf("\r\ndigout: ");
@@ -389,7 +391,7 @@ int main(int argc, char *argv[]) {
                   printf("\r\n");
                   break;
                case eBusDevTypeSw8:
-                  printf("\r\n iostate: ");
+                  printf("\r\niostate: ");
                   for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
                      if (actVal.actualValue.sw8.state & mask) {
                         printf("1");
@@ -398,6 +400,17 @@ int main(int argc, char *argv[]) {
                      }
                   }
                   printf("\r\n");
+                  break;
+               case eBusDevTypeLum:
+                  printf("\r\nstate: ");
+                  for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
+                     if (actVal.actualValue.lum.state & mask) {
+                        printf("1");
+                     } else {
+                        printf("0");
+                     }
+                  }
+                  printf("\r\nADC:   0x%04x\r\n", actVal.actualValue.lum.lum_low | (actVal.actualValue.lum.lum_high << 8));
                   break;
                default:
                   break;
@@ -588,6 +601,11 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
             break;
          case eBusDevTypeSw8:
             pBuf->actualValue.sw8.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw8.state;
+            break;
+         case eBusDevTypeLum:
+            pBuf->actualValue.lum.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.state;
+            pBuf->actualValue.lum.lum_high = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.lum_high;
+            pBuf->actualValue.lum.lum_low = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.lum_low;
             break;
          default:
             break;

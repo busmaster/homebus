@@ -102,9 +102,13 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoSw8;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoLum;
+
 typedef enum {
    eBusDevTypeDo31 = 0x00,
-   eBusDevTypeSw8 = 0x01
+   eBusDevTypeSw8 = 0x01,
+   eBusDevTypeLum = 0x02
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {        
@@ -113,6 +117,7 @@ typedef struct {
    union {
       TBusDevInfoDo31 do31;
       TBusDevInfoSw8  sw8;
+      TBusDevInfoLum  lum;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
 
@@ -247,11 +252,18 @@ typedef struct {
    uint8_t state;
 } __attribute__ ((packed)) TBusDevActualValueSw8;
 
+typedef struct {
+   uint8_t state;              /* state of luminance switches       */
+   uint8_t lum_low;            /* actual luminance (ADC low byte)   */
+   uint8_t lum_high;           /* actual luminance (ADC high byte)  */
+} __attribute__ ((packed)) TBusDevActualValueLum;
+
 typedef struct {        
    TBusDevType devType;
    union {
       TBusDevActualValueDo31 do31;
       TBusDevActualValueSw8  sw8;
+      TBusDevActualValueLum  lum;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
