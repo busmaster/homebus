@@ -540,7 +540,7 @@ static void ProcessBus(void) {
       switch (msgType) {  
          case eBusDevReqReboot:
          case eBusDevRespSwitchState:
-         case eBusDevReqGetState:
+         case eBusDevReqActualValue:
          case eBusDevReqSetClientAddr:
          case eBusDevReqGetClientAddr:
          case eBusDevReqInfo:
@@ -582,14 +582,14 @@ static void ProcessBus(void) {
                pClient++;
             }
             break;
-         case eBusDevReqGetState:
+         case eBusDevReqActualValue:
             sTxBusMsg.senderAddr = MY_ADDR; 
-            sTxBusMsg.type = eBusDevRespGetState;  
+            sTxBusMsg.type = eBusDevRespActualValue;
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
-            sTxBusMsg.msg.devBus.x.devResp.getState.devType = eBusDevTypeSw8;
-            sTxBusMsg.msg.devBus.x.devResp.getState.state.sw8.switchState = sSwitchStateActual;
+            sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeSw8;
+            sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.sw8.state = sSwitchStateActual;
             BusSend(&sTxBusMsg);  
-            break;
+            break;            
          case eBusDevReqSetClientAddr:
             sTxBusMsg.senderAddr = MY_ADDR; 
             sTxBusMsg.type = eBusDevRespSetClientAddr;  
