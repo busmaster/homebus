@@ -583,10 +583,11 @@ static void PortInit(void) {
    DDRB =  0b11111111;
     
    /* port c: */ 
-   /* unused pins: output low, no pull up*/
-   /* input pins with pull up */
-   PORTC = 0b00000011;
-   DDRC =  0b11111100;            
+   /* unused pins: output low */
+   /* input pin without pull up */
+   /* output pin high */
+   PORTC = 0b00000010;
+   DDRC =  0b11111110;            
 
    /* port d: */
    /* pd0: input, no pull up (RXD) */
@@ -670,7 +671,7 @@ ISR(TIMER0_OVF_vect) {
          sAdcAvIdx++;
          sAdcAvIdx %= ARRAY_CNT(sMovAv);
          sAdcAv = sAdcAvSum / ARRAY_CNT(sMovAv);
-// sAdcAv = adc;
+sAdcAv = adc;
          TriggerAdcConversion();
       }
    }
