@@ -671,7 +671,6 @@ ISR(TIMER0_OVF_vect) {
          sAdcAvIdx++;
          sAdcAvIdx %= ARRAY_CNT(sMovAv);
          sAdcAv = sAdcAvSum / ARRAY_CNT(sMovAv);
-sAdcAv = adc;
          TriggerAdcConversion();
       }
    }
