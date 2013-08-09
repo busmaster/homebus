@@ -1,0 +1,40 @@
+SUBDIRS = ../../sio/linux
+OBJS = main.o
+BIN  = portserver
+ARCH = $(TARGET_ARCH)
+OS = $(TARGET_OS)
+OBJDIR = obj
+BINDIR = bin
+
+ifeq ($(ARCH),i686)
+	ifeq ($(OS),linux)
+		GCC_PREFIX = i686-linux-gnu-
+	endif
+else ifeq ($(ARCH), arm)
+	ifeq ($(OS),linux)
+		GCC_PREFIX = arm-linux-gnueabi-
+	endif
+endif
+
+GCC = $(GCC_PREFIX)gcc
+
+all: $(OBJS)
+	for d in $(SUBDIRS); do \
+		(cd $$d; make all)  \
+	done
+	@mkdir -p $(BINDIR)
+	$(GCC) $(OBJDIR)/$(OBJS) -L ../../sio/linux/bin -L ../../bus/bin -lsio -lrt -o $(BINDIR)/$(BIN)
+
+%.o: %.c
+	@mkdir -p $(OBJDIR)
+	$(GCC) -g -c -Wall -std=c99 -I . -I ../../include -I ../../include/linux $< -o $(OBJDIR)/$@
+
+
+.PHONY: clean
+clean:
+	rm -rf $(BINDIR) $(OBJDIR)
+	for d in $(SUBDIRS); do \
+		(cd $$d; make clean)  \
+	done
+
+
