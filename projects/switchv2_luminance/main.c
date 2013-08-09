@@ -185,7 +185,6 @@ int main(void) {
    lowLevel[1] =  eeprom_read_byte((const uint8_t *)BRIGHT_LEVEL_LOW_LSB) + 
                   eeprom_read_byte((const uint8_t *)BRIGHT_LEVEL_LOW_MSB) * 256;
 
-
    PortInit();
    TimerInit();
    SioInit();
@@ -198,6 +197,9 @@ int main(void) {
    
    BusInit(sioHandle);
    spRxBusMsg = BusMsgBufGet();
+
+   TriggerAdcConversion();
+   while ((ADCSRA & (1 << ADSC)) != 0);
 
    TriggerAdcConversion();
    while ((ADCSRA & (1 << ADSC)) != 0);
@@ -567,10 +569,8 @@ static void ProcessBus(void) {
 }
 
 static void TriggerAdcConversion(void) {
-   /* ADEN = 1         ADC enable */
-   /* ADSC = 1         start conversion */
-   /* ADPS2:0 = 100    prescaler, division factor is 16 -> 1MHz/16 = 62500 Hz*/
-   ADCSRA |= (1 << ADSC); //0b01000000;
+
+   ADCSRA |= (1 << ADSC);
 }
 
 /*-----------------------------------------------------------------------------
