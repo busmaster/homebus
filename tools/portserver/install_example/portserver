@@ -1,0 +1,90 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          portserver
+# Required-Start:    $local_fs
+# Required-Stop:     $local_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start daemon at boot time
+# Description:       Enable service provided by daemon.
+### END INIT INFO
+
+OPTS=/dev/ttyS1
+
+case "$1" in
+    start)
+        echo "Starting portserver..."
+        start-stop-daemon -b --start --exec /usr/bin/portserver -- $OPTS
+        sleep 2
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus0
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus1
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus2
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus3
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus4
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus10
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus11
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus12
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus13
+
+        PTS=$(/usr/bin/portservergetdev $OPTS)
+        echo "portserver $PTS"
+        ln -s $PTS /dev/hausbus14
+
+        ;;
+    stop)
+        echo "Stopping portserver..."
+        rm /dev/hausbus0
+        rm /dev/hausbus1
+        rm /dev/hausbus2
+        rm /dev/hausbus3
+        rm /dev/hausbus4
+        rm /dev/hausbus10
+        rm /dev/hausbus11
+        rm /dev/hausbus12
+        rm /dev/hausbus13
+        rm /dev/hausbus14
+        start-stop-daemon --stop --exec /usr/bin/portserver
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+
+    force-reload)
+        echo "Error: argument '$1' not supported" >&2
+        exit 3
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit 0
+
