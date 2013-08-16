@@ -22,25 +22,21 @@
  */
 
 #define _XOPEN_SOURCE
-#undef  DEBUG_LOG
+#define  DEBUG_LOG
 
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <sys/select.h>
 #include <sys/time.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <poll.h>
+#include <sys/inotify.h>
 #include <unistd.h>
-#include <stropts.h>
 #include <signal.h>
 
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <termios.h>
 
 #include <errno.h>
 #include "sio.h"
@@ -55,83 +51,11 @@
 struct ptyDesc {
    int ptmFd;
    int ptsFd;
-   bool hup;
+   bool closed;
+   int wd;
 };
 
 static char sTmpFileName[200];
-
-int make_nonblocking(int fd)
-{
-  int flags;
-
-  flags = fcntl(fd, F_GETFL, 0);
-  if(flags == -1) /* Failed? */
-   return 0;
-  /* Clear the blocking flag. */
-  flags |= O_NONBLOCK;
-  return fcntl(fd, F_SETFL, flags) != -1;
-}
-
-void Cmd(int cmdFd, struct ptyDesc *pty, int numPtm) {
-   
-   char buf[100];
-   char *ptsName;
-   int len;
-   int i;
-   
-   len = read(cmdFd, buf, sizeof(buf) - 1);
-   buf[len] = '\0';
-   
-   if (strncmp(buf, CMD_ADD, strlen(CMD_ADD)) == 0) {
-      // find unused index
-      for (i = 0; i < numPtm; i++) {
-         if ((pty + i)->ptmFd == -1) {
-            break;
-         }
-      }
-      if (i == numPtm) {
-         // exceeded
-         len = snprintf(buf, sizeof(buf), "error: number of pty devices exceeded\n");
-         write(cmdFd, buf, len);
-      } else {
-         (pty + i)->ptmFd = open("/dev/ptmx", O_RDWR | O_NOCTTY);
-
-         make_nonblocking((pty + i)->ptmFd);
-         grantpt((pty + i)->ptmFd);
-         unlockpt((pty + i)->ptmFd);
-         ptsName = ptsname((pty + i)->ptmFd);
-         // open + close slave to get initial HUP event
-         (pty + i)->ptsFd = open(ptsName, O_RDWR);
-         close((pty + i)->ptsFd);
-         write(cmdFd, ptsname((pty + i)->ptmFd), strlen(ptsName));
-         write(cmdFd, "\n", 1);
-      }
-   } else if (strncmp(buf, CMD_REMOVE, strlen(CMD_REMOVE)) == 0) {
-      ptsName = buf + strlen(CMD_REMOVE) + 1;
-      for (i = 0; i < numPtm; i++) {
-         if (strcmp(ptsName, ptsname((pty + i)->ptmFd)) == 0) {
-            close((pty + i)->ptmFd);
-            (pty + i)->ptmFd = -1;
-         }
-      }
-      if (i == numPtm) {
-         // did not find
-         len = snprintf(buf, sizeof(buf), "error: unable to find %s\n", ptsName);
-         write(cmdFd, buf, len);
-      } else {
-         write(cmdFd, ptsname((pty + i)->ptmFd), strlen(ptsName));
-         write(cmdFd, "\n", 1);
-      }
-   }
-}
-
-void sighandler(int sig) {
-
-    unlink(sTmpFileName);
-    rmdir(TMP_DIR);
-
-    exit(0);
-}
 
 #ifdef DEBUG_LOG
 
@@ -152,6 +76,7 @@ void LogPrint(char *format, ...) {
       va_start(args, format);
       vfprintf(logFile, format, args);
       va_end(args);
+      fflush(logFile);
    }
 }
 
@@ -163,6 +88,89 @@ void LogPrint(char *format, ...) { }
 
 #endif
 
+int make_nonblocking(int fd)
+{
+  int flags;
+
+  flags = fcntl(fd, F_GETFL, 0);
+  if(flags == -1) /* Failed? */
+   return 0;
+  /* Clear the blocking flag. */
+  flags |= O_NONBLOCK;
+  return fcntl(fd, F_SETFL, flags) != -1;
+}
+
+void Cmd(int cmdFd, struct ptyDesc *pty, int numPtm, int notifyFd) {
+   
+    char buf[100];
+    char *ptsName;
+    int len;
+    int i;
+    struct ptyDesc *p = pty;
+   
+    len = read(cmdFd, buf, sizeof(buf) - 1);
+    buf[len] = '\0';
+   
+    if (strncmp(buf, CMD_ADD, strlen(CMD_ADD)) == 0) {
+        // find unused index
+        for (i = 0; i < numPtm; i++) {
+            if (p->ptmFd == -1) {
+                break;
+            }
+            p++;
+        }
+        if (i == numPtm) {
+            // exceeded
+            LogPrint("error: number of pty devices exceeded\n");
+            len = snprintf(buf, sizeof(buf), "error: number of pty devices exceeded\n");
+            write(cmdFd, buf, len);
+        } else {
+            p->ptmFd = open("/dev/ptmx", O_RDWR | O_NOCTTY);
+
+            make_nonblocking(p->ptmFd);
+            grantpt(p->ptmFd);
+            unlockpt(p->ptmFd);
+            ptsName = ptsname(p->ptmFd);
+         
+            p->wd = inotify_add_watch(notifyFd, ptsName, IN_CLOSE_WRITE | IN_CLOSE_NOWRITE | IN_OPEN);
+         
+            LogPrint("add pts: ptmFd=%d, ptsName=%s, wd=%d\n", p->ptmFd, ptsName, p->wd);
+
+            write(cmdFd, ptsname(p->ptmFd), strlen(ptsName));
+            write(cmdFd, "\n", 1);
+        }
+    } else if (strncmp(buf, CMD_REMOVE, strlen(CMD_REMOVE)) == 0) {
+        ptsName = buf + strlen(CMD_REMOVE) + 1;
+        for (i = 0; i < numPtm; i++) {
+            if (strcmp(ptsName, ptsname(p->ptmFd)) == 0) {
+                close(p->ptmFd);
+                inotify_rm_watch(notifyFd, p->wd);
+                LogPrint("rm pts: ptmFd=%d, ptsName=%s", p->ptmFd, ptsName);
+                p->ptmFd = -1;
+                break;
+            }
+            p++;
+        }
+        if (i == numPtm) {
+            // did not find
+            LogPrint("error: unable to find %s\n", ptsName);
+            len = snprintf(buf, sizeof(buf), "error: unable to find %s\n", ptsName);
+            write(cmdFd, buf, len);
+        } else {
+            write(cmdFd, ptsname(p->ptmFd), strlen(ptsName));
+            write(cmdFd, "\n", 1);
+        }
+    }
+}
+
+void sighandler(int sig) {
+
+    unlink(sTmpFileName);
+    rmdir(TMP_DIR);
+
+    exit(0);
+}
+
 /*-----------------------------------------------------------------------------
 *  program start
 */
@@ -170,6 +178,7 @@ int main(int argc, char *argv[]) {
 
     int sioHandle;
     struct ptyDesc pty[NUM_PTS];
+    struct ptyDesc *p;
     int sioFd;
     fd_set fds;
     int maxFd;
@@ -182,11 +191,11 @@ int main(int argc, char *argv[]) {
     int fd;
     char devName[100];
     char charBuf[100];
-    struct pollfd pfd[NUM_PTS];
-    int    pfdidx2ptyidx[NUM_PTS];
-    struct timeval tv;
-
     char *ptsName;
+    struct inotify_event notifyEvent;
+    int                  notifyFd;
+
+    daemon(0, 1);
 
     if (argc != 2) {
         fprintf(stderr, "Usage: %s serial_device\n", argv[0]);
@@ -212,11 +221,13 @@ int main(int argc, char *argv[]) {
     }
     // pty[0] is used for external cmd requests/responses
     mkdir(TMP_DIR, 0777);
-    pty[0].ptmFd = open("/dev/ptmx", O_RDWR | O_NOCTTY);
-    grantpt(pty[0].ptmFd);
-    unlockpt(pty[0].ptmFd);
-    ptsName = ptsname(pty[0].ptmFd);
-    pty[0].ptsFd = open(ptsName, O_RDWR);
+    p = &pty[0];
+    p->ptmFd = open("/dev/ptmx", O_RDWR | O_NOCTTY);
+    grantpt(p->ptmFd);
+    unlockpt(p->ptmFd);
+    ptsName = ptsname(p->ptmFd);
+    p->ptsFd = open(ptsName, O_RDWR);
+    p->closed = false;
 
     // write the name of the cmd pts to file
     snprintf(sTmpFileName, sizeof(sTmpFileName), TMP_DIR "/%s_cmdPts", devName);
@@ -231,97 +242,125 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
    
+    p = &pty[1];
     for (i = 1; i < NUM_PTS; i++) {
-        pty[i].ptmFd = -1;
-        pty[i].hup = true;
+        p->ptmFd = -1;
+        p->closed = true;
+        p++;
     }
 
     signal(SIGINT, sighandler);
     signal(SIGHUP, sighandler);
     signal(SIGTERM, sighandler);
 
-    LogOpen("/tmp/portserver.log");
+    LogOpen(TMP_DIR "/portserver.log");
+    
+    notifyFd = inotify_init();
 
     while (1) {
-
-        for (i = 1, j = 0; i < NUM_PTS; i++) {
-            if (pty[i].ptmFd != -1) {
-                pfd[j].fd = pty[i].ptmFd;
-                pfd[j].events = POLLHUP;
-                pfdidx2ptyidx[j] = i;
-                j++;
-            }
-        }
-        poll(pfd, j, 0);
-        for (i = 0; i < j; i++) {
-           if (pfd[i].revents & POLLHUP) {
-               pty[pfdidx2ptyidx[i]].hup = true;
-           } else {
-               pty[pfdidx2ptyidx[i]].hup = false;
-           }
-        }
-
         maxFd = sioFd;
         FD_ZERO(&fds);
         FD_SET(sioFd, &fds);
-        for (i = 0, j = 0; i < NUM_PTS; i++) {
-            if ((pty[i].ptmFd != -1) && !pty[i].hup) {
-                FD_SET(pty[i].ptmFd, &fds);
-                maxFd = max(maxFd, pty[i].ptmFd);
+        p = pty;
+        for (i = 0 ; i < NUM_PTS; i++) {
+            if ((p->ptmFd != -1) && !p->closed) {
+                FD_SET(p->ptmFd, &fds);
+                maxFd = max(maxFd, p->ptmFd);
             }
+            p++;
         }
+        FD_SET(notifyFd, &fds);
+        maxFd = max(maxFd, notifyFd);
         
-        // select with timeout to get cyclic check of pts opened when no data
-        // transfer is in progress
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
-        result = select(maxFd + 1, &fds, 0, 0, &tv);
+        result = select(maxFd + 1, &fds, 0, 0, 0);
         if (result > 0) {
+            // new command
             if (FD_ISSET(pty[0].ptmFd, &fds)) {
-                Cmd(pty[0].ptmFd, &pty[1], NUM_MAX_SLAVES);
+                Cmd(pty[0].ptmFd, &pty[1], NUM_MAX_SLAVES, notifyFd);
             }
+
+            // pts open/close notify
+            if (FD_ISSET(notifyFd, &fds)) {
+                LogPrint("notify event ");
+                read(notifyFd, &notifyEvent, sizeof(notifyEvent));
+                p = &pty[1];
+                for (i = 0; i < NUM_PTS; i++) {
+                    if (p->wd == notifyEvent.wd) {
+                        break;
+                    }
+                    p++;
+                }
+                if (i < NUM_PTS) {
+                    LogPrint("pts of ptm %d ", p->ptmFd);
+                    if (notifyEvent.mask & IN_OPEN) {
+                        LogPrint("opened");
+                        p->closed = false;
+                    }
+                    if(notifyEvent.mask & (IN_CLOSE_NOWRITE | IN_CLOSE_WRITE)) {
+                        LogPrint("closed");
+                        p->closed = true;
+                    }
+                } else {
+                    LogPrint("error: did not find event.wd %d", notifyEvent.wd);
+                }
+                LogPrint("\n");
+            }
+
+            // rx from pts
+            p = &pty[1];
             for (i = 1; i < NUM_PTS; i++) {  
-                if ((pty[i].ptmFd != -1) &&
-                    FD_ISSET(pty[i].ptmFd, &fds)) {
-                    len = read(pty[i].ptmFd, buf, sizeof(buf));
+                if ((p->ptmFd != -1) &&
+                    FD_ISSET(p->ptmFd, &fds) && 
+                    !p->closed) {
+                    len = read(p->ptmFd, buf, sizeof(buf));
                     if (len != -1) {
-                        buf[len] = 0;
-                        LogPrint("read ptm %d: %s\n", pty[i].ptmFd, buf);
+                        LogPrint("read ptm %d: ", p->ptmFd);
+                        for (j = 0; j < len; j++) {
+                            LogPrint("%02x ", buf[j]);
+                        }
+                        LogPrint("\n");
                         lenWr = write(sioFd, buf, len);
                         if (lenWr != len) {
                             LogPrint("write sio: buf len %d, len written\n", len, lenWr);
                         }
                     } else {
-                        LogPrint("read ptm %d: errno %d (%s)\n", pty[i].ptmFd, errno, strerror(errno));
+                        LogPrint("read ptm %d: errno %d (%s)\n", p->ptmFd, errno, strerror(errno));
                         break;
                     }
                 }
+                p++;
             }
 
+            // rx from tty
             if (FD_ISSET(sioFd, &fds)) {
                 len = read(sioFd, buf, sizeof(buf));
                 if (len != -1) {
-                    buf[len] = 0;
-                    LogPrint("read sio: %s\n", buf);
+                    LogPrint("read sio: ", buf);
+                    for (j = 0; j < len; j++) {
+                        LogPrint("%02x ", buf[j]);
+                    }
+                    LogPrint("\n");
                     // write to all pty
+                    p = &pty[1];
                     for (i = 1; i < NUM_PTS; i++) {      
-                        if ((pty[i].ptmFd != -1) && !pty[i].hup) {
-                            lenWr = write(pty[i].ptmFd, buf, len);
+                        if ((p->ptmFd != -1) && 
+                            !p->closed) {
+                            lenWr = write(p->ptmFd, buf, len);
                             if (lenWr != len) {
-                               LogPrint("write ptm %d: buf len %d, len written\n", pty[i].ptmFd, len, lenWr);
+                               LogPrint("write ptm %d: buf len %d, len written\n", p->ptmFd, len, lenWr);
                             }
                         }
+                        p++;
                     }
                 } else {
                     LogPrint("read sio: errno %d (%s)\n", errno, strerror(errno));
                 }
-            }  
+            }
         } else if (result < 0) {
             LogPrint("select error\n");
         }
-// usleep(100000); 
+// usleep(1000000); 
     }
-
 
     return 0;
 }
