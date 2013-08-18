@@ -21,6 +21,7 @@
  * 
  */
 
+#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <avr/interrupt.h>
@@ -55,6 +56,8 @@ static uint8_t                        sRxBufRdIdx = 0;
 static uint8_t                        sTxBuffer[SIO_TX_BUF_SIZE];
 static uint8_t                        sTxBufWrIdx = 0;
 static uint8_t                        sTxBufRdIdx = 0;
+static uint8_t                        sTxBufferBuffered[SIO_TX_BUF_SIZE];
+static uint8_t                        sTxBufBufferedPos = 0;
 static TBusTransceiverPowerDownFunc   sBusTransceiverPowerDownFunc = 0;
 static TSioMode                       sMode = eSioModeHalfDuplex;
 
@@ -221,6 +224,40 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
    RESTORE_INT(flag);
    
    return bufSize;           
+}
+
+/*-----------------------------------------------------------------------------
+*  write data to tx buffer - do not yet start with tx
+*/
+uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
+
+   uint8_t   len;
+
+   len = sizeof(sTxBufferBuffered) - sTxBufBufferedPos;
+   len = min(len, bufSize);
+   memcpy(&sTxBufferBuffered[sTxBufBufferedPos], pBuf, len);
+   sTxBufBufferedPos += len;
+   
+   return bufSize;           
+}
+
+/*-----------------------------------------------------------------------------
+*  trigger tx of buffer
+*/
+bool SioSendBuffer(int handle) {
+
+   unsigned long bytesWritten;    
+   bool          rc;
+
+   bytesWritten = SioWrite(handle, sTxBufferBuffered, sTxBufBufferedPos);
+   if (bytesWritten == sTxBufBufferedPos) {
+       rc = true;
+   } else {
+       rc = false;
+   }
+   sTxBufBufferedPos = 0;
+   
+   return rc;
 }
 
 /*-----------------------------------------------------------------------------

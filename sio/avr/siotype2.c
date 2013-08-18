@@ -78,14 +78,17 @@
 *  typedefs
 */
 typedef struct {
-   uint8_t                        *pRxBuf;
-   uint8_t                        *pTxBuf;
-   uint8_t                        rxBufWrIdx;
-   uint8_t                        rxBufRdIdx;
-   uint8_t                        rxBufSize;
-   uint8_t                        txBufWrIdx;
-   uint8_t                        txBufRdIdx;
-   uint8_t                        txBufSize;
+   uint8_t                      *pRxBuf;
+   uint8_t                      *pTxBuf;
+   uint8_t                      *pTxBufBuffered;
+   uint8_t                      rxBufWrIdx;
+   uint8_t                      rxBufRdIdx;
+   uint8_t                      rxBufSize;
+   uint8_t                      txBufWrIdx;
+   uint8_t                      txBufRdIdx;
+   uint8_t                      txBufSize;
+   uint8_t                      txBufBufferedPos;
+   uint8_t                      txBufBufferedSize;
    volatile uint8_t             *ubrrh;
    volatile uint8_t             *ubrrl;
    volatile uint8_t             *ucsra;
@@ -103,8 +106,12 @@ typedef struct {
 */             
 static uint8_t sRx0Buffer[SIO_RX0_BUF_SIZE];
 static uint8_t sTx0Buffer[SIO_TX0_BUF_SIZE];
+static uint8_t sTx0BufferBuffered[SIO_TX0_BUF_SIZE];
+
 static uint8_t sRx1Buffer[SIO_RX1_BUF_SIZE];
 static uint8_t sTx1Buffer[SIO_TX1_BUF_SIZE];
+static uint8_t sTx1BufferBuffered[SIO_TX1_BUF_SIZE];
+
 static TChanDesc sChan[NUM_CHANNELS];
 
 /*-----------------------------------------------------------------------------
@@ -206,6 +213,8 @@ int SioOpen(const char *pPortName,   /* is ignored */
       pChan->rxBufSize = sizeof(sRx0Buffer);   
       pChan->pTxBuf = sTx0Buffer;
       pChan->txBufSize = sizeof(sTx0Buffer);  
+      pChan->pTxBufBuffered = sTx0BufferBuffered;
+      pChan->txBufBufferedSize = sizeof(sTx0BufferBuffered);
       pChan->ubrrh = (volatile uint8_t *)0x90; /* UBRR0H */
       pChan->ubrrl = (volatile uint8_t *)0x29; /* UBRR0L */
       pChan->ucsra = (volatile uint8_t *)0x2b; /* UCSR0A */
@@ -218,7 +227,9 @@ int SioOpen(const char *pPortName,   /* is ignored */
       pChan->pRxBuf = sRx1Buffer;      
       pChan->rxBufSize = sizeof(sRx1Buffer);   
       pChan->pTxBuf = sTx1Buffer;
-      pChan->txBufSize = sizeof(sTx1Buffer);  
+      pChan->txBufSize = sizeof(sTx1Buffer);
+      pChan->pTxBufBuffered = sTx1BufferBuffered;    
+      pChan->txBufBufferedSize = sizeof(sTx1BufferBuffered);
       pChan->ubrrh = (volatile uint8_t *)0x98; /* UBRR1H */
       pChan->ubrrl = (volatile uint8_t *)0x99; /* UBRR1L */
       pChan->ucsra = (volatile uint8_t *)0x9b; /* UCSR1A */
@@ -249,6 +260,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
    pChan->rxBufWrIdx = 0;
    pChan->rxBufRdIdx = 0;
    pChan->txBufWrIdx = 0;
+   pChan->txBufBufferedPos = 0;
    pChan->txBufRdIdx = 0;
    pChan->idleFunc = 0;
    pChan->busTransceiverPowerDownFunc = 0;
@@ -328,7 +340,47 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
    return bufSize;           
 }
 
+/*-----------------------------------------------------------------------------
+*  write data to tx buffer - do not yet start with tx
+*/
+uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
+   uint8_t   len;
+   TChanDesc  *pChan;
+   
+   RETURN_0_ON_INVALID_HDL(handle);
+   pChan = &sChan[handle]; 
+
+   len = pChan->txBufBufferedSize - pChan->txBufBufferedPos;
+   len = min(len, bufSize);
+   memcpy(&pChan->pTxBufBuffered[pChan->txBufBufferedPos], pBuf, len);
+   pChan->txBufBufferedPos += len;
+   
+   return bufSize;           
+}
+
+/*-----------------------------------------------------------------------------
+*  trigger tx of buffer
+*/
+bool SioSendBuffer(int handle) {
+
+   unsigned long bytesWritten;    
+   bool          rc;
+   TChanDesc     *pChan;
+
+   RETURN_0_ON_INVALID_HDL(handle);
+   pChan = &sChan[handle]; 
+      
+   bytesWritten = SioWrite(handle, pChan->pTxBufBuffered, pChan->txBufBufferedPos);
+   if (bytesWritten == pChan->txBufBufferedPos) {
+       rc = true;
+   } else {
+       rc = false;
+   }
+   pChan->txBufBufferedPos = 0;
+   
+   return rc;
+}
 
 /*-----------------------------------------------------------------------------
 *  free space in tx buffer

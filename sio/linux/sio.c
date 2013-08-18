@@ -39,13 +39,18 @@
 
 #define MAX_NUM_SIO     4
 #define UNREAD_BUF_SIZE 512  // 2er-Potenz!!
+#define TX_BUF_SIZE     255  // max 255
 
 /*-----------------------------------------------------------------------------
 *  typedefs
 */
 typedef struct {
-   bool   used;
-   int    fd; 
+   bool    used;
+   int     fd; 
+   struct {
+      uint8_t buf[TX_BUF_SIZE];
+      uint8_t pos; 
+   } bufferedTx;
    struct {
       uint8_t        buf[UNREAD_BUF_SIZE];
       unsigned int bufIdxWr;
@@ -111,11 +116,10 @@ int SioOpen(const char *pPortName,
    sSio[i].fd = fd;
    sSio[i].unRead.bufIdxWr = 0;
    sSio[i].unRead.bufIdxRd = 0;
+   sSio[i].bufferedTx.pos = 0;
    
    memset(&settings, 0, sizeof(settings));
-
    tcgetattr(fd, &settings);
-
    settings.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON);
    settings.c_oflag &= ~OPOST;
    settings.c_lflag &= ~(ECHO|ECHONL|ICANON|ISIG|IEXTEN);
@@ -187,6 +191,18 @@ int SioClose(int handle) {
 }
 
 /*-----------------------------------------------------------------------------
+*  Filehandle holen
+*/
+int SioGetFd(int handle) {
+   
+   if (!HandleValid(handle)) {
+      return -1;
+   }
+
+   return sSio[handle].fd;
+}
+
+/*-----------------------------------------------------------------------------
 *  Sio Sendepuffer schreiben
 */
 uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
@@ -200,6 +216,52 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
    bytesWritten = write(sSio[handle].fd, pBuf, bufSize); 
 
    return (uint8_t)bytesWritten;           
+}
+
+/*-----------------------------------------------------------------------------
+*  write data to tx buffer - do not yet start with tx
+*/
+uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
+
+   uint8_t   len;
+   TSioDesc  *pSio;
+
+   if (!HandleValid(handle)) {
+      return 0;
+   }
+   pSio = &sSio[handle];
+   
+   len = sizeof(pSio->bufferedTx.buf) - pSio->bufferedTx.pos;
+   len = min(len, bufSize);
+   memcpy(&pSio->bufferedTx.buf[pSio->bufferedTx.pos], pBuf, len);
+   pSio->bufferedTx.pos += len;
+
+   return (uint8_t)len;           
+}
+
+/*-----------------------------------------------------------------------------
+*  trigger tx of buffer
+*/
+bool SioSendBuffer(int handle) {
+
+   unsigned long bytesWritten;    
+   TSioDesc      *pSio;
+   bool          rc;
+
+   if (!HandleValid(handle)) {
+      return 0;
+   }
+   pSio = &sSio[handle];
+   
+   bytesWritten = write(pSio->fd, pSio->bufferedTx.buf, pSio->bufferedTx.pos);
+   if (bytesWritten == pSio->bufferedTx.pos) {
+       rc = true;
+   } else {
+       rc = false;
+   }
+   pSio->bufferedTx.pos = 0;
+   
+   return rc;
 }
 
 /*-----------------------------------------------------------------------------
