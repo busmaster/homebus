@@ -435,6 +435,9 @@ int main(int argc, char *argv[]) {
                case eBusDevTypeSw8:
                   printf("SW8");
                   break;
+               case eBusDevTypeLum:
+                  printf("LUM");
+                  break;
                default:
                   break;
             }
