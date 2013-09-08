@@ -472,7 +472,7 @@ void BusSend(TBusTelegram *pMsg) {
       return; // error
    }           
    ch = STX;   
-   SioWrite(sSioHandle, &ch, sizeof(ch));
+   SioWriteBuffered(sSioHandle, &ch, sizeof(ch));
    checkSum += ch;
    for (i = 0; i < len; i++) {
       ch = *((uint8_t *)pMsg + i);
@@ -480,6 +480,7 @@ void BusSend(TBusTelegram *pMsg) {
       checkSum += ch;
    }
    TransmitCharProt(checkSum);
+   SioSendBuffer(sSioHandle);
 }
 
 /*-----------------------------------------------------------------------------
@@ -493,15 +494,15 @@ static void TransmitCharProt(uint8_t data) {
    
    if (data == STX) {  
       tmp = ESC;
-      SioWrite(sSioHandle, &tmp, sizeof(tmp));
+      SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp));
       tmp = ~STX;
-      SioWrite(sSioHandle, &tmp, sizeof(tmp));
+      SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp));
    } else if (data == ESC) {
       tmp = ESC;
-      SioWrite(sSioHandle, &tmp, sizeof(tmp));
+      SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp));
       tmp = ~ESC;
-      SioWrite(sSioHandle, &tmp, sizeof(tmp));
+      SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp));
    } else {
-      SioWrite(sSioHandle, &data, sizeof(data));
+      SioWriteBuffered(sSioHandle, &data, sizeof(data));
    }   
 }
