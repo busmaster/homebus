@@ -651,11 +651,11 @@ static void TimerInit(void) {
    OCR0 = 250 - 1;
 #elif (F_CPU == 1600000UL) 
    /* 16 MHz */
-   TCCR0 = (0b110 << CS00) | (0 << WGM00) | (1 << WGM01); ; 
+   TCCR0 = (0b110 << CS00) | (0 << WGM00) | (1 << WGM01); 
    OCR0 = 125 - 1;
 #elif (F_CPU == 3686400UL) 
    /* 3.6864 MHz */
-   TCCR0 = (0b100 << CS00) | (0 << WGM00) | (1 << WGM01); ; 
+   TCCR0 = (0b100 << CS00) | (0 << WGM00) | (1 << WGM01); 
    OCR0 = 115 - 1;
 #else
 #error adjust timer settings for your CPU clock frequency
