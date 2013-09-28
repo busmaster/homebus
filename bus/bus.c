@@ -451,10 +451,10 @@ void BusSend(TBusTelegram *pMsg) {
    uint8_t numTypes;
 
    numTypes = ARRAY_CNT(sTelegramSize);
-   if ((pMsg->type + 1) >= numTypes) {
+   if ((uint8_t)(pMsg->type + 1) >= numTypes) {
       return; // error
    }
-   pSize = &sTelegramSize[(uint8_t)pMsg->type + 1];
+   pSize = &sTelegramSize[(uint8_t)(pMsg->type + 1)];
    len = pSize->size;
    if (len == 0) {
       pVarSize = pSize->pVarLen;
