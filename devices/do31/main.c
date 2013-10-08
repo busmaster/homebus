@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h> 
+#include <string.h>
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -110,7 +110,7 @@ static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
 
 /*-----------------------------------------------------------------------------
-*  Programstart
+*  main
 */
 int main(void) {                      
 
@@ -128,6 +128,7 @@ int main(void) {
    ApplicationInit();
    
    SioInit();
+   SioRandSeed(sMyAddr);
    /* sio for debug traces */
    gDbgSioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
                         eSioStopBits1, eSioModeFullDuplex);
@@ -171,9 +172,8 @@ int main(void) {
 }          
 
 
-/*-----------------------------------------------------------------------------*/
-/**  
-*   Idle-Mode einschalten
+/*-----------------------------------------------------------------------------
+*   switch to idle mode
 */
 static void Idle(void) {
 
