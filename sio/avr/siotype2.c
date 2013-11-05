@@ -42,7 +42,6 @@
 
 /* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
 #define TIMER1_PRESCALER (0b100 << CS10) // prescaler clk/256
-#define TIMER1_OCDIFF    8              // 8 * 256 / 1000000 = 2
 #define TIMER1_MS1       4               // 1 ms
 #define TIMER1_MS2       8               // 2 ms
 
@@ -54,9 +53,8 @@
 
 /* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
 #define TIMER1_PRESCALER (0b101 << CS10) // prescaler clk/1024
-#define TIMER1_OCDIFF    8               // 8 * 1024 / 3686400 = 2.2
-#define TIMER1_MS1       4               // 1.1 ms
-#define TIMER1_MS2       8               // 2.2 ms
+#define TIMER1_MS1       4               // 4 * 1024 / 3686400 = 1.1
+#define TIMER1_MS2       8               // 8 * 1024 / 3686400 = 2.2
 
 #else
 #error adjust baud rate settings for your CPU clock frequency
@@ -91,7 +89,9 @@
 #endif
 
 #define MAX_TX_RETRY  16
-#define INTERCHAR_TIMEOUT  TIMER1_OCDIFF
+#define INTERCHAR_TIMEOUT  TIMER1_MS2
+
+#define MAX_RX_DISCARD 3
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -99,6 +99,7 @@
 typedef struct {
     uint8_t txRetryCnt;
     uint8_t txRxComparePos;
+    uint8_t rxDiscardCnt;
     enum {
         eIdle,          // no activity
         eRxing,         // rx is in progress (no data in tx)
@@ -159,8 +160,7 @@ static void UdreInt(int handle);
 static void TxcInt(int handle);
 static void RxcInt(int handle);
 static void TimerInit(void);
-static void TimerSetTimeout(TChanDesc *pChan, uint16_t delayTicks);
-static void TimerStart(TChanDesc *pChan);
+static void TimerStart(TChanDesc *pChan, uint16_t delayTicks);
 static void TimerStop(TChanDesc *pChan);
 
 /*-----------------------------------------------------------------------------
@@ -182,7 +182,7 @@ void SioInit(void) {
 *  set seed of random num generator
 */
 void SioRandSeed(uint8_t seed) {
-   sRand = seed;
+    sRand = seed;
 }
 
 /*-----------------------------------------------------------------------------
@@ -190,8 +190,8 @@ void SioRandSeed(uint8_t seed) {
 */
 static uint8_t MyRand(void) {
 
-   sRand = (sRand << 7) - sRand + 251;
-   return (uint8_t)(sRand + (sRand >> 8));
+    sRand = (sRand << 7) - sRand + 251;
+    return (uint8_t)(sRand + (sRand >> 8));
 }
 
 /*-----------------------------------------------------------------------------
@@ -320,11 +320,6 @@ int SioOpen(const char *pPortName,   /* is ignored */
    pChan->comm.txRetryCnt = 0;
    pChan->comm.txRxComparePos = 0;
 
-   /* Enable Receiver und Transmitter */
-   ucsrb |= (1 << RXEN) | (1 << RXCIE) | (1 << TXEN);
-   ucsrb &= ~(1 << UDRIE);
-   *pChan->ucsrb = ucsrb;
-
    pChan->valid = true;
    pChan->rxBufWrIdx = 0;
    pChan->rxBufRdIdx = 0;
@@ -334,6 +329,11 @@ int SioOpen(const char *pPortName,   /* is ignored */
    pChan->idleFunc = 0;
    pChan->busTransceiverPowerDownFunc = 0;
    pChan->mode = mode;
+
+   /* Enable Receiver und Transmitter */
+   ucsrb |= (1 << RXEN) | (1 << RXCIE) | (1 << TXEN);
+   ucsrb &= ~(1 << UDRIE);
+   *pChan->ucsrb = ucsrb;
 
    return hdl;
 }
@@ -696,8 +696,7 @@ static void RxcInt(int handle) {
     TChanDesc  *pChan = &sChan[handle];
 
     if (pChan->mode == eSioModeHalfDuplex) {
-        TimerSetTimeout(pChan, TIMER1_OCDIFF);
-        TimerStart(pChan);
+        TimerStart(pChan, INTERCHAR_TIMEOUT);
     }
 
     switch (pChan->comm.state) {
@@ -720,6 +719,7 @@ static void RxcInt(int handle) {
             pChan->comm.state = eTxStopped;
             StopTx(pChan);
             pChan->comm.txRetryCnt++;
+            pChan->comm.rxDiscardCnt = 0;
             // after stoping tx some chars are sent till tx buffer and shift reg
             // are empty. comm.state will be set to eTxPending in Timeout
             // function after these chars are flushed out
@@ -728,6 +728,10 @@ static void RxcInt(int handle) {
     case eTxStopped:
         // discard received char
         *pChan->udr;
+        pChan->comm.rxDiscardCnt++;
+        if (pChan->comm.rxDiscardCnt > MAX_RX_DISCARD) {
+            pChan->comm.state = eTxPending;
+        }
         break;
     default:
         // normal receive
@@ -769,22 +773,15 @@ static void TimerInit(void) {
 /*-----------------------------------------------------------------------------
 * after delayTicks the timer ISR is called
 */
-static void TimerSetTimeout(TChanDesc *pChan, uint16_t delayTicks) {
+static void TimerStart(TChanDesc *pChan, uint16_t delayTicks) {
 
     uint16_t cnt;
 
     cnt = TCNT1;
     *pChan->timerOcr = cnt + delayTicks;
-}
-
-/*-----------------------------------------------------------------------------
-* enable the timer interrupt
-* the timer interrupt flag is cleared
-*/
-static void TimerStart(TChanDesc *pChan) {
 
     if ((TIMSK & pChan->timerIntMsk) == 0) {
-        TIFR = pChan->timerIntFlg;
+        TIFR = pChan->timerIntFlg; // clear by writing 1
         TIMSK |= pChan->timerIntMsk;
     }
 }
@@ -815,14 +812,13 @@ static void Timeout(int handle) {
             if (pChan->comm.txRetryCnt < MAX_TX_RETRY) {
                 // timeout on eTxing will appear on tx collision detection
                 pChan->comm.state = eTxPending;
-                // txRetryCnt = 1:  delayTicks = 2 .. 17 ms
-                // txRetryCnt = 2:  delayTicks = 2 .. 33 ms
-                // txRetryCnt = 3:  delayTicks = 2 .. 49 ms
+                // txRetryCnt = 1:  delayTicks = 4 .. 19 ms
+                // txRetryCnt = 2:  delayTicks = 4 .. 35 ms
+                // txRetryCnt = 3:  delayTicks = 4 .. 51 ms
                 // ...
-                // txRetryCnt = 15: delayTicks = 2 .. 241 ms
-                delayTicks = TIMER1_MS2 + MyRand() % (pChan->comm.txRetryCnt * 16) * TIMER1_MS1;
-                TimerSetTimeout(pChan, delayTicks);
-                TimerStart(pChan);
+                // txRetryCnt = 15: delayTicks = 4 .. 243 ms
+                delayTicks = INTERCHAR_TIMEOUT * 2 + MyRand() % (pChan->comm.txRetryCnt * 16) * TIMER1_MS1;
+                TimerStart(pChan, delayTicks);
             } else {
                 // skip current BufferedSend buffer
                 pChan->txBufBufferedPos = 0;

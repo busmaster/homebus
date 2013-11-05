@@ -1,24 +1,24 @@
 /*
  * siotype1.c for ATmega88
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <string.h>
@@ -32,23 +32,54 @@
 
 /*-----------------------------------------------------------------------------
 *  Macros
-*/          
+*/
 
-#ifndef SIO_RX_BUF_SIZE 
+#ifndef SIO_RX_BUF_SIZE
 #define SIO_RX_BUF_SIZE 16  /* must be power of 2 */
 #endif
-#ifndef SIO_TX_BUF_SIZE  
-#define SIO_TX_BUF_SIZE 32 /* must be power of 2 */
-#endif      
+#ifndef SIO_TX_BUF_SIZE
+#define SIO_TX_BUF_SIZE 32  /* must be power of 2 */
+#endif
+
+#if (F_CPU == 1000000UL)
+#define UBRR_9600   12     /* 9600 @ 1MHz  */
+#define BRX2_9600   true   /* double baud rate */
+#define ERR_9600    false  /* baud rate is possible */
+
+/* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
+#define TIMER1_PRESCALER (0b100 << CS10) // prescaler clk/256
+#define TIMER1_MS1       4               // 4 * 256 / 1000000 = 1
+#define TIMER1_MS2       8               // 8 * 256 / 1000000 = 2
+
+#else
+#error adjust baud rate settings for your CPU clock frequency
+#endif
+
+#define MAX_TX_RETRY  16
+#define INTERCHAR_TIMEOUT  TIMER1_MS2
+
+#define MAX_RX_DISCARD 3
 
 /*-----------------------------------------------------------------------------
 *  typedefs
 */
+typedef struct {
+    uint8_t txRetryCnt;
+    uint8_t txRxComparePos;
+    uint8_t rxDiscardCnt;
+    enum {
+        eIdle,          // no activity
+        eRxing,         // rx is in progress (no data in tx)
+        eTxing,         // tx is in progress (is read back)
+        eTxStopped,     // tx was stopped, but some bytes are received after stopping
+        eTxPending      // tx buffer is ready to be sent, but rx is in progress
+    } state;
+} TCommState;
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/                                
-static TIdleStateFunc               sIdleFunc = 0;
+*/
+static TIdleStateFunc                 sIdleFunc = 0;
 
 static uint8_t                        sRxBuffer[SIO_RX_BUF_SIZE];
 static uint8_t                        sRxBufWrIdx = 0;
@@ -59,41 +90,54 @@ static uint8_t                        sTxBufRdIdx = 0;
 static uint8_t                        sTxBufferBuffered[SIO_TX_BUF_SIZE];
 static uint8_t                        sTxBufBufferedPos = 0;
 static TBusTransceiverPowerDownFunc   sBusTransceiverPowerDownFunc = 0;
-static TSioMode                       sMode = eSioModeHalfDuplex;
+static TSioMode                       sMode;
+static TCommState                     sComm;
 
-#if (F_CPU == 1000000UL)
-#define UBRR_9600   12     /* 9600 @ 1MHz  */
-#define BRX2_9600   true   /* double baud rate */       
-#define ERR_9600    false  /* baud rate is possible */ 
-#else
-#error adjust baud rate settings for your CPU clock frequency
-#endif
+static uint16_t sRand;
 
 /*-----------------------------------------------------------------------------
 *  Functions
 */
 static uint8_t SioGetNumTxFreeChar(int handle);
-
+static void TimerInit(void);
+static void TimerStart(uint16_t delayTicks);
+static void TimerStop(void);
 
 /*-----------------------------------------------------------------------------
 *  init sio module
 */
 void SioInit(void) {
+    TimerInit();
+}
 
+/*-----------------------------------------------------------------------------
+*  set seed of random num generator
+*/
+void SioRandSeed(uint8_t seed) {
+    sRand = seed;
+}
+
+/*-----------------------------------------------------------------------------
+*  very fast rand function
+*/
+static uint8_t MyRand(void) {
+
+    sRand = (sRand << 7) - sRand + 251;
+    return (uint8_t)(sRand + (sRand >> 8));
 }
 
 /*-----------------------------------------------------------------------------
 *  open sio channel
 */
 int SioOpen(const char *pPortName,   /* is ignored */
-            TSioBaud baud, 
-            TSioDataBits dataBits, 
-            TSioParity parity, 
+            TSioBaud baud,
+            TSioDataBits dataBits,
+            TSioParity parity,
             TSioStopBits stopBits,
             TSioMode mode
    ) {
-         
-   uint16_t  ubrr; 
+
+   uint16_t  ubrr;
    bool      error = true;
    bool      doubleBr = false;
    uint8_t   ucsrb = 0;
@@ -160,14 +204,18 @@ int SioOpen(const char *pPortName,   /* is ignored */
 
    UCSR0C = ucsrc;
 
+   sComm.state = eIdle;
+   sComm.txRetryCnt = 0;
+   sComm.txRxComparePos = 0;
+
+   sMode = mode;
+
    /* Enable Receiver und Transmitter */
    ucsrb |= (1 << RXEN0) | (1 << RXCIE0) | (1 << TXEN0);
    ucsrb &= ~(1 << UDRIE0);
    UCSR0B = ucsrb;
-  
-   sMode = mode;
-  
-   return 0;             
+
+   return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -188,25 +236,25 @@ void SioSetTransceiverPowerDownFunc(int handle, TBusTransceiverPowerDownFunc btp
 *  write to sio channel tx buffer
 */
 uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
-                        
-   uint8_t *pStart;   
+
+   uint8_t *pStart;
    uint8_t i;
    uint8_t txFree;
    uint8_t wrIdx;
    bool  flag;
-                   
+
    pStart = &sTxBuffer[0];
    txFree = SioGetNumTxFreeChar(handle);
    if (bufSize > txFree) {
       bufSize = txFree;
    }
-   
+
    wrIdx = sTxBufWrIdx;
-   for (i = 0; i < bufSize; i++) {      
-      wrIdx++;                    
+   for (i = 0; i < bufSize; i++) {
+      wrIdx++;
       wrIdx &= (SIO_TX_BUF_SIZE - 1);
       *(pStart + wrIdx) =  *(pBuf + i);
-   }    
+   }
 
    flag = DISABLE_INT;
    sTxBufWrIdx = wrIdx;
@@ -218,12 +266,20 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
    if ((UCSR0B & (1 << TXCIE0)) != 0) {
       UCSR0B &= ~(1 << TXCIE0);
    }
-   if (sBusTransceiverPowerDownFunc != 0) { 
+   if (sBusTransceiverPowerDownFunc != 0) {
       sBusTransceiverPowerDownFunc(false); /* enable bus transmitter */
-   }   
+   }
    RESTORE_INT(flag);
-   
-   return bufSize;           
+
+   return bufSize;
+}
+
+/*-----------------------------------------------------------------------------
+*  stop tx and clear tx buffer
+*/
+static void StopTx(void) {
+
+    sTxBufRdIdx = sTxBufWrIdx;
 }
 
 /*-----------------------------------------------------------------------------
@@ -233,12 +289,17 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    uint8_t   len;
 
-   len = sizeof(sTxBufferBuffered) - sTxBufBufferedPos;
-   len = min(len, bufSize);
-   memcpy(&sTxBufferBuffered[sTxBufBufferedPos], pBuf, len);
-   sTxBufBufferedPos += len;
-   
-   return bufSize;           
+    if ((sComm.state == eIdle) ||
+        (sComm.state == eRxing)) {
+        len = sizeof(sTxBufferBuffered) - sTxBufBufferedPos;
+        len = min(len, bufSize);
+        memcpy(&sTxBufferBuffered[sTxBufBufferedPos], pBuf, len);
+        sTxBufBufferedPos += len;
+    } else {
+        return 0;
+    }
+
+    return bufSize;
 }
 
 /*-----------------------------------------------------------------------------
@@ -246,18 +307,30 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
 */
 bool SioSendBuffer(int handle) {
 
-   unsigned long bytesWritten;    
-   bool          rc;
+    unsigned long bytesWritten;
+    bool          rc;
+    bool          flag;
 
-   bytesWritten = SioWrite(handle, sTxBufferBuffered, sTxBufBufferedPos);
-   if (bytesWritten == sTxBufBufferedPos) {
-       rc = true;
-   } else {
-       rc = false;
-   }
-   sTxBufBufferedPos = 0;
-   
-   return rc;
+    flag = DISABLE_INT;
+
+    if (sComm.state == eIdle) {
+        sComm.txRxComparePos = 0;
+        bytesWritten = SioWrite(handle, sTxBufferBuffered, sTxBufBufferedPos);
+        if (bytesWritten == sTxBufBufferedPos) {
+            rc = true;
+        } else {
+            rc = false;
+        }
+    } else if (sComm.state == eRxing) {
+        sComm.state = eTxPending;
+        rc = true;
+    } else {
+        rc = false;
+    }
+
+    RESTORE_INT(flag);
+
+    return rc;
 }
 
 /*-----------------------------------------------------------------------------
@@ -267,10 +340,10 @@ static uint8_t SioGetNumTxFreeChar(int handle) {
 
    uint8_t rdIdx;
    uint8_t wrIdx;
-                                
-   rdIdx = sTxBufRdIdx;      
+
+   rdIdx = sTxBufRdIdx;
    wrIdx = sTxBufWrIdx;
-   
+
    return (rdIdx - wrIdx - 1) & (SIO_TX_BUF_SIZE - 1);
 }
 
@@ -281,10 +354,10 @@ uint8_t SioGetNumRxChar(int handle) {
 
    uint8_t rdIdx;
    uint8_t wrIdx;
-                                
-   rdIdx = sRxBufRdIdx;      
+
+   rdIdx = sRxBufRdIdx;
    wrIdx = sRxBufWrIdx;
-   
+
    return (wrIdx - rdIdx) & (SIO_RX_BUF_SIZE - 1);
 }
 
@@ -294,7 +367,7 @@ uint8_t SioGetNumRxChar(int handle) {
 uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    uint8_t rxLen;
-   uint8_t i;  
+   uint8_t i;
    uint8_t rdIdx;
    bool  flag;
 
@@ -304,15 +377,15 @@ uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
    if (rxLen < bufSize) {
       bufSize = rxLen;
    }
-              
+
    for (i = 0; i < bufSize; i++) {
-      rdIdx++;                    
+      rdIdx++;
       rdIdx &= (SIO_RX_BUF_SIZE - 1);
       *(pBuf + i) = sRxBuffer[rdIdx];
-   }    
-   
-   sRxBufRdIdx = rdIdx;     
-   
+   }
+
+   sRxBufRdIdx = rdIdx;
+
    flag = DISABLE_INT;
    if (SioGetNumRxChar(handle) == 0) {
       if (sIdleFunc != 0) {
@@ -320,7 +393,7 @@ uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
       }
    }
    RESTORE_INT(flag);
-            
+
    return bufSize;
 }
 
@@ -330,38 +403,38 @@ uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    uint8_t rxFreeLen;
-   uint8_t i;  
-   uint8_t rdIdx;                    
+   uint8_t i;
+   uint8_t rdIdx;
    bool  flag;
-            
+
    bufSize = min(bufSize, SIO_RX_BUF_SIZE);
-   
+
    /* set back read index. so rx interrupt cannot write to undo buffer */
-   rdIdx = sRxBufRdIdx;       
+   rdIdx = sRxBufRdIdx;
    rdIdx -= bufSize;
-   rdIdx &= (SIO_RX_BUF_SIZE - 1);      
+   rdIdx &= (SIO_RX_BUF_SIZE - 1);
 
    flag = DISABLE_INT;
    /* aet back write index if necessary */
-   rxFreeLen = SIO_RX_BUF_SIZE - 1 - SioGetNumRxChar(handle); 
+   rxFreeLen = SIO_RX_BUF_SIZE - 1 - SioGetNumRxChar(handle);
    if (bufSize > rxFreeLen) {
        sRxBufWrIdx -= (bufSize - rxFreeLen);
-   }    
+   }
    sRxBufRdIdx = rdIdx;
    RESTORE_INT(flag);
 
    rdIdx++;
    for (i = 0; i < bufSize; i++) {
-      sRxBuffer[rdIdx] = *(pBuf + i); 
-      rdIdx++;                    
+      sRxBuffer[rdIdx] = *(pBuf + i);
+      rdIdx++;
       rdIdx &= (SIO_RX_BUF_SIZE - 1);
-   }   
+   }
 
    if ((sIdleFunc != 0) &&
        (bufSize > 0)) {
       sIdleFunc(false);
    }
- 
+
    return bufSize;
 }
 
@@ -370,34 +443,31 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 */
 ISR(USART_UDRE_vect) {
 
-   uint8_t rdIdx;
-   rdIdx = sTxBufRdIdx;
-        
-   if (sTxBufWrIdx != rdIdx) { 
-      if (sMode == eSioModeHalfDuplex) {
-         /* disable receiver */
-         if ((UCSR0B & (1 << RXEN0)) != 0) {
-            UCSR0B &= ~(1 << RXEN0);
-         }
-      }
-      /* get next character from tx buffer */
-      rdIdx++;                    
-      rdIdx &= (SIO_TX_BUF_SIZE - 1);
-      UDR0 = sTxBuffer[rdIdx];
-      sTxBufRdIdx = rdIdx;
+    uint8_t rdIdx;
+    rdIdx = sTxBufRdIdx;
 
-      /* quit transmit complete interrupt (by writing a 1)      */   
-      if ((UCSR0A & (1 << TXC0)) != 0) {
-         UCSR0A |= (1 << TXC0);
-      }   
-   } else {
-      if (sMode == eSioModeHalfDuplex) {
-         /* enable transmit complete interrupt (to reenable receiver) */
-         UCSR0B |= (1 << TXCIE0);
-      }
-      /* no character in tx buffer -> disable UART UDRE Interrupt */
-      UCSR0B &= ~(1 << UDRIE0);
-   }
+    if (sTxBufWrIdx != rdIdx) {
+        if (sMode == eSioModeHalfDuplex) {
+            sComm.state = eTxing;
+        }
+        /* get next character from tx buffer */
+        rdIdx++;
+        rdIdx &= (SIO_TX_BUF_SIZE - 1);
+        UDR0 = sTxBuffer[rdIdx];
+        sTxBufRdIdx = rdIdx;
+
+        /* quit transmit complete interrupt (by writing a 1)      */
+        if ((UCSR0A & (1 << TXC0)) != 0) {
+            UCSR0A |= (1 << TXC0);
+        }
+    } else {
+        if (sMode == eSioModeHalfDuplex) {
+            /* enable transmit complete interrupt (to reenable receiver) */
+            UCSR0B |= (1 << TXCIE0);
+        }
+       /* no character in tx buffer -> disable UART UDRE Interrupt */
+       UCSR0B &= ~(1 << UDRIE0);
+    }
 }
 
 /*-----------------------------------------------------------------------------
@@ -406,11 +476,9 @@ ISR(USART_UDRE_vect) {
 */
 ISR(USART_TX_vect) {
 
-   if (sBusTransceiverPowerDownFunc != 0) { 
+   if (sBusTransceiverPowerDownFunc != 0) {
       sBusTransceiverPowerDownFunc(true); /* disable bus transmitter */
-   } 
-   /* reenable receiver */
-   UCSR0B |= (1 << RXEN0);
+   }
    /* disable transmit complete interrupt */
    UCSR0B &= ~(1 << TXCIE0);
 }
@@ -420,25 +488,146 @@ ISR(USART_TX_vect) {
 */
 ISR(USART_RX_vect) {
 
-   uint8_t wrIdx;
+    uint8_t wrIdx;
 
-   wrIdx = sRxBufWrIdx;
-   wrIdx++;                    
-   wrIdx &= (SIO_RX_BUF_SIZE - 1);
-   if (wrIdx != sRxBufRdIdx) {
-      sRxBuffer[wrIdx] = UDR0;
-   } else {
-      /* buffer voll */
-      wrIdx--;
-      wrIdx &= (SIO_RX_BUF_SIZE - 1);
-      /* Zeichen muss gelesen werden, sonst bleibt Interrupt stehen */
-      UDR0;
-   }  
-   sRxBufWrIdx = wrIdx;
-   /* do not go idle when characters are in rxbuffer */
-   if (sIdleFunc != 0) {
-      sIdleFunc(false);
-   }
+    if (sMode == eSioModeHalfDuplex) {
+        TimerStart(INTERCHAR_TIMEOUT);
+    }
+
+    switch (sComm.state) {
+    case eIdle:
+        sComm.state = eRxing;
+        break;
+    case eTxing:
+        // read back char from tx received
+        if (UDR0 == sTxBufferBuffered[sComm.txRxComparePos]) {
+            sComm.txRxComparePos++;
+            if (sTxBufBufferedPos == sComm.txRxComparePos) {
+                // all chars have been sent correctly
+                sTxBufBufferedPos = 0;
+                sComm.txRetryCnt = 0;
+                sComm.state = eIdle;
+                TimerStop();
+            }
+        } else {
+            // collision detected
+            sComm.state = eTxStopped;
+            StopTx();
+            sComm.txRetryCnt++;
+            sComm.rxDiscardCnt = 0;
+            // after stopping tx some chars are sent till tx buffer and shift reg
+            // are empty. comm.state will be set to eTxPending in Timeout
+            // function after these chars are flushed out
+        }
+        break;
+    case eTxStopped:
+        // discard received char
+        UDR0;
+        sComm.rxDiscardCnt++;
+        if (sComm.rxDiscardCnt > MAX_RX_DISCARD) {
+            sComm.state = eTxPending;
+        }
+        break;
+    default:
+        // normal receive
+        wrIdx = sRxBufWrIdx;
+        wrIdx++;
+        wrIdx &= (SIO_RX_BUF_SIZE - 1);
+        if (wrIdx != sRxBufRdIdx) {
+            sRxBuffer[wrIdx] = UDR0;
+        } else {
+            /* buffer voll */
+            wrIdx--;
+            wrIdx &= (SIO_RX_BUF_SIZE - 1);
+            /* Zeichen muss gelesen werden, sonst bleibt Interrupt stehen */
+            UDR0;
+        }
+        sRxBufWrIdx = wrIdx;
+        /* do not go idle when characters are in rxbuffer */
+        if (sIdleFunc != 0) {
+            sIdleFunc(false);
+        }
+        break;
+    }
 }
 
+/*-----------------------------------------------------------------------------
+*  setup Timer1 as free running timer (normal mode)
+*  CompareA is used to generate USART timeout interrupt
+*/
+static void TimerInit(void) {
 
+   /* Timer 1 normal mode */
+   TCCR1A = 0;
+   TCCR1B = TIMER1_PRESCALER;
+   TCCR1C = 0;
+}
+
+/*-----------------------------------------------------------------------------
+* after delayTicks the timer ISR is called
+*/
+static void TimerStart(uint16_t delayTicks) {
+
+    uint16_t cnt;
+
+    cnt = TCNT1;
+    OCR1A = cnt + delayTicks;
+
+    if ((TIMSK1 & (1 << OCIE1A)) == 0) {
+        TIFR1 = 1 << OCF1A; // clear by writing 1
+        TIMSK1 |= 1 << OCIE1A;
+    }
+}
+
+/*-----------------------------------------------------------------------------
+* disable the timer interrupt
+*/
+static void TimerStop(void) {
+
+    TIMSK1 &= ~(1 << OCIE1A);
+}
+
+/*-----------------------------------------------------------------------------
+* Timer ISR
+*/
+static void Timeout(void) {
+    uint16_t   delayTicks;
+
+    TimerStop();
+    switch (sComm.state) {
+        case eRxing:
+            sComm.state = eIdle;
+            break;
+        case eTxing:
+        case eTxStopped:
+            if (sComm.txRetryCnt < MAX_TX_RETRY) {
+                // timeout on eTxing will appear on tx collision detection
+                sComm.state = eTxPending;
+                // txRetryCnt = 1:  delayTicks = 4 .. 19 ms
+                // txRetryCnt = 2:  delayTicks = 4 .. 35 ms
+                // txRetryCnt = 3:  delayTicks = 4 .. 51 ms
+                // ...
+                // txRetryCnt = 15: delayTicks = 4 .. 243 ms
+                delayTicks = INTERCHAR_TIMEOUT * 2 + MyRand() % (sComm.txRetryCnt * 16) * TIMER1_MS1;
+                TimerStart(delayTicks);
+            } else {
+                // skip current BufferedSend buffer
+                sTxBufBufferedPos = 0;
+                sComm.txRetryCnt = 0;
+            }
+            break;
+        case eTxPending:
+            sComm.state = eIdle;
+            SioSendBuffer(0);
+            break;
+        default:
+            break;
+    }
+}
+
+/*-----------------------------------------------------------------------------
+*  timer interrupt for USART
+*/
+ISR(TIMER1_COMPA_vect)  {
+    Timeout();
+}

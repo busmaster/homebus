@@ -145,7 +145,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88 1.03";
+char version[] = "Sw88 1.04";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -202,6 +202,7 @@ int main(void) {
    PortInit();
    TimerInit();
    SioInit();
+   SioRandSeed(sMyAddr);
    sioHandle = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
                        eSioStopBits1, eSioModeHalfDuplex);
    SioSetIdleFunc(sioHandle, IdleSio);
@@ -550,6 +551,7 @@ static void ProcessBus(void) {
             if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                msgForMe = true;
             }
+            break;
          default:
             break;
       }
