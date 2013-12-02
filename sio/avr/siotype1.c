@@ -64,6 +64,7 @@
 *  typedefs
 */
 typedef struct {
+    bool     txStartup;
     uint8_t  txRetryCnt;
     uint8_t  txRxComparePos;
     uint8_t  txJamCnt;
@@ -72,7 +73,7 @@ typedef struct {
         eIdle,          // no activity
         eRxing,         // rx is in progress (no data in tx)
         eTxing,         // tx is in progress (is read back)
-        eTxStopped,     // tx is terminated
+        eTxStopped,     // tx is terminated after jamming
         eTxPending,     // tx buffer is ready to be sent, but rx is in progress
         eTxJamming      // tx jam
     } state;
@@ -92,7 +93,6 @@ static uint8_t                        sTxBufRdIdx = 0;
 static uint8_t                        sTxBufferBuffered[SIO_TX_BUF_SIZE];
 static uint8_t                        sTxBufBufferedPos = 0;
 static TBusTransceiverPowerDownFunc   sBusTransceiverPowerDownFunc = 0;
-static TSioMode                       sMode;
 static TCommState                     sComm;
 
 static uint16_t sRand;
@@ -104,12 +104,14 @@ static uint8_t SioGetNumTxFreeChar(int handle);
 static void TimerInit(void);
 static void TimerStart(uint16_t delayTicks);
 static void TimerStop(void);
+static void RxStartDetectionInit(void);
 
 /*-----------------------------------------------------------------------------
 *  init sio module
 */
 void SioInit(void) {
     TimerInit();
+    RxStartDetectionInit();
 }
 
 /*-----------------------------------------------------------------------------
@@ -136,7 +138,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
             TSioDataBits dataBits,
             TSioParity parity,
             TSioStopBits stopBits,
-            TSioMode mode
+            TSioMode mode            /* is ignored, always half duplex */
    ) {
 
    uint16_t  ubrr;
@@ -210,8 +212,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
    sComm.txRetryCnt = 0;
    sComm.txRxComparePos = 0;
    sComm.txDelayTicks = 0;
-
-   sMode = mode;
+   sComm.txStartup = false;
 
    /* Enable Receiver und Transmitter */
    ucsrb |= (1 << RXEN0) | (1 << RXCIE0) | (1 << TXEN0);
@@ -264,18 +265,22 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
    }
 
    flag = DISABLE_INT;
+   if (sTxBufWrIdx == sTxBufRdIdx) {
+       sComm.txStartup = true;
+       /* enable UART UDRE Interrupt */
+       if ((UCSR0B & (1 << UDRIE0)) == 0) {
+           UCSR0B |= 1 << UDRIE0;
+       }
+       /* disable transmit complete interrupt */
+       if ((UCSR0B & (1 << TXCIE0)) != 0) {
+          UCSR0B &= ~(1 << TXCIE0);
+       }
+       if (sBusTransceiverPowerDownFunc != 0) {
+          sBusTransceiverPowerDownFunc(false); /* enable bus transmitter */
+      }
+   }
    sTxBufWrIdx = wrIdx;
-   /* enable UART UDRE Interrupt */
-   if ((UCSR0B & (1 << UDRIE0)) == 0) {
-      UCSR0B |= 1 << UDRIE0;
-   }
-   /* disable transmit complete interrupt */
-   if ((UCSR0B & (1 << TXCIE0)) != 0) {
-      UCSR0B &= ~(1 << TXCIE0);
-   }
-   if (sBusTransceiverPowerDownFunc != 0) {
-      sBusTransceiverPowerDownFunc(false); /* enable bus transmitter */
-   }
+
    RESTORE_INT(flag);
 
    return bufSize;
@@ -329,6 +334,7 @@ bool SioSendBuffer(int handle) {
             rc = false;
         }
     } else if (sComm.state == eRxing) {
+        sComm.txDelayTicks = INTERCHAR_TIMEOUT;
         sComm.state = eTxPending;
         rc = true;
     } else {
@@ -451,8 +457,8 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 ISR(USART_UDRE_vect) {
 
     bool lastChar = false;
-    uint8_t rdIdx;
-    rdIdx = sTxBufRdIdx;
+    uint8_t rdIdx = sTxBufRdIdx;
+    uint8_t txChar;
 
     if (sComm.state == eTxJamming) {
         sComm.txJamCnt++;
@@ -463,14 +469,37 @@ ISR(USART_UDRE_vect) {
             lastChar = true;
         } 
     } else if (sTxBufWrIdx != rdIdx) {
-        if (sMode == eSioModeHalfDuplex) {
-            sComm.state = eTxing;
+        if (sComm.state == eRxing) {
+            sComm.txDelayTicks = INTERCHAR_TIMEOUT;
+            TimerStart(INTERCHAR_TIMEOUT);
+            sComm.state = eTxPending;
+            StopTx();
+            UCSR0B &= ~(1 << UDRIE0);
+            return;
         }
         /* get next character from tx buffer */
         rdIdx++;
         rdIdx &= (SIO_TX_BUF_SIZE - 1);
-        UDR0 = sTxBuffer[rdIdx];
+        txChar = sTxBuffer[rdIdx];
+
+        if (sComm.txStartup) {
+            sComm.txStartup = false;
+            if ((EIFR & (1 << INTF0)) == 0) {
+                UDR0 = txChar;
+            } else {
+                EIFR = 1 << INTF0;
+                sComm.txDelayTicks = INTERCHAR_TIMEOUT;
+                TimerStart(INTERCHAR_TIMEOUT);
+                sComm.state = eTxPending;
+                StopTx();
+                UCSR0B &= ~(1 << UDRIE0);
+                return;
+            }
+        } else {
+           UDR0 = txChar;
+        }
         sTxBufRdIdx = rdIdx;
+        sComm.state = eTxing;
 
         /* quit transmit complete interrupt (by writing a 1)      */
         if ((UCSR0A & (1 << TXC0)) != 0) {
@@ -481,12 +510,10 @@ ISR(USART_UDRE_vect) {
     }
     
     if (lastChar) {
-        if (sMode == eSioModeHalfDuplex) {
-            /* enable transmit complete interrupt (to reenable receiver) */
-            UCSR0B |= (1 << TXCIE0);
-        }
-       /* no character in tx buffer -> disable UART UDRE Interrupt */
-       UCSR0B &= ~(1 << UDRIE0);
+        /* enable transmit complete interrupt (to reenable receiver) */
+        UCSR0B |= (1 << TXCIE0);
+        /* no character in tx buffer -> disable UART UDRE Interrupt */
+        UCSR0B &= ~(1 << UDRIE0);
     }
 }
 
@@ -507,6 +534,8 @@ ISR(USART_TX_vect) {
         TimerStart(INTERCHAR_TIMEOUT);
     } else {
         sComm.state = eIdle;
+        EIFR = 1 < INTF0;
+        EIMSK |= (1 << INT0);
     }
 }
 
@@ -516,6 +545,7 @@ ISR(USART_TX_vect) {
 ISR(USART_RX_vect) {
 
     uint8_t wrIdx;
+    bool doRx = false;
 
     switch (sComm.state) {
     case eTxing:
@@ -526,7 +556,6 @@ ISR(USART_RX_vect) {
                 // all chars have been sent correctly
                 sTxBufBufferedPos = 0;
                 sComm.txRetryCnt = 0;
-                sComm.state = eIdle;
                 TimerStop();
             } else {
                 TimerStart(INTERCHAR_TIMEOUT);
@@ -555,21 +584,23 @@ ISR(USART_RX_vect) {
         break;
     case eTxPending:
         TimerStart(sComm.txDelayTicks);
-        // discard received char
-        UDR0;
+        doRx = true;
         break;
     case eIdle:
     default:
         sComm.state = eRxing;
         TimerStart(INTERCHAR_TIMEOUT);
-        // normal receive
+        doRx = true;
+        break;
+    }
+    if (doRx) {
         wrIdx = sRxBufWrIdx;
         wrIdx++;
         wrIdx &= (SIO_RX_BUF_SIZE - 1);
         if (wrIdx != sRxBufRdIdx) {
             sRxBuffer[wrIdx] = UDR0;
         } else {
-            /* buffer voll */
+            /* buffer full */
             wrIdx--;
             wrIdx &= (SIO_RX_BUF_SIZE - 1);
             /* character must be read to quit interrupt */
@@ -580,7 +611,6 @@ ISR(USART_RX_vect) {
         if (sIdleFunc != 0) {
             sIdleFunc(false);
         }
-        break;
     }
 }
 
@@ -626,6 +656,8 @@ static void Timeout(void) {
     switch (sComm.state) {
         case eRxing:
             sComm.state = eIdle;
+            EIFR = 1 << INTF0;
+            EIMSK |= 1 << INT0;
             break;
         case eTxStopped:
             if (sComm.txRetryCnt < MAX_TX_RETRY) {
@@ -659,4 +691,24 @@ static void Timeout(void) {
 */
 ISR(TIMER1_COMPA_vect)  {
     Timeout();
+}
+
+/*-----------------------------------------------------------------------------
+*  interrupt rx start bit
+*/
+static void RxStartDetectionInit(void) {
+
+    /* ext. Int for begin of Rx (falling edge of start bit) */
+    EICRA |= 1 << ISC01;
+    EICRA &= ~(1 << ISC00); /* falling edge of INT0 */
+    EIFR = 1 < INTF0;
+    EIMSK |= 1 << INT0;
+}
+
+ISR(INT0_vect) {
+    if (sComm.state == eIdle) {
+       sComm.state = eRxing;
+       TimerStart(INTERCHAR_TIMEOUT);
+    }
+    EIMSK &= ~(1 << INT0);
 }
