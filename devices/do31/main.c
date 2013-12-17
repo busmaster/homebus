@@ -149,11 +149,12 @@ int main(void) {
 
    /* für Delay wird timer-Interrupt benötigt (DigOutAll() in RestoreDigOut()) */
    ENABLE_INT;
-  
+
    RestoreDigOut();
-   /* ext. Int für Powerfail: low level aktiv */              
-   EICRA = 0x00;                  
-   EIMSK = 0x01;
+
+   /* ext int for power fail: INT0 low level sensitive */
+   EICRA &= ~((1 << ISC01) | (1 << ISC00));
+   EIMSK |= (1 << INT0);
 
    LedSet(eLedGreenFlashSlow);
 
