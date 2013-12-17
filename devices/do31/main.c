@@ -224,12 +224,12 @@ static void BusTransceiverPowerDown(bool powerDown) {
 */
 static void RestoreDigOut(void) {
 
-   const   uint8_t *ptrToEeprom;
+   uint8_t *ptrToEeprom;
    uint8_t buf[4];
    uint8_t   flags;
 
    /* zuletzt gespeicherten Zustand der Ausgänge suchen */  
-   for (ptrToEeprom = (const uint8_t *)3; ptrToEeprom < EEPROM_SIZE; ptrToEeprom += 4) {
+   for (ptrToEeprom = (uint8_t *)3; ptrToEeprom < EEPROM_SIZE; ptrToEeprom += 4) {
       if ((eeprom_read_byte(ptrToEeprom) & 0x80) == 0x00) {
          break;
       }     
