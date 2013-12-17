@@ -326,7 +326,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
         pChan->ucsrb = (volatile uint8_t *)0x9a; /* UCSR1B */
         pChan->ucsrc = (volatile uint8_t *)0x9d; /* UCSR1C */
         pChan->udr =   (volatile uint8_t *)0x9c; /* UDR1   */
-        pChan->timerOcr = (volatile uint16_t *)0x48 ; /* OCR1BL */
+        pChan->timerOcr = (volatile uint16_t *)0x48; /* OCR1BL */
         pChan->timerIntMsk = 1 << OCIE1B;
         pChan->timerIntFlg = 1 << OCF1B;
 #ifdef USART1_EXTINT
@@ -659,7 +659,7 @@ static void UdreInt(int handle) {
     if (pChan->comm.state == eTxJamming) {
         pChan->comm.txJamCnt++;
         if (pChan->comm.txJamCnt < MAX_JAM_CNT) {
-            UDR0 = 0; // 0 is the jam character
+            *pChan->udr = 0; // 0 is the jam character
         } else {
             // stop jamming
             lastChar = true;
@@ -678,10 +678,11 @@ static void UdreInt(int handle) {
         rdIdx &= (pChan->txBufSize - 1);
         txChar = pChan->pTxBuf[rdIdx];
 
-        if (pChan->comm.txStartup) {
+        if ((pChan->comm.txStartup) &&
+            (pChan->extIntEIFR != 0)) {
             pChan->comm.txStartup = false;
             if ((*pChan->extIntEIFR & pChan->extIntEIFRVal) == 0) {
-                *pChan->udr= txChar;
+                *pChan->udr = txChar;
             } else {
                 *pChan->extIntEIFR = pChan->extIntEIFRVal;
                 pChan->comm.txDelayTicks = INTERCHAR_TIMEOUT;
@@ -707,7 +708,7 @@ static void UdreInt(int handle) {
 
     if (lastChar) {
         /* enable transmit complete interrupt */
-         *pChan->ucsrb |= (1 << TXCIE);
+        *pChan->ucsrb |= (1 << TXCIE);
         /* no character in txbuffer -> disable UART UDRE Interrupt */
         *pChan->ucsrb &= ~(1 << UDRIE);
     }
@@ -941,6 +942,8 @@ static void RxStartDetectionInit(void) {
     *USART1_EIMSK |= USART1_EIMSK_VAL;
 #endif
 }
+
+
 
 static void RxStart(int handle) {
     TChanDesc  *pChan = &sChan[handle];
