@@ -235,6 +235,37 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
 
 void ApplicationInit(void) {
 
+DigOutDelayedOff(eDigOut0, 1000);
+DigOutDelayedOff(eDigOut1, 2000);
+DigOutDelayedOff(eDigOut2, 3000);
+DigOutDelayedOff(eDigOut3, 4000);
+DigOutDelayedOff(eDigOut4, 5000);
+DigOutDelayedOff(eDigOut5, 6000);
+DigOutDelayedOff(eDigOut6, 7000);
+DigOutDelayedOff(eDigOut7, 8000);
+DigOutDelayedOff(eDigOut8, 8000);
+DigOutDelayedOff(eDigOut9, 10000);
+DigOutDelayedOff(eDigOut10, 11000);
+DigOutDelayedOff(eDigOut11, 12000);
+DigOutDelayedOff(eDigOut12, 13000);
+DigOutDelayedOff(eDigOut13, 14000);
+DigOutDelayedOff(eDigOut14, 15000);
+DigOutDelayedOff(eDigOut15, 16000);
+DigOutDelayedOff(eDigOut16, 17000);
+DigOutDelayedOff(eDigOut17, 18000);
+DigOutDelayedOff(eDigOut18, 19000);
+DigOutDelayedOff(eDigOut19, 20000);
+DigOutDelayedOff(eDigOut20, 21000);
+DigOutDelayedOff(eDigOut21, 22000);
+DigOutDelayedOff(eDigOut22, 23000);
+DigOutDelayedOff(eDigOut23, 24000);
+DigOutDelayedOff(eDigOut24, 25000);
+DigOutDelayedOff(eDigOut25, 26000);
+DigOutDelayedOff(eDigOut26, 27000);
+DigOutDelayedOff(eDigOut27, 28000);
+DigOutDelayedOff(eDigOut28, 29000);
+DigOutDelayedOff(eDigOut29, 30000);
+DigOutDelayedOff(eDigOut30, 31000);
 }
 
 void ApplicationCheck(void) {
