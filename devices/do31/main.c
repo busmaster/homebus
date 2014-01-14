@@ -63,12 +63,12 @@
 /* Bits in EECR */
 #define EEWE     1
 
-#define EEPROM_SIZE (uint8_t *)4096  /* durch 4 teilbar!! */
+#define EEPROM_SIZE (uint8_t *)2048  /* durch 4 teilbar!! */
 
 /* eigene Adresse am Bus */
 #define MY_ADDR    sMyAddr   
-/* im letzten Byte im Flash liegt die eigene Adresse */
-#define FLASH_ADDR 0x1FFFF                              
+/* im letzten Byte im EEPROM liegt die eigene Adresse */
+#define EEPROM_ADDR 0xffe  
 
 #define IDLE_SIO1  0x01
 
@@ -104,7 +104,6 @@ static void ButtonEvent(uint8_t address, uint8_t button);
 static void SwitchEvent(uint8_t address, uint8_t button, bool pressed);
 static void ProcessBus(uint8_t ret);
 static void RestoreDigOut(void);
-static uint8_t ReadFlash(uint32_t address);
 static void Idle(void);
 static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
@@ -117,7 +116,7 @@ int main(void) {
    uint8_t ret;
    int   sioHdl;
 
-   sMyAddr = ReadFlash(FLASH_ADDR);
+   sMyAddr = (uint8_t)((eeprom_read_word((uint16_t *)EEPROM_ADDR)>>8)&0xFF);
 
    PortInit();  
    LedInit();
@@ -149,12 +148,11 @@ int main(void) {
 
    /* für Delay wird timer-Interrupt benötigt (DigOutAll() in RestoreDigOut()) */
    ENABLE_INT;
-
+  
    RestoreDigOut();
-
-   /* ext int for power fail: INT0 low level sensitive */
-   EICRA &= ~((1 << ISC01) | (1 << ISC00));
-   EIMSK |= (1 << INT0);
+   /* ext. Int für Powerfail: low level aktiv */              
+   EICRA = 0x00;                  
+   EIMSK = 0x01;
 
    LedSet(eLedGreenFlashSlow);
 
@@ -224,12 +222,12 @@ static void BusTransceiverPowerDown(bool powerDown) {
 */
 static void RestoreDigOut(void) {
 
-   uint8_t *ptrToEeprom;
+   const   uint8_t *ptrToEeprom;
    uint8_t buf[4];
    uint8_t   flags;
 
    /* zuletzt gespeicherten Zustand der Ausgänge suchen */  
-   for (ptrToEeprom = (uint8_t *)3; ptrToEeprom < EEPROM_SIZE; ptrToEeprom += 4) {
+   for (ptrToEeprom = (const uint8_t *)3; ptrToEeprom < EEPROM_SIZE; ptrToEeprom += 4) {
       if ((eeprom_read_byte(ptrToEeprom) & 0x80) == 0x00) {
          break;
       }     
@@ -283,7 +281,8 @@ static void CheckButton(void) {
 */
 static void ProcessBus(uint8_t ret) {
    TBusMsgType      msgType;    
-   uint8_t            i;
+   uint8_t          i;
+   uint8_t          *po;
    /* zum Speichersparen werden die Pointer in einer union gespeichert */
    /* (max. nur ein Paket in Bearbeitung) */
    union {
@@ -389,7 +388,9 @@ static void ProcessBus(uint8_t ret) {
                                     ((i % 4) * 2)) & 0x03;
                      switch (action) {
                         case 0x00:
+                           break;
                         case 0x01:
+                           DigOutToggle(i);
                            break;
                         case 0x02:
                            DigOutOff(i);
@@ -531,12 +532,32 @@ static void ProcessBus(uint8_t ret) {
                BusSend(&sTxBusMsg);  
             }
             break;
+         case eBusDevReqEepromRead:
+            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
+
+               sTxBusMsg.senderAddr = MY_ADDR; 
+               sTxBusMsg.type = eBusDevRespEepromRead;
+               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+               sTxBusMsg.msg.devBus.x.devResp.readEeprom.data = 
+                  (uint8_t)(eeprom_read_word((const uint16_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr)&0xFF);
+               BusSend(&sTxBusMsg);  
+            }
+            break;
+         case eBusDevReqSetAddr:
+            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
+               sTxBusMsg.senderAddr = MY_ADDR; 
+               sTxBusMsg.type = eBusDevRespSetAddr;  
+               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+               po = &(spBusMsg->msg.devBus.x.devReq.setAddr.addr);
+               eeprom_write_word((uint16_t *)EEPROM_ADDR, ((*po)<<8)+(uint8_t)((eeprom_read_word((uint16_t *)EEPROM_ADDR))&0xFF));
+               BusSend(&sTxBusMsg);
+            }
+            break;
          default:
             break;
       }
    } else if (ret == BUS_MSG_ERROR) {
       LedSet(eLedRedBlinkOnceShort);
-//SioWrite(gDbgSioHdl, "msg error\r\n");  
       ButtonTimeStampRefresh();
    }
 }
@@ -707,13 +728,4 @@ static void PortInit(void) {
    /* PortG.3, PortG.4 LED, Ausgang, high*/    
    PORTG = 0b00011000;    
    DDRG  = 0b00011111; 
-}  
-
-/*-----------------------------------------------------------------------------
-*  von Adresse im flash lesen
-*  Aufruf unter gesperrtem Interrupt
-*/
-static uint8_t ReadFlash(uint32_t address) {
-
-   return pgm_read_byte_far(address);
 }

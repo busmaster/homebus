@@ -66,9 +66,8 @@
 */                    
 /* eigene Adresse am Bus */
 #define MY_ADDR    sMyAddr   
-/* im letzten Byte im Flash liegt die eigene Adresse */
-#define FLASH_ADDR 0x1ffff                              
-
+/* im letzten Byte im EEPROM liegt die eigene Adresse */
+#define EEPROM_ADDR 0xffe
 
 /* Bits in MCUCR */
 #define IVCE     0
@@ -92,7 +91,7 @@
 #define WAIT_FOR_UPD_ENTER_TIMEOUT  1  
 #define WAIT_FOR_UPD_DATA           2            
 
-#define EEPROM_SIZE   4096
+#define EEPROM_SIZE   2048
                            
 /* max. Größe der Firmware */
 #define MAX_FIRMWARE_SIZE   (120UL * 1024UL)   
@@ -120,7 +119,7 @@ static uint8_t       sIdle = 0;
 
 /* auf wordaddressbereich 0xff80 .. 0xfffe im Flash sind 255 Byte für den Versionstring reserviert */
 char version[] __attribute__ ((section (".version")));
-char version[] = "DO31_Bootloader_1.10";
+char version[] = "DO31_Bootloader_1.12";
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -132,7 +131,6 @@ static void TimerInit(void);
 static void ProcessBus(uint8_t ret);      
 static uint8_t CheckTimeout(void); 
 static void EepromDelete(void); 
-static uint8_t ReadFlash(uint32_t address);
 static void Idle(void);
 static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
@@ -147,7 +145,7 @@ int main(void) {
    uint16_t  sum;
    int     sioHdl;
 
-   sMyAddr = ReadFlash(FLASH_ADDR);
+   sMyAddr = (uint8_t)((eeprom_read_word((uint16_t *)EEPROM_ADDR)>>8)&0xFF);
 
    PortInit();
    TimerInit();
@@ -176,7 +174,7 @@ int main(void) {
    LedSet(eLedRedOn);
    LedSet(eLedGreenOff);
       
-   /* warten bis Betriebsspannung auf 24 V-Seite volle Höhe (> 20 V) erreicht hat */
+   /* warten bis Betriebsspannung auf 12 V-Seite volle Höhe (> 2010) erreicht hat */
    while (!POWER_GOOD); 
 
    LedSet(eLedRedOff);
@@ -492,12 +490,5 @@ static void BusTransceiverPowerDown(bool powerDown) {
    }
 }
 
-/*-----------------------------------------------------------------------------
-*  von Adresse im flash lesen
-*  Aufruf unter gesperrtem Interrupt
-*/
-static uint8_t ReadFlash(uint32_t address) {
 
-   return pgm_read_byte_far(address);
-}
 
