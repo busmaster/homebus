@@ -1,24 +1,24 @@
 /*
  * application.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -33,12 +33,12 @@
 #include "shader.h"
 
 /*-----------------------------------------------------------------------------
-*  Macros  
-*/ 
+*  Macros
+*/
 
 /*-----------------------------------------------------------------------------
 *  typedefs
-*/   
+*/
 
 typedef void (* TFuncPressed0)(void);
 typedef void (* TFuncPressed1)(void);
@@ -54,7 +54,7 @@ typedef struct {
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/      
+*/
 static const TUserFunc sApplicationFuncs[] PROGMEM = {
    {ApplicationPressed1_0,   ApplicationPressed1_1,   ApplicationReleased1_0,   ApplicationReleased1_1},
    {ApplicationPressed2_0,   ApplicationPressed2_1,   ApplicationReleased2_0,   ApplicationReleased2_1},
@@ -190,31 +190,30 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 *  Functions
 */
 
-
-/*----------------------------------------------------------------------------- 
+/*-----------------------------------------------------------------------------
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_V0.02";
+   return "New";
 }
 
-/*----------------------------------------------------------------------------- 
+/*-----------------------------------------------------------------------------
 * ButtonEvent for Application
 */
 void ApplicationEventButton(TButtonEvent *pButtonEvent) {
-                                                   
-   uint8_t        index;    
+
+   uint8_t        index;
    TFuncPressed0  fPressed0;
    TFuncPressed1  fPressed1;
    TFuncReleased0 fReleased0;
    TFuncReleased1 fReleased1;
 
    index = pButtonEvent->address - 1;
-   
+
    if (index >= (sizeof(sApplicationFuncs) / sizeof(TUserFunc))) {
       return;
    }
- 
+
    if (pButtonEvent->pressed) {
       if (pButtonEvent->buttonNr == 1) {
           fPressed0 = (TFuncPressed0)pgm_read_word(&sApplicationFuncs[index].fPressed0);
@@ -242,36 +241,9 @@ void ApplicationCheck(void) {
 
 }
 
-
-/*
-
-eDigOut0   Netzteil Stiege
-eDigOut1   Stiege Leuchte 1 (1. Lampe von unten)
-eDigOut2   Stiege Leuchte 2
-eDigOut3   Stiege Leuchte 3
-eDigOut4   Stiege Leuchte 4
-eDigOut5   Stiege Leuchte 5
-eDigOut6   Stiege Leuchte 6 (letze Lampe, ganu oben)
-eDigOut7   Schrankraum
-eDigOut8   Schlafzimmer
-eDigOut9   Garage
-eDigOut10  Bad Spiegel
-eDigOut11  Vorzimmer OG
-eDigOut12  Bad Haengelampe
-eDigOut13  Wohn
-eDigOut14  Gang EG
-eDigOut15  Ess
-eDigOut16  Vorraum EG
-eDigOut17  WC EG
-eDigOut18  Glocke
-eDigOut19  Kueche Haengelampe
-eDigOut20  Terrasse
-
-*/
-
 void ApplicationPressed1_0(void) {}
 void ApplicationReleased1_0(void) {}
-void ApplicationPressed1_1(void) {} 
+void ApplicationPressed1_1(void) {}
 void ApplicationReleased1_1(void) {}
 
 void ApplicationPressed2_0(void) {}
@@ -283,7 +255,7 @@ void ApplicationPressed3_0(void) {}
 void ApplicationReleased3_0(void) {}
 void ApplicationPressed3_1(void) {}
 void ApplicationReleased3_1(void) {}
-                                     
+
 void ApplicationPressed4_0(void) {}
 void ApplicationReleased4_0(void) {}
 void ApplicationPressed4_1(void) {}
@@ -293,12 +265,12 @@ void ApplicationPressed5_0(void) {}
 void ApplicationReleased5_0(void) {}
 void ApplicationPressed5_1(void) {}
 void ApplicationReleased5_1(void) {}
-                                     
+
 void ApplicationPressed6_0(void) {}
 void ApplicationReleased6_0(void) {}
 void ApplicationPressed6_1(void) {}
 void ApplicationReleased6_1(void) {}
-                                     
+
 void ApplicationPressed7_0(void) {}
 void ApplicationReleased7_0(void) {}
 void ApplicationPressed7_1(void) {}
@@ -314,36 +286,36 @@ void ApplicationReleased9_0(void) {}
 void ApplicationPressed9_1(void) {}
 void ApplicationReleased9_1(void) {}
 
-void ApplicationPressed10_0(void) {} 
+void ApplicationPressed10_0(void) {}
 void ApplicationReleased10_0(void) {}
-void ApplicationPressed10_1(void) {} 
+void ApplicationPressed10_1(void) {}
 void ApplicationReleased10_1(void) {}
-                                     
-void ApplicationPressed11_0(void) {} 
+
+void ApplicationPressed11_0(void) {}
 void ApplicationReleased11_0(void) {}
-void ApplicationPressed11_1(void) {} 
+void ApplicationPressed11_1(void) {}
 void ApplicationReleased11_1(void) {}
-                                     
-void ApplicationPressed12_0(void) {} 
+
+void ApplicationPressed12_0(void) {}
 void ApplicationReleased12_0(void) {}
-void ApplicationPressed12_1(void) {} 
+void ApplicationPressed12_1(void) {}
 void ApplicationReleased12_1(void) {}
-                                      
+
 void ApplicationPressed13_0(void) {}
 void ApplicationReleased13_0(void) {}
 void ApplicationPressed13_1(void) {}
 void ApplicationReleased13_1(void) {}
-                                      
+
 void ApplicationPressed14_0(void) {}
 void ApplicationReleased14_0(void) {}
 void ApplicationPressed14_1(void) {}
 void ApplicationReleased14_1(void) {}
-                                      
+
 void ApplicationPressed15_0(void) {}
 void ApplicationReleased15_0(void) {}
 void ApplicationPressed15_1(void) {}
 void ApplicationReleased15_1(void) {}
-                                      
+
 void ApplicationPressed16_0(void) {}
 void ApplicationReleased16_0(void) {}
 void ApplicationPressed16_1(void) {}
@@ -354,370 +326,156 @@ void ApplicationReleased17_0(void) {}
 void ApplicationPressed17_1(void) {}
 void ApplicationReleased17_1(void) {}
 
-
-#define DELAY 300                                      
-void ApplicationPressed18_0(void) {
-   /* Stiege, Taster EG */
-
-   uint32_t delay = 0;
-   bool delayed1 = DigOutIsDelayed(eDigOut1);
-   bool delayed2 = DigOutIsDelayed(eDigOut2);
-   bool delayed3 = DigOutIsDelayed(eDigOut3);
-   bool delayed4 = DigOutIsDelayed(eDigOut4);
-   bool delayed5 = DigOutIsDelayed(eDigOut5);
-   bool delayed6 = DigOutIsDelayed(eDigOut6);
-   
-   if (delayed1 || 
-       delayed2 ||
-       delayed3 ||
-       delayed4 ||
-       delayed5 ||
-       delayed6) {
-      DigOutDelayCancel(eDigOut0);
-      DigOutDelayCancel(eDigOut1);
-      DigOutDelayCancel(eDigOut2);
-      DigOutDelayCancel(eDigOut3);
-      DigOutDelayCancel(eDigOut4);
-      DigOutDelayCancel(eDigOut5);
-      DigOutDelayCancel(eDigOut6);
-   } else if (DigOutState(eDigOut0)) {
-      if (DigOutState(eDigOut6)) {
-         DigOutDelayedOff(eDigOut6, delay);
-         delay += DELAY;
-      }
-      if (DigOutState(eDigOut5)) {
-         DigOutDelayedOff(eDigOut5, delay);
-         delay += DELAY;
-      } 
-      if (DigOutState(eDigOut4)) {
-         DigOutDelayedOff(eDigOut4, delay);
-         delay += DELAY;
-      } 
-      if (DigOutState(eDigOut3)) {
-         DigOutDelayedOff(eDigOut3, delay);
-         delay += DELAY;
-      } 
-      if (DigOutState(eDigOut2)) {
-         DigOutDelayedOff(eDigOut2, delay);
-         delay += DELAY;
-      } 
-      if (DigOutState(eDigOut1)) {
-         DigOutDelayedOff(eDigOut1, delay);
-      } 
-      DigOutDelayedOff(eDigOut0, delay);
-   } else {
-      DigOutOn(eDigOut0);
-      DigOutOn(eDigOut1);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut2, delay);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut3, delay);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut4, delay);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut5, delay);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut6, delay);
-   }
-}
+void ApplicationPressed18_0(void) {}
 void ApplicationReleased18_0(void) {}
 void ApplicationPressed18_1(void) {}
 void ApplicationReleased18_1(void) {}
 
-static void StiegeOben(void) {
-   uint32_t delay = 0;
-   bool delayed1 = DigOutIsDelayed(eDigOut1);
-   bool delayed2 = DigOutIsDelayed(eDigOut2);
-   bool delayed3 = DigOutIsDelayed(eDigOut3);
-   bool delayed4 = DigOutIsDelayed(eDigOut4);
-   bool delayed5 = DigOutIsDelayed(eDigOut5);
-   bool delayed6 = DigOutIsDelayed(eDigOut6);
-   
-   if (delayed1 || 
-       delayed2 ||
-       delayed3 ||
-       delayed4 ||
-       delayed5 ||
-       delayed6) {
-      DigOutDelayCancel(eDigOut0);
-      DigOutDelayCancel(eDigOut1);
-      DigOutDelayCancel(eDigOut2);
-      DigOutDelayCancel(eDigOut3);
-      DigOutDelayCancel(eDigOut4);
-      DigOutDelayCancel(eDigOut5);
-      DigOutDelayCancel(eDigOut6);
-   } else if (DigOutState(eDigOut0)) {
-      if (DigOutState(eDigOut1)) {
-         DigOutDelayedOff(eDigOut1, delay);
-         delay += DELAY;
-      }
-      if (DigOutState(eDigOut2)) {
-         DigOutDelayedOff(eDigOut2, delay);
-         delay += DELAY;
-      } 
-      if (DigOutState(eDigOut3)) {
-         DigOutDelayedOff(eDigOut3, delay);
-         delay += DELAY;
-      } 
-      if (DigOutState(eDigOut4)) {
-         DigOutDelayedOff(eDigOut4, delay);
-         delay += DELAY;
-      } 
-      if (DigOutState(eDigOut5)) {
-         DigOutDelayedOff(eDigOut5, delay);
-         delay += DELAY;
-      } 
-      if (DigOutState(eDigOut6)) {
-         DigOutDelayedOff(eDigOut6, delay);
-      } 
-      DigOutDelayedOff(eDigOut0, delay);
-   } else {
-      DigOutOn(eDigOut0);
-      DigOutOn(eDigOut6);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut5, delay);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut4, delay);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut3, delay);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut2, delay);
-      delay += DELAY;
-      DigOutDelayedOn(eDigOut1, delay);
-   }
-}
-                                      
-void ApplicationPressed19_0(void) {
-   /* Stiege, Taster Schlafzimmer */
-   StiegeOben();
-}
+void ApplicationPressed19_0(void) {}
 void ApplicationReleased19_0(void) {}
-void ApplicationPressed19_1(void) {
-   DigOutToggle(eDigOut11);
-}
+void ApplicationPressed19_1(void) {}
 void ApplicationReleased19_1(void) {}
-                                      
-void ApplicationPressed20_0(void) {
-   /* Stiege, Taster Kinderzimmer */
-   StiegeOben();
-}
+
+void ApplicationPressed20_0(void) {}
 void ApplicationReleased20_0(void) {}
-void ApplicationPressed20_1(void) {
-   /* Vorraum OG */
-   DigOutToggle(eDigOut11);
-}
+void ApplicationPressed20_1(void) {}
 void ApplicationReleased20_1(void) {}
-                                      
-void ApplicationPressed21_0(void) {
-   /* Schlafzimmer */
-   DigOutToggle(eDigOut8);
-}
+
+void ApplicationPressed21_0(void) {}
 void ApplicationReleased21_0(void) {}
 void ApplicationPressed21_1(void) {}
 void ApplicationReleased21_1(void) {}
-                                      
-void ApplicationPressed22_0(void) {
-   /* Schrankraum */
-   if (DigOutState(eDigOut7)) {
-      DigOutOff(eDigOut7);
-   } else {
-      DigOutDelayedOff(eDigOut7, 600000 /* 10 min */);
-   }
 
-}
+void ApplicationPressed22_0(void) {}
 void ApplicationReleased22_0(void) {}
 void ApplicationPressed22_1(void) {}
 void ApplicationReleased22_1(void) {}
-                                      
-void ApplicationPressed23_0(void) {
-   /* Bad Spiegel */
-   DigOutToggle(eDigOut10);
-}
+
+void ApplicationPressed23_0(void) {}
 void ApplicationReleased23_0(void) {}
-void ApplicationPressed23_1(void) {
-   /* Bad Haengelampe */
-   DigOutToggle(eDigOut12);
-}
+void ApplicationPressed23_1(void) {}
 void ApplicationReleased23_1(void) {}
-                                      
+
 void ApplicationPressed24_0(void) {}
 void ApplicationReleased24_0(void) {}
-void ApplicationPressed24_1(void) {
-   /* Kueche Haengelampe */
-   DigOutToggle(eDigOut19);
-}
+void ApplicationPressed24_1(void) {}
 void ApplicationReleased24_1(void) {}
-                                      
-void ApplicationPressed25_0(void) {
-   /* Ess */
-   DigOutToggle(eDigOut15);
-}
+
+void ApplicationPressed25_0(void) {}
 void ApplicationReleased25_0(void) {}
-void ApplicationPressed25_1(void) {
-   /* Wohn */
-   DigOutToggle(eDigOut13);
-}
+void ApplicationPressed25_1(void) {}
 void ApplicationReleased25_1(void) {}
-                                      
-void ApplicationPressed26_0(void) {
-   /* Gang EG */
-   DigOutToggle(eDigOut14);
-}
+
+void ApplicationPressed26_0(void) {}
 void ApplicationReleased26_0(void) {}
-void ApplicationPressed26_1(void) {
-   /* Ess */
-   DigOutToggle(eDigOut15);
-}
+void ApplicationPressed26_1(void) {}
 void ApplicationReleased26_1(void) {}
-                                      
-void ApplicationPressed27_0(void) {
-   /* Vorraum EG */
-   DigOutToggle(eDigOut16);
-}
+
+void ApplicationPressed27_0(void) {}
 void ApplicationReleased27_0(void) {}
-void ApplicationPressed27_1(void) {
-   /* Gang EG */
-   DigOutToggle(eDigOut14);
-}
+void ApplicationPressed27_1(void) {}
 void ApplicationReleased27_1(void) {}
-                                      
+
 void ApplicationPressed28_0(void) {}
 void ApplicationReleased28_0(void) {}
-void ApplicationPressed28_1(void) {
-   /* Vorraum EG */
-   DigOutToggle(eDigOut16);
-}
+void ApplicationPressed28_1(void) {}
 void ApplicationReleased28_1(void) {}
-                                      
-void ApplicationPressed29_0(void) {
-   /* WC EG */
-   DigOutOn(eDigOut17);
-}
-void ApplicationReleased29_0(void) {
-   /* WC EG */
-   DigOutOff(eDigOut17);
-}
+
+void ApplicationPressed29_0(void) {}
+void ApplicationReleased29_0(void) {}
 void ApplicationPressed29_1(void) {}
 void ApplicationReleased29_1(void) {}
-                                      
-void ApplicationPressed30_0(void) {
-   /* Glocke */
-   if (!DigOutIsDelayed(eDigOut18)) {
-      DigOutDelayedOff(eDigOut18, 250);
-   }
-   
-   /* Licht in Ess- und Wohnzimmer kurz umschalten */
-   DigOutToggle(eDigOut13);
-   DigOutToggle(eDigOut15);
-}
-void ApplicationReleased30_0(void) {
-   /* Licht in Ess- und Wohnzimmer kurz umschalten */
-   DigOutToggle(eDigOut13);
-   DigOutToggle(eDigOut15);
-}
+
+void ApplicationPressed30_0(void) {}
+void ApplicationReleased30_0(void) {}
 void ApplicationPressed30_1(void) {}
 void ApplicationReleased30_1(void) {}
-                                      
-void ApplicationPressed31_0(void) {
-   /* Kueche Haengelampe */
-   DigOutToggle(eDigOut19);
-}
+
+void ApplicationPressed31_0(void) {}
 void ApplicationReleased31_0(void) {}
 void ApplicationPressed31_1(void) {}
 void ApplicationReleased31_1(void) {}
-                                      
+
 void ApplicationPressed32_0(void) {}
 void ApplicationReleased32_0(void) {}
 void ApplicationPressed32_1(void) {}
 void ApplicationReleased32_1(void) {}
-    
-void ApplicationPressed33_0(void) {
-   /* Kueche Haengelampe */
-   DigOutToggle(eDigOut19);
-}
+
+void ApplicationPressed33_0(void) {}
 void ApplicationReleased33_0(void) {}
-void ApplicationPressed33_1(void) {
-   /* Terrasse */
-   DigOutToggle(eDigOut20);
-}
+void ApplicationPressed33_1(void) {}
 void ApplicationReleased33_1(void) {}
-                                      
-void ApplicationPressed34_0(void) {
-   /* Garage */
-   DigOutToggle(eDigOut9);
-}
+
+void ApplicationPressed34_0(void) {}
 void ApplicationReleased34_0(void) {}
 void ApplicationPressed34_1(void) {}
 void ApplicationReleased34_1(void) {}
-                                      
-void ApplicationPressed35_0(void) {
-   /* Garage */
-   DigOutToggle(eDigOut9);
-}
+
+void ApplicationPressed35_0(void) {}
 void ApplicationReleased35_0(void) {}
 void ApplicationPressed35_1(void) {}
 void ApplicationReleased35_1(void) {}
-                                      
+
 void ApplicationPressed36_0(void) {}
 void ApplicationReleased36_0(void) {}
 void ApplicationPressed36_1(void) {}
 void ApplicationReleased36_1(void) {}
-                                      
+
 void ApplicationPressed37_0(void) {}
 void ApplicationReleased37_0(void) {}
 void ApplicationPressed37_1(void) {}
 void ApplicationReleased37_1(void) {}
-                                      
+
 void ApplicationPressed38_0(void) {}
 void ApplicationReleased38_0(void) {}
 void ApplicationPressed38_1(void) {}
 void ApplicationReleased38_1(void) {}
-                                      
+
 void ApplicationPressed39_0(void) {}
 void ApplicationReleased39_0(void) {}
 void ApplicationPressed39_1(void) {}
 void ApplicationReleased39_1(void) {}
-                                      
+
 void ApplicationPressed40_0(void) {}
 void ApplicationReleased40_0(void) {}
 void ApplicationPressed40_1(void) {}
 void ApplicationReleased40_1(void) {}
-                                      
+
 void ApplicationPressed41_0(void) {}
 void ApplicationReleased41_0(void) {}
 void ApplicationPressed41_1(void) {}
 void ApplicationReleased41_1(void) {}
-                                      
+
 void ApplicationPressed42_0(void) {}
 void ApplicationReleased42_0(void) {}
 void ApplicationPressed42_1(void) {}
 void ApplicationReleased42_1(void) {}
-                                      
+
 void ApplicationPressed43_0(void) {}
 void ApplicationReleased43_0(void) {}
 void ApplicationPressed43_1(void) {}
 void ApplicationReleased43_1(void) {}
-                                      
+
 void ApplicationPressed44_0(void) {}
 void ApplicationReleased44_0(void) {}
 void ApplicationPressed44_1(void) {}
 void ApplicationReleased44_1(void) {}
-                                      
+
 void ApplicationPressed45_0(void) {}
 void ApplicationReleased45_0(void) {}
 void ApplicationPressed45_1(void) {}
 void ApplicationReleased45_1(void) {}
-                                      
+
 void ApplicationPressed46_0(void) {}
 void ApplicationReleased46_0(void) {}
 void ApplicationPressed46_1(void) {}
 void ApplicationReleased46_1(void) {}
-                                      
+
 void ApplicationPressed47_0(void) {}
 void ApplicationReleased47_0(void) {}
 void ApplicationPressed47_1(void) {}
 void ApplicationReleased47_1(void) {}
-                                      
+
 void ApplicationPressed48_0(void) {}
 void ApplicationReleased48_0(void) {}
 void ApplicationPressed48_1(void) {}
@@ -727,77 +485,77 @@ void ApplicationPressed49_0(void) {}
 void ApplicationReleased49_0(void) {}
 void ApplicationPressed49_1(void) {}
 void ApplicationReleased49_1(void) {}
-                                      
+
 void ApplicationPressed50_0(void) {}
 void ApplicationReleased50_0(void) {}
 void ApplicationPressed50_1(void) {}
 void ApplicationReleased50_1(void) {}
-                                      
+
 void ApplicationPressed51_0(void) {}
 void ApplicationReleased51_0(void) {}
 void ApplicationPressed51_1(void) {}
 void ApplicationReleased51_1(void) {}
-                                      
+
 void ApplicationPressed52_0(void) {}
 void ApplicationReleased52_0(void) {}
 void ApplicationPressed52_1(void) {}
 void ApplicationReleased52_1(void) {}
-                                      
+
 void ApplicationPressed53_0(void) {}
 void ApplicationReleased53_0(void) {}
 void ApplicationPressed53_1(void) {}
 void ApplicationReleased53_1(void) {}
-                                      
+
 void ApplicationPressed54_0(void) {}
 void ApplicationReleased54_0(void) {}
 void ApplicationPressed54_1(void) {}
 void ApplicationReleased54_1(void) {}
-                                      
+
 void ApplicationPressed55_0(void) {}
 void ApplicationReleased55_0(void) {}
 void ApplicationPressed55_1(void) {}
 void ApplicationReleased55_1(void) {}
-                                      
+
 void ApplicationPressed56_0(void) {}
 void ApplicationReleased56_0(void) {}
 void ApplicationPressed56_1(void) {}
 void ApplicationReleased56_1(void) {}
-                                      
+
 void ApplicationPressed57_0(void) {}
 void ApplicationReleased57_0(void) {}
 void ApplicationPressed57_1(void) {}
 void ApplicationReleased57_1(void) {}
-                                      
+
 void ApplicationPressed58_0(void) {}
 void ApplicationReleased58_0(void) {}
 void ApplicationPressed58_1(void) {}
 void ApplicationReleased58_1(void) {}
-                                      
+
 void ApplicationPressed59_0(void) {}
 void ApplicationReleased59_0(void) {}
 void ApplicationPressed59_1(void) {}
 void ApplicationReleased59_1(void) {}
-                                      
+
 void ApplicationPressed60_0(void) {}
 void ApplicationReleased60_0(void) {}
 void ApplicationPressed60_1(void) {}
 void ApplicationReleased60_1(void) {}
-                                      
+
 void ApplicationPressed61_0(void) {}
 void ApplicationReleased61_0(void) {}
 void ApplicationPressed61_1(void) {}
 void ApplicationReleased61_1(void) {}
-                                      
+
 void ApplicationPressed62_0(void) {}
 void ApplicationReleased62_0(void) {}
 void ApplicationPressed62_1(void) {}
 void ApplicationReleased62_1(void) {}
-                                      
+
 void ApplicationPressed63_0(void) {}
 void ApplicationReleased63_0(void) {}
 void ApplicationPressed63_1(void) {}
 void ApplicationReleased63_1(void) {}
-                                      
+
 void ApplicationPressed64_0(void) {}
 void ApplicationReleased64_0(void) {}
 void ApplicationPressed64_1(void) {}
@@ -807,37 +565,37 @@ void ApplicationPressed65_0(void) {}
 void ApplicationReleased65_0(void) {}
 void ApplicationPressed65_1(void) {}
 void ApplicationReleased65_1(void) {}
-                                      
+
 void ApplicationPressed66_0(void) {}
 void ApplicationReleased66_0(void) {}
 void ApplicationPressed66_1(void) {}
 void ApplicationReleased66_1(void) {}
-                                      
+
 void ApplicationPressed67_0(void) {}
 void ApplicationReleased67_0(void) {}
 void ApplicationPressed67_1(void) {}
 void ApplicationReleased67_1(void) {}
-                                      
+
 void ApplicationPressed68_0(void) {}
 void ApplicationReleased68_0(void) {}
 void ApplicationPressed68_1(void) {}
 void ApplicationReleased68_1(void) {}
-                                      
+
 void ApplicationPressed69_0(void) {}
 void ApplicationReleased69_0(void) {}
 void ApplicationPressed69_1(void) {}
 void ApplicationReleased69_1(void) {}
-                                      
+
 void ApplicationPressed70_0(void) {}
 void ApplicationReleased70_0(void) {}
 void ApplicationPressed70_1(void) {}
 void ApplicationReleased70_1(void) {}
-                                      
+
 void ApplicationPressed71_0(void) {}
 void ApplicationReleased71_0(void) {}
 void ApplicationPressed71_1(void) {}
 void ApplicationReleased71_1(void) {}
-                                      
+
 void ApplicationPressed72_0(void) {}
 void ApplicationReleased72_0(void) {}
 void ApplicationPressed72_1(void) {}

@@ -93,7 +93,7 @@ size: ${TARGET}
 ## Clean target
 .PHONY: clean
 clean:
-	-rm -rf $(OBJECTS) $(PROJECT).elf dep/* $(PROJECT).hex $(PROJECT).eep $(PROJECT).map
+	-rm -rf $(OBJECTS) $(PROJECT).elf dep/ $(PROJECT).hex $(PROJECT).eep $(PROJECT).map
 
 
 ## Other dependencies
