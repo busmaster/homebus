@@ -1,28 +1,35 @@
 /*
  * board.h
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
+ *****************************************************************************
+ * ACHTUNG! Board-Designeaendert!
+ *****************************************************************************
  */
+
 #ifndef _BOARD_H
 #define _BOARD_H
 
+/*-----------------------------------------------------------------------------
+*  Includes
+*/
 #include <avr/io.h>
 
 /*-----------------------------------------------------------------------------
@@ -97,64 +104,64 @@
 #define DIGOUT_7_STATE    ((PORTA &  0b10000000) != 0)
 #define DIGOUT_7_TOGGLE   (DIGOUT_7_STATE ? DIGOUT_7_OFF : DIGOUT_7_ON)
 
-#define DIGOUT_8_ON       (PORTC |=  0b00000001)
-#define DIGOUT_8_OFF      (PORTC &= ~0b00000001)
-#define DIGOUT_8_STATE    ((PORTC &  0b00000001) != 0)
+#define DIGOUT_8_ON       (PORTC |=  0b00100000)
+#define DIGOUT_8_OFF      (PORTC &= ~0b00100000)
+#define DIGOUT_8_STATE    ((PORTC &  0b00100000) != 0)
 #define DIGOUT_8_TOGGLE   (DIGOUT_8_STATE ? DIGOUT_8_OFF : DIGOUT_8_ON)
 
-#define DIGOUT_9_ON       (PORTC |=  0b00000010)
-#define DIGOUT_9_OFF      (PORTC &= ~0b00000010)
-#define DIGOUT_9_STATE    ((PORTC &  0b00000010) != 0)
+#define DIGOUT_9_ON       (PORTC |=  0b00010000)
+#define DIGOUT_9_OFF      (PORTC &= ~0b00010000)
+#define DIGOUT_9_STATE    ((PORTC &  0b00010000) != 0)
 #define DIGOUT_9_TOGGLE   (DIGOUT_9_STATE ? DIGOUT_9_OFF : DIGOUT_9_ON)
 
-#define DIGOUT_10_ON       (PORTC |=  0b00000100)
-#define DIGOUT_10_OFF      (PORTC &= ~0b00000100)
-#define DIGOUT_10_STATE    ((PORTC &  0b00000100) != 0)
+#define DIGOUT_10_ON       (PORTC |=  0b00001000)
+#define DIGOUT_10_OFF      (PORTC &= ~0b00001000)
+#define DIGOUT_10_STATE    ((PORTC &  0b00001000) != 0)
 #define DIGOUT_10_TOGGLE   (DIGOUT_10_STATE ? DIGOUT_10_OFF : DIGOUT_10_ON)
 
-#define DIGOUT_11_ON       (PORTC |=  0b00001000)
-#define DIGOUT_11_OFF      (PORTC &= ~0b00001000)
-#define DIGOUT_11_STATE    ((PORTC &  0b00001000) != 0)
+#define DIGOUT_11_ON       (PORTC |=  0b00000100)
+#define DIGOUT_11_OFF      (PORTC &= ~0b00000100)
+#define DIGOUT_11_STATE    ((PORTC &  0b00000100) != 0)
 #define DIGOUT_11_TOGGLE   (DIGOUT_11_STATE ? DIGOUT_11_OFF : DIGOUT_11_ON)
 
-#define DIGOUT_12_ON       (PORTC |=  0b00010000)
-#define DIGOUT_12_OFF      (PORTC &= ~0b00010000)
-#define DIGOUT_12_STATE    ((PORTC &  0b00010000) != 0)
+#define DIGOUT_12_ON       (PORTC |=  0b00000010)
+#define DIGOUT_12_OFF      (PORTC &= ~0b00000010)
+#define DIGOUT_12_STATE    ((PORTC &  0b00000010) != 0)
 #define DIGOUT_12_TOGGLE   (DIGOUT_12_STATE ? DIGOUT_12_OFF : DIGOUT_12_ON)
 
-#define DIGOUT_13_ON       (PORTC |=  0b00100000)
-#define DIGOUT_13_OFF      (PORTC &= ~0b00100000)
-#define DIGOUT_13_STATE    ((PORTC &  0b00100000) != 0)
+#define DIGOUT_13_ON       (PORTC |=  0b00000001)
+#define DIGOUT_13_OFF      (PORTC &= ~0b00000001)
+#define DIGOUT_13_STATE    ((PORTC &  0b00000001) != 0)
 #define DIGOUT_13_TOGGLE   (DIGOUT_13_STATE ? DIGOUT_13_OFF : DIGOUT_13_ON)
 
-#define DIGOUT_14_ON       (PORTC |=  0b01000000)
-#define DIGOUT_14_OFF      (PORTC &= ~0b01000000)
-#define DIGOUT_14_STATE    ((PORTC &  0b01000000) != 0)
+#define DIGOUT_14_ON       (PORTB |=  0b10000000)
+#define DIGOUT_14_OFF      (PORTB &= ~0b10000000)
+#define DIGOUT_14_STATE    ((PORTB &  0b10000000) != 0)
 #define DIGOUT_14_TOGGLE   (DIGOUT_14_STATE ? DIGOUT_14_OFF : DIGOUT_14_ON)
 
-#define DIGOUT_15_ON       (PORTC |=  0b10000000)
-#define DIGOUT_15_OFF      (PORTC &= ~0b10000000)
-#define DIGOUT_15_STATE    ((PORTC &  0b10000000) != 0)
+#define DIGOUT_15_ON       (PORTB |=  0b01000000)
+#define DIGOUT_15_OFF      (PORTB &= ~0b01000000)
+#define DIGOUT_15_STATE    ((PORTB &  0b01000000) != 0)
 #define DIGOUT_15_TOGGLE   (DIGOUT_15_STATE ? DIGOUT_15_OFF : DIGOUT_15_ON)
 
-#define DIGOUT_16_ON       (PORTB |=  0b00010000)
-#define DIGOUT_16_OFF      (PORTB &= ~0b00010000)
-#define DIGOUT_16_STATE    ((PORTB &  0b00010000) != 0)
+#define DIGOUT_16_ON       (PORTB |=  0b00100000)
+#define DIGOUT_16_OFF      (PORTB &= ~0b00100000)
+#define DIGOUT_16_STATE    ((PORTB &  0b00100000) != 0)
 #define DIGOUT_16_TOGGLE   (DIGOUT_16_STATE ? DIGOUT_16_OFF : DIGOUT_16_ON)
 
-#define DIGOUT_17_ON       (PORTB |=  0b00100000)
-#define DIGOUT_17_OFF      (PORTB &= ~0b00100000)
-#define DIGOUT_17_STATE    ((PORTB &  0b00100000) != 0)
+#define DIGOUT_17_ON       (PORTB |=  0b00010000)
+#define DIGOUT_17_OFF      (PORTB &= ~0b00010000)
+#define DIGOUT_17_STATE    ((PORTB &  0b00010000) != 0)
 #define DIGOUT_17_TOGGLE   (DIGOUT_17_STATE ? DIGOUT_17_OFF : DIGOUT_17_ON)
 
-#define DIGOUT_18_ON       (PORTB |=  0b01000000)
-#define DIGOUT_18_OFF      (PORTB &= ~0b01000000)
-#define DIGOUT_18_STATE    ((PORTB &  0b01000000) != 0)
+#define DIGOUT_18_ON       (PORTC |=  0b01000000)
+#define DIGOUT_18_OFF      (PORTC &= ~0b01000000)
+#define DIGOUT_18_STATE    ((PORTC &  0b01000000) != 0)
 #define DIGOUT_18_TOGGLE   (DIGOUT_18_STATE ? DIGOUT_18_OFF : DIGOUT_18_ON)
 
-#define DIGOUT_19_ON       (PORTB |=  0b10000000)
-#define DIGOUT_19_OFF      (PORTB &= ~0b10000000)
-#define DIGOUT_19_STATE    ((PORTB &  0b10000000) != 0)
+#define DIGOUT_19_ON       (PORTC |=  0b10000000)
+#define DIGOUT_19_OFF      (PORTC &= ~0b10000000)
+#define DIGOUT_19_STATE    ((PORTC &  0b10000000) != 0)
 #define DIGOUT_19_TOGGLE   (DIGOUT_19_STATE ? DIGOUT_19_OFF : DIGOUT_19_ON)
 
 #define DIGOUT_20_ON       (PORTD |=  0b00010000)
@@ -226,3 +233,4 @@
 */
 
 #endif
+
