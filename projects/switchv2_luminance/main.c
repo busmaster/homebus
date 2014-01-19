@@ -119,7 +119,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88_lum 0.00";
+char version[] = "Sw88_lum 0.01";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
