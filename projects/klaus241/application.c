@@ -273,6 +273,11 @@ void ApplicationInit(void) {
    ShaderSetConfig(eShader11, eDigOut22, eDigOut23, 19000, 18200);
 }
 
+
+void ApplicationStart(void) {
+    
+}
+
 static bool      sButton13_1Pressed = false;
 static uint16_t  sButton13_1PressTime;
 static uint8_t   sButton13_1LongPressedSetPosition = 0xff;

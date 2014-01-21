@@ -158,6 +158,8 @@ int main(void) {
 
    LedSet(eLedGreenFlashSlow);
 
+   ApplicationStart();
+
    /* Hauptschleife */  
    while (1) {   
       Idle();

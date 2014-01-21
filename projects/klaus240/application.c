@@ -238,6 +238,10 @@ void ApplicationInit(void) {
 
 }
 
+void ApplicationStart(void) {
+    
+}
+
 void ApplicationCheck(void) {
 
 }
