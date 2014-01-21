@@ -195,7 +195,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_V0.02";
+   return "Klaus2_0.03";
 }
 
 /*----------------------------------------------------------------------------- 
@@ -359,7 +359,7 @@ void ApplicationPressed17_1(void) {}
 void ApplicationReleased17_1(void) {}
 
 
-#define DELAY 300                                      
+#define DELAY 500                                      
 void ApplicationPressed18_0(void) {
    /* Stiege, Taster EG */
 

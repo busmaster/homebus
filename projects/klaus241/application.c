@@ -195,7 +195,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * Rueckgabe der Versioninfo (max. Laenge 15 Zeichen)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus1_V0.03";
+   return "Klaus1_0.04";
 }
 
 /*----------------------------------------------------------------------------- 
