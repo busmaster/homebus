@@ -195,7 +195,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * Rueckgabe der Versioninfo (max. Laenge 15 Zeichen)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus1_0.04";
+   return "Klaus1_0.05";
 }
 
 /*----------------------------------------------------------------------------- 
@@ -243,7 +243,7 @@ void ApplicationInit(void) {
    ShaderSetConfig(eShader1,  eDigOut2,  eDigOut3, 28500, 26800);
 
    /* Markise */
-   ShaderSetConfig(eShader2,  eDigOut4,  eDigOut5, 45000, 45000);
+   ShaderSetConfig(eShader2,  eDigOut4,  eDigOut5, 44000, 41000);
 
    /* Fenster Ess  */ 
    ShaderSetConfig(eShader3,  eDigOut6,  eDigOut7, 18800, 18400);
@@ -255,7 +255,7 @@ void ApplicationInit(void) {
    ShaderSetConfig(eShader5,  eDigOut10, eDigOut11, 19000, 18700);
 
    /* Rollladen Kinderzimmer klein nord */ 
-   ShaderSetConfig(eShader6,  eDigOut12, eDigOut13, /*19200*/ 16300, 17700);
+   ShaderSetConfig(eShader6,  eDigOut12, eDigOut13, 19200, 17700);
 
    /* Rollladen Schrankraum */ 
    ShaderSetConfig(eShader7,  eDigOut14, eDigOut15, 19200, 18500);
@@ -585,8 +585,8 @@ void ApplicationPressed13_1(void) {
    if ((state == eShaderStopped) || 
        (state == eShaderOpening)) {
       if (position == 100) {
-         // wenn ganz eingezogen dann auf 75% ausfahren
-         sButton13_1LongPressedSetPosition = 25;
+         // wenn ganz eingezogen dann auf 45% ausfahren
+         sButton13_1LongPressedSetPosition = 45;
       } else {
          // ganz ausfahren
          sButton13_1LongPressedSetPosition = 0;
@@ -775,8 +775,28 @@ void ApplicationPressed36_1(void) {}
 void ApplicationReleased36_1(void) {}
                                       
 void ApplicationPressed37_0(void) {}
-void ApplicationReleased37_0(void) {}
-void ApplicationPressed37_1(void) {}
+void ApplicationReleased37_0(void) {
+
+   /* 
+    * alle Rollo ausgenommen Terrassentuer/Kueche (1) und Markise (2)
+    * werden helligkeitsabhängig geschlossen 
+    */
+   ShaderSetAction(eShader0, eShaderClose);
+   ShaderSetAction(eShader3, eShaderClose);
+   ShaderSetAction(eShader4, eShaderClose);
+   ShaderSetAction(eShader5, eShaderClose);
+   ShaderSetAction(eShader6, eShaderClose);
+   ShaderSetAction(eShader7, eShaderClose);
+   ShaderSetAction(eShader8, eShaderClose);
+   ShaderSetAction(eShader9, eShaderClose);
+   ShaderSetAction(eShader10, eShaderClose);
+   ShaderSetAction(eShader11, eShaderClose);
+}
+void ApplicationPressed37_1(void) {
+
+   /* Rollo Schlafzimmer bei helligkeitsabhängig teilweise schließen */
+    ShaderSetPosition(eShader8, 20);
+}
 void ApplicationReleased37_1(void) {}
                                       
 void ApplicationPressed38_0(void) {}
