@@ -1,25 +1,25 @@
 /*
- * shader.h
- * 
- * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301, USA.
- * 
- * 
- */
+* shader.h
+*
+* Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+* MA 02110-1301, USA.
+*
+*
+*/
 #ifndef _SHADER_H
 #define _SHADER_H
 
@@ -33,11 +33,11 @@ extern "C" {
 #include "digout.h"
 
 /*-----------------------------------------------------------------------------
-*  Macros
-*/                     
+* Macros
+*/
 
 /*-----------------------------------------------------------------------------
-*  typedefs
+* typedefs
 */
 typedef enum {
    eShader0 = 0,
@@ -72,27 +72,32 @@ typedef enum {
    eShaderStopped
 } TShaderState;
 
+typedef enum {
+   eStateOpen = 0,
+   eStateClose = 1,
+} TShaderLastAction;
 /*-----------------------------------------------------------------------------
-*  Variables
-*/                                
+* Variables
+*/
 
 /*-----------------------------------------------------------------------------
-*  Functions
+* Functions
 */
 void ShaderInit(void);
-void ShaderSetConfig(TShaderNumber number, TDigOutNumber onSwitch, 
-                       TDigOutNumber dirSwitch, 
+void ShaderSetConfig(TShaderNumber number, TDigOutNumber onSwitch,
+                       TDigOutNumber dirSwitch,
                        uint16_t openDurationMs, uint16_t closeDurationMs);
 void ShaderGetConfig(TShaderNumber number, TDigOutNumber *pOnSwitch, TDigOutNumber *pDirSwitch);
 void ShaderSetAction(TShaderNumber number, TShaderAction action);
 bool ShaderGetState(TShaderNumber number, TShaderState *pState);
 bool ShaderSetPosition(TShaderNumber number, uint8_t targetPosition);
+bool ShaderSetHandPosition(TShaderNumber number, uint8_t targetPosition);
 bool ShaderGetPosition(TShaderNumber number, uint8_t *pPosition);
 void ShaderCheck(void);
+bool ShaderGetLastAction(TShaderNumber number, TShaderLastAction *pState);
 
 
 #ifdef __cplusplus
 }
 #endif
-    
 #endif

@@ -57,6 +57,14 @@
            x = gTimeMs16;                               \
            RESTORE_INT(__flags);                        \
         }
+		
+/* 100ms-Zähler (16 Bit) */
+#define GET_TIME_10MS16(x) {                            \
+           uint8_t __flags;                             \
+           __flags = DISABLE_INT;                       \
+           x = gTime10Ms16;                             \
+           RESTORE_INT(__flags);                        \
+        }
 
 /* ms-Zähler (32 Bit) */
 #define GET_TIME_MS32(x) {                              \
@@ -105,6 +113,7 @@ extern volatile uint8_t  gTimeMs;
 extern volatile uint16_t gTimeMs16;
 extern volatile uint32_t gTimeMs32;
 extern volatile uint16_t gTimeS;
+extern volatile uint16_t gTime10Ms16;
 
 /*-----------------------------------------------------------------------------
 *  Functions

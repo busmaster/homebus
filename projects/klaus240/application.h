@@ -46,6 +46,7 @@ extern "C" {
 *  Functions
 */
 void ApplicationInit(void);
+void ApplicationStart(void);
 void ApplicationCheck(void);
 const char *ApplicationVersion(void);      
 void ApplicationEventButton(TButtonEvent *buttonEvent);      
