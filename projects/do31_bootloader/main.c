@@ -67,7 +67,7 @@
 /* eigene Adresse am Bus */
 #define MY_ADDR    sMyAddr   
 /* im letzten Byte im EEPROM liegt die eigene Adresse */
-#define EEPROM_ADDR 0xffe
+#define EEPROM_ADDR 0xfff   
 
 /* Bits in MCUCR */
 #define IVCE     0
@@ -145,7 +145,7 @@ int main(void) {
    uint16_t  sum;
    int     sioHdl;
 
-   sMyAddr = (uint8_t)((eeprom_read_word((uint16_t *)EEPROM_ADDR)>>8)&0xFF);
+   sMyAddr = eeprom_read_byte((const uint8_t *)EEPROM_ADDR);
 
    PortInit();
    TimerInit();

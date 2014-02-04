@@ -68,7 +68,7 @@
 /* eigene Adresse am Bus */
 #define MY_ADDR    sMyAddr   
 /* im letzten Byte im EEPROM liegt die eigene Adresse */
-#define EEPROM_ADDR 0xffe  
+#define EEPROM_ADDR 0xfff                          
 
 #define IDLE_SIO1  0x01
 
@@ -82,7 +82,8 @@
 volatile uint8_t  gTimeMs = 0;    
 volatile uint16_t gTimeMs16 = 0;  
 volatile uint32_t gTimeMs32 = 0;  
-volatile uint16_t gTimeS = 0;    
+volatile uint16_t gTimeS = 0;  
+volatile uint16_t gTime10Ms16 = 0;  
 
 static TBusTelegram *spBusMsg;            
 static TBusTelegram  sTxBusMsg;        
@@ -116,7 +117,7 @@ int main(void) {
    uint8_t ret;
    int   sioHdl;
 
-   sMyAddr = (uint8_t)((eeprom_read_word((uint16_t *)EEPROM_ADDR)>>8)&0xFF);
+    sMyAddr = eeprom_read_byte((const uint8_t *)EEPROM_ADDR);
 
    PortInit();  
    LedInit();
@@ -148,13 +149,16 @@ int main(void) {
 
    /* für Delay wird timer-Interrupt benötigt (DigOutAll() in RestoreDigOut()) */
    ENABLE_INT;
-  
+
    RestoreDigOut();
-   /* ext. Int für Powerfail: low level aktiv */              
-   EICRA = 0x00;                  
-   EIMSK = 0x01;
+
+   /* ext int for power fail: INT0 low level sensitive */
+   EICRA &= ~((1 << ISC01) | (1 << ISC00));
+   EIMSK |= (1 << INT0);
 
    LedSet(eLedGreenFlashSlow);
+
+   ApplicationStart();
 
    /* Hauptschleife */  
    while (1) {   
@@ -222,12 +226,12 @@ static void BusTransceiverPowerDown(bool powerDown) {
 */
 static void RestoreDigOut(void) {
 
-   const   uint8_t *ptrToEeprom;
+   uint8_t *ptrToEeprom;
    uint8_t buf[4];
    uint8_t   flags;
 
    /* zuletzt gespeicherten Zustand der Ausgänge suchen */  
-   for (ptrToEeprom = (const uint8_t *)3; ptrToEeprom < EEPROM_SIZE; ptrToEeprom += 4) {
+   for (ptrToEeprom = (uint8_t *)3; ptrToEeprom < EEPROM_SIZE; ptrToEeprom += 4) {
       if ((eeprom_read_byte(ptrToEeprom) & 0x80) == 0x00) {
          break;
       }     
@@ -281,7 +285,7 @@ static void CheckButton(void) {
 */
 static void ProcessBus(uint8_t ret) {
    TBusMsgType      msgType;    
-   uint8_t          i;
+   uint8_t            i;
    uint8_t          *po;
    /* zum Speichersparen werden die Pointer in einer union gespeichert */
    /* (max. nur ein Paket in Bearbeitung) */
@@ -388,9 +392,7 @@ static void ProcessBus(uint8_t ret) {
                                     ((i % 4) * 2)) & 0x03;
                      switch (action) {
                         case 0x00:
-                           break;
                         case 0x01:
-                           DigOutToggle(i);
                            break;
                         case 0x02:
                            DigOutOff(i);
@@ -498,7 +500,9 @@ static void ProcessBus(uint8_t ret) {
                   uint8_t position = spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i];
                   if (position <= 100) {
                      ShaderSetPosition(i, position);
-                  } else if (position == 255) {
+                  } else if(position <= 228) {
+				     ShaderSetHandPosition(i, position&~0x80);
+				  } else if (position == 255) {
                      // stop
                      ShaderSetAction(i, eShaderStop);
                   } 
@@ -532,32 +536,44 @@ static void ProcessBus(uint8_t ret) {
                BusSend(&sTxBusMsg);  
             }
             break;
-         case eBusDevReqEepromRead:
+		case eBusDevReqEepromRead:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
 
-               sTxBusMsg.senderAddr = MY_ADDR; 
+               sTxBusMsg.senderAddr = MY_ADDR;
                sTxBusMsg.type = eBusDevRespEepromRead;
                sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               sTxBusMsg.msg.devBus.x.devResp.readEeprom.data = 
-                  (uint8_t)(eeprom_read_word((const uint16_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr)&0xFF);
-               BusSend(&sTxBusMsg);  
-            }
-            break;
-         case eBusDevReqSetAddr:
-            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-               sTxBusMsg.senderAddr = MY_ADDR; 
-               sTxBusMsg.type = eBusDevRespSetAddr;  
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               po = &(spBusMsg->msg.devBus.x.devReq.setAddr.addr);
-               eeprom_write_word((uint16_t *)EEPROM_ADDR, ((*po)<<8)+(uint8_t)((eeprom_read_word((uint16_t *)EEPROM_ADDR))&0xFF));
+               sTxBusMsg.msg.devBus.x.devResp.readEeprom.data =
+                  //(uint8_t)(eeprom_read_word((const uint16_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr)&0xFF);
+				  eeprom_read_byte((const uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr);
                BusSend(&sTxBusMsg);
             }
             break;
+         case eBusDevReqEepromWrite:
+			if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {			
+				sTxBusMsg.senderAddr = MY_ADDR; 
+				sTxBusMsg.type = eBusDevRespEepromWrite;
+				sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+				po = &(spBusMsg->msg.devBus.x.devReq.writeEeprom.data);
+				eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr, *po);
+				BusSend(&sTxBusMsg);
+			}
+            break;
+         case eBusDevReqSetAddr:
+            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
+               sTxBusMsg.senderAddr = MY_ADDR;
+               sTxBusMsg.type = eBusDevRespSetAddr;
+               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+               po = &(spBusMsg->msg.devBus.x.devReq.setAddr.addr);
+//               eeprom_write_word((uint16_t *)EEPROM_ADDR, ((*po)<<8)+(uint8_t)((eeprom_read_word((uint16_t *)EEPROM_ADDR))&0xFF));
+			   eeprom_write_byte((uint8_t *)EEPROM_ADDR, *po);
+               BusSend(&sTxBusMsg);
+            }
          default:
             break;
       }
    } else if (ret == BUS_MSG_ERROR) {
       LedSet(eLedRedBlinkOnceShort);
+//SioWrite(gDbgSioHdl, "msg error\r\n");  
       ButtonTimeStampRefresh();
    }
 }
@@ -649,7 +665,11 @@ ISR(TIMER0_COMP_vect)  {
       sCounter = 0;
       /* Sekundenzähler */
       gTimeS++;
-   }                    
+   }
+   if (sCounter%5 == 0) { 
+      /* 100 mSekundenzähler */
+      gTime10Ms16++;
+   }     
 }
 
 /*-----------------------------------------------------------------------------
@@ -728,4 +748,4 @@ static void PortInit(void) {
    /* PortG.3, PortG.4 LED, Ausgang, high*/    
    PORTG = 0b00011000;    
    DDRG  = 0b00011111; 
-}
+}  
