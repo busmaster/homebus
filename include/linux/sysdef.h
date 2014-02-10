@@ -44,6 +44,10 @@ extern uint16_t gTimeMs16;
 #define GET_TIME_MS16(x) {                              \
 	x = gTimeMs16;                                      \
 }
+extern uint16_t gTime10Ms16;
+#define GET_TIME_10MS16(x) {                            \
+	x = gTime10Ms16;                                    \
+}
 #else
 /* 16 bit millisecond counter */
 #define GET_TIME_MS16(x) {                              \

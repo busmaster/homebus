@@ -82,7 +82,7 @@ typedef enum {
 void ShaderInit(void);
 void ShaderSetConfig(TShaderNumber number, TDigOutNumber onSwitch, 
                        TDigOutNumber dirSwitch, 
-                       uint16_t openDurationMs, uint16_t closeDurationMs);
+                       uint32_t openDurationMs, uint32_t closeDurationMs);
 void ShaderGetConfig(TShaderNumber number, TDigOutNumber *pOnSwitch, TDigOutNumber *pDirSwitch);
 void ShaderSetAction(TShaderNumber number, TShaderAction action);
 bool ShaderGetState(TShaderNumber number, TShaderState *pState);

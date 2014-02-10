@@ -32,15 +32,12 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
-/* Zeitdauer fuer Rollladenansteuerung */
-#define SHADER_DEFAULT_DELAY        30 /* s */
-
 /* Zeitdauer, um die dirSwitch und onSwitch verzögert geschaltet werden */
 /* (dirSwitch und onSwitch schalten um diese Diff verzögert) */
-#define SHADER_DELAY_DIRCHANGE     200  /* ms */
+#define SHADER_DELAY_DIRCHANGE     20  /* 10 ms */
 
 /* kein gleichzeitiger schalten der Relais */
-#define SHADER_DELAY_RELAY         20 /* ms */
+#define SHADER_DELAY_RELAY         2  /* 10 ms */
 
 // positions for SetAction
 #define SHADER_OPEN_COMPLETELY     100
@@ -107,15 +104,21 @@ void ShaderInit(void) {
 void ShaderSetConfig(TShaderNumber number,
                      TDigOutNumber onSwitch,
                      TDigOutNumber dirSwitch,
-                     uint16_t      openDurationMs,
-                     uint16_t      closeDurationMs
+                     uint32_t      openDurationMs,
+                     uint32_t      closeDurationMs
    ) {
       
    TShaderDesc  *pShader;
 
    if (number >= eShaderNum) {
       return;
-   } 
+   }
+
+   if (((openDurationMs / 10) > UINT16_MAX) ||
+       ((closeDurationMs / 10) > UINT16_MAX)) {
+      return;
+   }
+
 
    DigOutSetShaderFunction(onSwitch);
    DigOutSetShaderFunction(dirSwitch);
@@ -125,8 +128,8 @@ void ShaderSetConfig(TShaderNumber number,
    pShader->dirSwitch = dirSwitch;
    pShader->actualPosition = 100; /* default: shader is completely open*/
    pShader->startingPosition = 100;
-   pShader->openDuration = openDurationMs;
-   pShader->closeDuration = closeDurationMs;
+   pShader->openDuration = openDurationMs / 10; /* in 10 ms */
+   pShader->closeDuration = closeDurationMs / 10;  /* in 10 ms */
    pShader->setPosition = 100; /* default: shader is completely open */
 }
 
@@ -268,7 +271,7 @@ void ShaderCheck(void) {
    nextState = pShader->state; // default: the next state is the current one
    nextCmd = cmd;
 
-   GET_TIME_MS16(currentTime);
+   GET_TIME_10MS16(currentTime);
    actionPeriod = currentTime - pShader->actionTimestamp;
    switch (pShader->state) {
    case eStateStopped:
@@ -281,7 +284,7 @@ void ShaderCheck(void) {
             DigOutOn(pShader->dirSwitch);            
             nextState = eStateOpenInit;
          }
-         GET_TIME_MS16(pShader->actionTimestamp);
+         GET_TIME_10MS16(pShader->actionTimestamp);
          break;
       default:
          break;
@@ -293,7 +296,7 @@ void ShaderCheck(void) {
       if (actionPeriod >= SHADER_DELAY_RELAY) {
          DigOutOff(pShader->dirSwitch);
          nextState = eStateStopped;
-         GET_TIME_MS16(pShader->actionTimestamp);            
+         GET_TIME_10MS16(pShader->actionTimestamp);            
       }
       break;
    case eStateOpenInit:
@@ -301,7 +304,7 @@ void ShaderCheck(void) {
          DigOutOn(pShader->onSwitch);
          nextState = eStateOpening;
          pShader->startingPosition = pShader->actualPosition;
-         GET_TIME_MS16(pShader->actionTimestamp);            
+         GET_TIME_10MS16(pShader->actionTimestamp);            
       }
       break;
    case eStateOpening:
@@ -316,24 +319,24 @@ void ShaderCheck(void) {
             if (actionPeriod >= ((uint32_t)pShader->openDuration * 110 / 100 /*  duration + 10% */)) {
                DigOutOff(pShader->onSwitch);
                nextState = eStateExit;
-               GET_TIME_MS16(pShader->actionTimestamp);
+               GET_TIME_10MS16(pShader->actionTimestamp);
             }
          } else if (pShader->actualPosition >= pShader->setPosition) {
             DigOutOff(pShader->onSwitch);
             nextState = eStateExit;
-            GET_TIME_MS16(pShader->actionTimestamp);
+            GET_TIME_10MS16(pShader->actionTimestamp);
          }
          break;
      case eCmdStop:
          DigOutOff(pShader->onSwitch);
          nextState = eStateExit;
-         GET_TIME_MS16(pShader->actionTimestamp);
+         GET_TIME_10MS16(pShader->actionTimestamp);
          break;
      case eCmdSetPosition:
          if (pShader->setPosition < pShader->actualPosition) {
             DigOutOff(pShader->onSwitch);
             nextState = eStateDirectionChangeCloseInit;
-            GET_TIME_MS16(pShader->actionTimestamp);
+            GET_TIME_10MS16(pShader->actionTimestamp);
          }
          break;
      default:
@@ -346,7 +349,7 @@ void ShaderCheck(void) {
          DigOutOn(pShader->onSwitch);
          nextState = eStateClosing;
          pShader->startingPosition = pShader->actualPosition;
-         GET_TIME_MS16(pShader->actionTimestamp);            
+         GET_TIME_10MS16(pShader->actionTimestamp);            
       }
       break;
    case eStateClosing:
@@ -361,24 +364,24 @@ void ShaderCheck(void) {
             if (actionPeriod >= ((uint32_t)pShader->closeDuration * 110 / 100 /*  duration + 10% */)) {
                DigOutOff(pShader->onSwitch);
                nextState = eStateExit;
-               GET_TIME_MS16(pShader->actionTimestamp);
+               GET_TIME_10MS16(pShader->actionTimestamp);
             }
          } else if (pShader->actualPosition <= pShader->setPosition) {
             DigOutOff(pShader->onSwitch);
             nextState = eStateExit;
-            GET_TIME_MS16(pShader->actionTimestamp);
+            GET_TIME_10MS16(pShader->actionTimestamp);
          }
          break;
       case eCmdStop:
          DigOutOff(pShader->onSwitch);
          nextState = eStateExit;
-         GET_TIME_MS16(pShader->actionTimestamp);
+         GET_TIME_10MS16(pShader->actionTimestamp);
          break;
       case eCmdSetPosition:
          if (pShader->setPosition > pShader->actualPosition) {
             DigOutOff(pShader->onSwitch);
             nextState = eStateDirectionChangeOpenInit;
-            GET_TIME_MS16(pShader->actionTimestamp);
+            GET_TIME_10MS16(pShader->actionTimestamp);
          }
          break;
       default:
@@ -392,20 +395,20 @@ void ShaderCheck(void) {
          if (actionPeriod >= SHADER_DELAY_DIRCHANGE) {
             DigOutOff(pShader->dirSwitch);            
             nextState = eStateCloseInit;
-            GET_TIME_MS16(pShader->actionTimestamp);  
+            GET_TIME_10MS16(pShader->actionTimestamp);  
          }
          break;
      case eCmdStop:
          DigOutOff(pShader->onSwitch);
          nextState = eStateExit;
-         GET_TIME_MS16(pShader->actionTimestamp);
+         GET_TIME_10MS16(pShader->actionTimestamp);
          break;
      case eCmdSetPosition:
          if (pShader->setPosition > pShader->actualPosition) {
             // no direction change, continue in same direction
             DigOutOn(pShader->dirSwitch);
             nextState = eStateOpenInit;
-            GET_TIME_MS16(pShader->actionTimestamp);
+            GET_TIME_10MS16(pShader->actionTimestamp);
          }
          break;
      default:
@@ -419,20 +422,20 @@ void ShaderCheck(void) {
          if (actionPeriod >= SHADER_DELAY_DIRCHANGE) {
             DigOutOn(pShader->dirSwitch);            
             nextState = eStateOpenInit;
-            GET_TIME_MS16(pShader->actionTimestamp);           
+            GET_TIME_10MS16(pShader->actionTimestamp);           
          }
          break;
      case eCmdStop:
          DigOutOff(pShader->onSwitch);
          nextState = eStateExit;
-         GET_TIME_MS16(pShader->actionTimestamp);
+         GET_TIME_10MS16(pShader->actionTimestamp);
          break;
      case eCmdSetPosition:
          if (pShader->setPosition < pShader->actualPosition) {
             // no direction change, continue in same direction
             DigOutOff(pShader->dirSwitch);
             nextState = eStateCloseInit;
-            GET_TIME_MS16(pShader->actionTimestamp);
+            GET_TIME_10MS16(pShader->actionTimestamp);
          }
          break;
      default:

@@ -31,7 +31,7 @@
 #include "shader.h"
 
 
-uint16_t gTimeMs16 = 0;
+uint16_t gTime10Ms16 = 0;
 
 int main(void) {
 
@@ -43,8 +43,8 @@ int main(void) {
    ShaderSetConfig(eShader0, eDigOut0, eDigOut1, 30000, 25000);
 
    while (1) {
-      timeMs32++;
-	  gTimeMs16++;
+      timeMs32 += 10;
+	  gTime10Ms16++;
       ShaderCheck();
       if (timeMs32 == 100) {
     	  ShaderSetPosition(eShader0, 50);
