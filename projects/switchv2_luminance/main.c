@@ -120,7 +120,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88_lum 0.01";
+char version[] = "Sw88_lum 0.02";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -141,7 +141,7 @@ static uint8_t   sIdle = 0;
 static uint8_t   sLuminanceSwitch = 0;
 
 static uint16_t  sMovAv[MOVING_AVERAGE];
-static uint16_t  sAdcAv;
+static volatile  uint16_t  sAdcAv;
 static uint32_t  sAdcAvSum;
 static uint16_t  sAdcAvIdx = 0;
 
