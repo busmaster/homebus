@@ -146,7 +146,7 @@ int main(void) {
    spBusMsg = BusMsgBufGet();
 
    /* warten bis Betriebsspannung auf 24 V-Seite volle Höhe erreicht hat */
-//   while (!POWER_GOOD);
+   while (!POWER_GOOD);
 
    /* für Delay wird timer-Interrupt benötigt (DigOutAll() in RestoreDigOut()) */
    ENABLE_INT;
@@ -155,7 +155,7 @@ int main(void) {
 
    /* ext int for power fail: INT0 low level sensitive */
    EICRA &= ~((1 << ISC01) | (1 << ISC00));
-//   EIMSK |= (1 << INT0);
+   EIMSK |= (1 << INT0);
 
    LedSet(eLedGreenFlashSlow);
 
