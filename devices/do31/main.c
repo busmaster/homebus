@@ -500,7 +500,7 @@ static void ProcessBus(uint8_t ret) {
                   uint8_t position = spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i];
                   if (position <= 100) {
                      ShaderSetPosition(i, position);
-                  } else if(position <= 228) {
+                  } else if(position <= 228 && position > 127) {
 				     ShaderSetHandPosition(i, position&~0x80);
 				  } else if (position == 255) {
                      // stop

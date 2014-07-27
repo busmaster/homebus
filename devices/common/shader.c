@@ -263,16 +263,19 @@ bool ShaderSetHandPosition(TShaderNumber number, uint8_t position) {
    if (number >= eShaderNum) {
       return false;
    }
-   pShader = &sShader[number];
+   pShader = &sShader[number]; 
    if ((pShader->onSwitch == eDigOutInvalid) ||
        (pShader->dirSwitch == eDigOutInvalid)) {
       return false;
-   }
+   }  
    if (position > 100) {
       return false;
-   }
+   } 
    if ((position == 100)||(position == 0)) {
       pShader->handBit = 0;
+   } 
+   else {
+       pShader->handBit = 1;
    }
    pShader->cmd = eCmdSetPosition;
    pShader->setPosition = position;
@@ -333,7 +336,10 @@ void ShaderCheck(void) {
    case eStateStopped:
       switch (cmd) {
       case eCmdSetPosition:
-         if (pShader->setPosition < pShader->actualPosition) {
+ 	     if (pShader->setPosition == 0) { // immer zufahren
+            DigOutOff(pShader->dirSwitch);
+            nextState = eStateCloseInit;		 
+         } else if (pShader->setPosition < pShader->actualPosition) {
             DigOutOff(pShader->dirSwitch);
             nextState = eStateCloseInit;
          } else if (pShader->setPosition > pShader->actualPosition) {
