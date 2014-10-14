@@ -724,7 +724,10 @@ void ApplicationReleased30_1(void) {}
                                       
 void ApplicationPressed31_0(void) {}
 void ApplicationReleased31_0(void) {}
-void ApplicationPressed31_1(void) {}
+void ApplicationPressed31_1(void) {
+   /* Kueche Wandlampe bei Speis */
+   DigOutToggle(eDigOut30);
+}
 void ApplicationReleased31_1(void) {}
                                       
 void ApplicationPressed32_0(void) {
