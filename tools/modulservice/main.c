@@ -364,6 +364,9 @@ int main(int argc, char *argv[]) {
                case eBusDevTypeLum:
                   printf("LUM");
                   break;
+               case eBusDevTypeLed:
+                  printf("LED");
+                  break;
                default:
                   break;
             }
@@ -412,6 +415,9 @@ int main(int argc, char *argv[]) {
                   }
                   printf("\r\nADC:   0x%04x\r\n", actVal.actualValue.lum.lum_low | (actVal.actualValue.lum.lum_high << 8));
                   break;
+               case eBusDevTypeLed:
+                  printf("\r\nLED state: %02x\r\n", actVal.actualValue.led.state);
+                  break;
                default:
                   break;
             }
@@ -437,6 +443,9 @@ int main(int argc, char *argv[]) {
                   break;
                case eBusDevTypeLum:
                   printf("LUM");
+                  break;
+               case eBusDevTypeLed:
+                  printf("LED");
                   break;
                default:
                   break;
@@ -609,6 +618,9 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
             pBuf->actualValue.lum.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.state;
             pBuf->actualValue.lum.lum_high = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.lum_high;
             pBuf->actualValue.lum.lum_low = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.lum_low;
+            break;
+         case eBusDevTypeLed:
+            pBuf->actualValue.led.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.led.state;
             break;
          default:
             break;
