@@ -270,6 +270,8 @@ eDigOut17  WC EG
 eDigOut18  Glocke
 eDigOut19  Kueche Haengelampe
 eDigOut20  Terrasse
+eDigOut21  Keller Vorraum
+eDigOut22  Keller Stiege
 
 */
 
@@ -672,7 +674,12 @@ void ApplicationReleased37_0(void) {}
 void ApplicationPressed37_1(void) {}
 void ApplicationReleased37_1(void) {}
                                       
-void ApplicationPressed38_0(void) {}
+void ApplicationPressed38_0(void) {
+   /* Keller Vorraum */
+   DigOutToggle(eDigOut21);
+   /* Keller Stiege */
+   DigOutToggle(eDigOut22);
+}
 void ApplicationReleased38_0(void) {}
 void ApplicationPressed38_1(void) {}
 void ApplicationReleased38_1(void) {}
@@ -697,7 +704,12 @@ void ApplicationReleased42_0(void) {}
 void ApplicationPressed42_1(void) {}
 void ApplicationReleased42_1(void) {}
                                       
-void ApplicationPressed43_0(void) {}
+void ApplicationPressed43_0(void) {
+   /* Keller Vorraum */
+   DigOutToggle(eDigOut21);
+   /* Keller Stiege */
+   DigOutToggle(eDigOut22);
+}
 void ApplicationReleased43_0(void) {}
 void ApplicationPressed43_1(void) {}
 void ApplicationReleased43_1(void) {}
