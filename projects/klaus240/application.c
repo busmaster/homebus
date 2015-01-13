@@ -195,7 +195,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_0.03";
+   return "Klaus2_0.04";
 }
 
 /*----------------------------------------------------------------------------- 
@@ -270,8 +270,12 @@ eDigOut17  WC EG
 eDigOut18  Glocke
 eDigOut19  Kueche Haengelampe
 eDigOut20  Terrasse
-eDigOut21  Keller Vorraum
-eDigOut22  Keller Stiege
+eDigOut21  Lagerraum
+eDigOut22  Stiege UG
+eDigOut23  Arbeit UG 
+eDigOut24  Fitness
+eDigOut25  Vorraum UG
+eDigOut26  Technik
 
 */
 
@@ -676,7 +680,7 @@ void ApplicationReleased37_1(void) {}
                                       
 void ApplicationPressed38_0(void) {
    /* Keller Vorraum */
-   DigOutToggle(eDigOut21);
+   DigOutToggle(eDigOut25);
    /* Keller Stiege */
    DigOutToggle(eDigOut22);
 }
@@ -684,29 +688,41 @@ void ApplicationReleased38_0(void) {}
 void ApplicationPressed38_1(void) {}
 void ApplicationReleased38_1(void) {}
                                       
-void ApplicationPressed39_0(void) {}
+void ApplicationPressed39_0(void) {
+   /* Keller Lager */
+   DigOutToggle(eDigOut21);    
+}
 void ApplicationReleased39_0(void) {}
 void ApplicationPressed39_1(void) {}
 void ApplicationReleased39_1(void) {}
                                       
-void ApplicationPressed40_0(void) {}
+void ApplicationPressed40_0(void) {
+   /* Keller Fitness */
+   DigOutToggle(eDigOut24);
+}
 void ApplicationReleased40_0(void) {}
 void ApplicationPressed40_1(void) {}
 void ApplicationReleased40_1(void) {}
                                       
-void ApplicationPressed41_0(void) {}
+void ApplicationPressed41_0(void) {
+   /* Keller Technik */
+   DigOutToggle(eDigOut26);    
+}
 void ApplicationReleased41_0(void) {}
 void ApplicationPressed41_1(void) {}
 void ApplicationReleased41_1(void) {}
                                       
-void ApplicationPressed42_0(void) {}
+void ApplicationPressed42_0(void) {
+   /* Keller Arbeit */
+   DigOutToggle(eDigOut23);
+}
 void ApplicationReleased42_0(void) {}
 void ApplicationPressed42_1(void) {}
 void ApplicationReleased42_1(void) {}
                                       
 void ApplicationPressed43_0(void) {
    /* Keller Vorraum */
-   DigOutToggle(eDigOut21);
+   DigOutToggle(eDigOut25);
    /* Keller Stiege */
    DigOutToggle(eDigOut22);
 }
