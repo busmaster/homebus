@@ -1,24 +1,24 @@
 /*
  * main.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -31,7 +31,7 @@
 #ifdef WIN32
 #include <conio.h>
 #include <windows.h>
-#endif 
+#endif
 
 #include "sio.h"
 #include "bus.h"
@@ -46,7 +46,7 @@
 #define MY_ADDR    0
 
 /* default timeout for receiption of response telegram */
-#define RESPONSE_TIMEOUT   1000 /* ms */  
+#define RESPONSE_TIMEOUT   1000 /* ms */
 
 #define OP_INVALID                          0
 #define OP_SET_NEW_ADDRESS                  1
@@ -76,10 +76,10 @@
 *  Functions
 */
 static void PrintUsage(void);
-static bool ModulReset(uint8_t address);  
-static bool ModulNewAddress(uint8_t address, uint8_t newAddress);  
-static bool ModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen);  
-static bool ModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen);  
+static bool ModulReset(uint8_t address);
+static bool ModulNewAddress(uint8_t address, uint8_t newAddress);
+static bool ModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen);
+static bool ModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen);
 static bool ModulReadEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen, unsigned int eepromAddress);
 static bool ModulWriteEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen, unsigned int eepromAddress);
 static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf);
@@ -95,7 +95,7 @@ static unsigned long GetTickCount(void);
 int main(int argc, char *argv[]) {
 
    int            handle;
-   int            i;   
+   int            i;
    int            j;
    int            k;
    char           comPort[SIZE_COMPORT] = "";
@@ -116,12 +116,12 @@ int main(int argc, char *argv[]) {
    /* get com interface */
    for (i = 1; i < argc; i++) {
       if (strcmp(argv[i], "-c") == 0) {
-         if (argc > i) { 
+         if (argc > i) {
             strncpy(comPort, argv[i + 1], sizeof(comPort) - 1);
             comPort[sizeof(comPort) - 1] = '\0';
          }
          break;
-      } 
+      }
    }
    if (strlen(comPort) == 0) {
       PrintUsage();
@@ -135,11 +135,11 @@ int main(int argc, char *argv[]) {
             moduleAddr = atoi(argv[i + 1]);
          }
          break;
-      } 
+      }
    }
-   
+
    /* get requested operation */
-   
+
    if (operation == OP_INVALID) {
       /* set new module address */
       for (i = 1; i < argc; i++) {
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
         }
       }
    }
-       
+
    if (operation == OP_INVALID) {
       /* get client address list  */
       for (i = 1; i < argc; i++) {
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
         }
       }
    }
-   
+
    if (operation == OP_INVALID) {
       /* read EEPROM */
       for (i = 1; i < argc; i++) {
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
         }
       }
    }
-   
+
    if (operation == OP_INVALID) {
       /* write EEPROM */
       for (i = 1; i < argc; i++) {
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
         }
       }
    }
-   
+
    if (operation == OP_INVALID) {
       /* get actual value */
       for (i = 1; i < argc; i++) {
@@ -305,7 +305,7 @@ int main(int argc, char *argv[]) {
    uint8_t len;
    while ((len = SioGetNumRxChar(handle)) != 0) {
       uint8_t rxBuf[255];
-      SioRead(handle, rxBuf, len);      
+      SioRead(handle, rxBuf, len);
    }
    BusInit(handle);
 
@@ -313,29 +313,29 @@ int main(int argc, char *argv[]) {
       case OP_SET_NEW_ADDRESS:
          ret = ModulNewAddress(moduleAddr, newModuleAddr);
          if (ret) {
-            printf("OK\r\n");   
+            printf("OK\r\n");
          }
          break;
       case OP_SET_CLIENT_ADDRESS_LIST:
-         ret = ModulSetClientAddress(moduleAddr, clientList, sizeof(clientList));  
+         ret = ModulSetClientAddress(moduleAddr, clientList, sizeof(clientList));
          if (ret) {
-            printf("OK\r\n");   
+            printf("OK\r\n");
          }
-         break;  
+         break;
       case OP_GET_CLIENT_ADDRESS_LIST:
-         ret = ModulReadClientAddress(moduleAddr, clientList, sizeof(clientList));  
+         ret = ModulReadClientAddress(moduleAddr, clientList, sizeof(clientList));
          if (ret) {
             printf("client list: ");
             for (i = 0; i < (int)sizeof(clientList); i++) {
                printf("%02x ", clientList[i]);
-            } 
+            }
             printf("\r\n");
-         } 
+         }
          break;
       case OP_RESET:
          ret = ModulReset(moduleAddr);
          if (ret) {
-            printf("OK\r\n");   
+            printf("OK\r\n");
          }
          break;
       case OP_EEPROM_READ:
@@ -352,14 +352,14 @@ int main(int argc, char *argv[]) {
                   if (i < ((int)eepromAddress % 16)) {
                      printf("   ");
                   } else {
-                     printf("%02x ", *(pBuf + i - eepromAddress % 16)); 
+                     printf("%02x ", *(pBuf + i - eepromAddress % 16));
                   }
                }
                printf("\r\n");
             }
             free(pBuf);
          } else {
-            printf("cannot allocate memory for command execution\r\n");       
+            printf("cannot allocate memory for command execution\r\n");
          }
          break;
       case OP_EEPROM_WRITE:
@@ -395,7 +395,7 @@ int main(int argc, char *argv[]) {
                      for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
                         if ((i == 3) && (j == 7)) {
                            // DO31 has 31 outputs, dont display last bit
-                           break; 
+                           break;
                         }
                         if (actVal.actualValue.do31.digOut[i] & mask) {
                            printf("1");
@@ -487,10 +487,10 @@ int main(int argc, char *argv[]) {
       SioClose(handle);
    }
    if (ret) {
-      return 0;       
+      return 0;
    } else {
       printf("ERROR\r\n");
-      return -1;       
+      return -1;
    }
 }
 
@@ -501,8 +501,8 @@ int main(int argc, char *argv[]) {
 static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pSetVal) {
 
    TBusTelegram    txBusMsg;
-   uint8_t         ret;   
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
@@ -529,27 +529,27 @@ static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pSetVal) {
          }
       }
    } while (!responseOk && !timeOut);
- 
+
    if (responseOk) {
       return true;
    } else {
-      return false;    
-   }  
+      return false;
+   }
 }
 
 /*-----------------------------------------------------------------------------
 *  read info
 */
 static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf) {
-   
+
    TBusTelegram    txBusMsg;
-   uint8_t         ret;  
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
-  
+
    txBusMsg.type = eBusDevReqInfo;
    txBusMsg.senderAddr = MY_ADDR;
    txBusMsg.msg.devBus.receiverAddr = address;
@@ -570,7 +570,7 @@ static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf) {
          }
       }
    } while (!responseOk && !timeOut);
-   
+
    if (responseOk) {
       pBuf->devType = pBusMsg->msg.devBus.x.devResp.info.devType;
        memcpy(pBuf->version , pBusMsg->msg.devBus.x.devResp.info.version, sizeof(pBuf->version));
@@ -586,7 +586,7 @@ static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf) {
       }
       return true;
    } else {
-      return false;    
+      return false;
    }
 }
 
@@ -594,15 +594,15 @@ static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf) {
 *  read actual value
 */
 static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
-   
+
    TBusTelegram    txBusMsg;
-   uint8_t         ret;  
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
-  
+
    txBusMsg.type = eBusDevReqActualValue;
    txBusMsg.senderAddr = MY_ADDR;
    txBusMsg.msg.devBus.receiverAddr = address;
@@ -623,7 +623,7 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
          }
       }
    } while (!responseOk && !timeOut);
-   
+
    if (responseOk) {
       pBuf->devType = pBusMsg->msg.devBus.x.devResp.actualValue.devType;
       switch (pBuf->devType) {
@@ -651,7 +651,7 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
       }
       return true;
    } else {
-      return false;    
+      return false;
    }
 }
 
@@ -661,13 +661,13 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
 static bool ModulReset(uint8_t address) {
 
    TBusTelegram    txBusMsg;
-   uint8_t         ret;  
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
-  
+
    txBusMsg.type = eBusDevReqReboot;
    txBusMsg.senderAddr = MY_ADDR;
    txBusMsg.msg.devBus.receiverAddr = address;
@@ -688,11 +688,11 @@ static bool ModulReset(uint8_t address) {
          }
       }
    } while (!responseOk && !timeOut);
-   
+
    if (responseOk) {
       return true;
    } else {
-      return false;    
+      return false;
    }
 }
 
@@ -702,14 +702,14 @@ static bool ModulReset(uint8_t address) {
 static bool ModulNewAddress(uint8_t address, uint8_t newAddress) {
 
    TBusTelegram    txBusMsg;
-   uint8_t         ret;  
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
 
-   
+
    txBusMsg.type = eBusDevReqSetAddr;
    txBusMsg.senderAddr = MY_ADDR;
    txBusMsg.msg.devBus.receiverAddr = address;
@@ -732,11 +732,11 @@ static bool ModulNewAddress(uint8_t address, uint8_t newAddress) {
          }
       }
    } while (!responseOk && !timeOut);
- 
+
    if (responseOk) {
       return true;
    } else {
-      return false;    
+      return false;
    }
 }
 
@@ -746,8 +746,8 @@ static bool ModulNewAddress(uint8_t address, uint8_t newAddress) {
 static bool ModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen) {
 
    TBusTelegram    txBusMsg;
-   uint8_t         ret;   
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
@@ -779,11 +779,11 @@ static bool ModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t list
          }
       }
    } while (!responseOk && !timeOut);
-   
+
    if (responseOk) {
       return true;
    } else {
-      return false;    
+      return false;
    }
 }
 
@@ -791,16 +791,16 @@ static bool ModulReadClientAddress(uint8_t address, uint8_t *pList, uint8_t list
 *  set new client address list
 */
 static bool ModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listLen) {
-       
+
    TBusTelegram    txBusMsg;
-   uint8_t         ret;   
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
    bool            timeOut = false;
    int             i;
-          
+
    txBusMsg.type = eBusDevReqSetClientAddr;
    txBusMsg.senderAddr = MY_ADDR;
    txBusMsg.msg.devBus.receiverAddr = address;
@@ -826,11 +826,11 @@ static bool ModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listL
          }
       }
    } while (!responseOk && !timeOut);
- 
+
    if (responseOk) {
       return true;
    } else {
-      return false;    
+      return false;
    }
 }
 
@@ -838,14 +838,14 @@ static bool ModulSetClientAddress(uint8_t address, uint8_t *pList, uint8_t listL
 *  read eeprom data from bus module
 */
 static bool ModulReadEeprom(
-   uint8_t address, 
-   uint8_t *pBuf, 
+   uint8_t address,
+   uint8_t *pBuf,
    unsigned int bufLen,
    unsigned int eepromAddress) {
 
    TBusTelegram    txBusMsg;
-   uint8_t         ret;   
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
@@ -869,10 +869,10 @@ static bool ModulReadEeprom(
             if ((pBusMsg->type == eBusDevRespEepromRead) &&
                 (pBusMsg->msg.devBus.receiverAddr == MY_ADDR) &&
                 (pBusMsg->senderAddr == address)) {
-               *pBuf = pBusMsg->msg.devBus.x.devResp.readEeprom.data; 
+               *pBuf = pBusMsg->msg.devBus.x.devResp.readEeprom.data;
                numRead++;
                currentAddress++;
-               pBuf++;                                 
+               pBuf++;
                responseOk = true;
             }
          } else {
@@ -883,10 +883,10 @@ static bool ModulReadEeprom(
       } while (!responseOk && !timeOut);
       if (!responseOk) {
          break;
-      } 
+      }
       responseOk = false;
    }
-   
+
    if (numRead == bufLen) {
       return true;
    } else {
@@ -898,14 +898,14 @@ static bool ModulReadEeprom(
 *  write eeprom data from bus module
 */
 static bool ModulWriteEeprom(
-   uint8_t address, 
-   uint8_t *pBuf, 
+   uint8_t address,
+   uint8_t *pBuf,
    unsigned int bufLen,
    unsigned int eepromAddress) {
 
    TBusTelegram    txBusMsg;
-   uint8_t         ret;   
-   unsigned long   startTimeMs;   
+   uint8_t         ret;
+   unsigned long   startTimeMs;
    unsigned long   actualTimeMs;
    TBusTelegram    *pBusMsg;
    bool            responseOk = false;
@@ -932,7 +932,7 @@ static bool ModulWriteEeprom(
                 (pBusMsg->senderAddr == address)) {
                numWritten++;
                currentAddress++;
-               pBuf++;                                 
+               pBuf++;
                responseOk = true;
             }
          } else {
@@ -943,10 +943,10 @@ static bool ModulWriteEeprom(
       } while (!responseOk && !timeOut);
       if (!responseOk) {
          break;
-      } 
+      }
       responseOk = false;
    }
-   
+
    if (numWritten == bufLen) {
       return true;
    } else {
@@ -962,7 +962,7 @@ static unsigned long GetTickCount(void) {
 
    clock_gettime(CLOCK_MONOTONIC, &ts);
    timeMs = (unsigned long)((unsigned long long)ts.tv_sec * 1000ULL + (unsigned long long)ts.tv_nsec / 1000000ULL);
-   
+
    return timeMs;
 }
 #endif
