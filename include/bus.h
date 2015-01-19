@@ -46,6 +46,8 @@ extern "C" {
 #define BUS_DO31_SHADER_SIZE_SET_VALUE     15   /* 1 Byte je 15 Rollladen */
 #define BUS_DO31_SHADER_SIZE_ACTUAL_VALUE  15   /* 1 Byte je Rollladen */
 
+#define BUS_SW8_DIGOUT_SIZE_SET_VALUE      2    /* 2 byte for 8 DO (2 bit each) */
+
 #define BUS_MAX_CLIENT_NUM         16   /* size of list for setting client addresses */
 #define BUS_CLIENT_ADDRESS_INVALID 0xff   
 
@@ -220,6 +222,14 @@ typedef struct {
 
 
 typedef struct {
+   uint8_t digOut[BUS_SW8_DIGOUT_SIZE_SET_VALUE]; /* 2 bits per output:                      */
+                                                  /*                     00: no change       */
+                                                  /*                     01: trigger pulse   */
+                                                  /*                     10: set output to 0 */
+                                                  /*                     11: set output to 1 */
+} __attribute__ ((packed)) TBusDevSetValueSw8;
+
+typedef struct {
    uint8_t digOut[BUS_DO31_DIGOUT_SIZE_SET_VALUE];/* 2 bits per output:                      */
                                                   /*                     00: no change       */
                                                   /*                     01: trigger pulse   */
@@ -230,9 +240,11 @@ typedef struct {
                                                   /*                     254:      no change               */
 } __attribute__ ((packed)) TBusDevSetValueDo31;
 
+
 typedef struct {        
    TBusDevType devType;
    union {
+      TBusDevSetValueSw8  sw8;
       TBusDevSetValueDo31 do31;
    } setValue;
 } __attribute__ ((packed)) TBusDevReqSetValue;   /* Type 0x1d */

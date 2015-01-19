@@ -57,7 +57,8 @@
 #define OP_EEPROM_WRITE                     6
 #define OP_GET_ACTUAL_VALUE                 7
 #define OP_SET_VALUE_DO31                   8
-#define OP_INFO                             9
+#define OP_SET_VALUE_SW8                    9
+#define OP_INFO                             10
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -267,6 +268,23 @@ int main(int argc, char *argv[]) {
    }
 
    if (operation == OP_INVALID) {
+      /* set value sw8 */
+      for (i = 1; i < argc; i++) {
+         if (strcmp(argv[i], "-setvalsw8") == 0) {
+            if (argc > i) {
+               setVal.devType = eBusDevTypeSw8;
+               operation = OP_SET_VALUE_SW8;
+               memset(setVal.setValue.sw8.digOut, 0, sizeof(setVal.setValue.sw8.digOut)); // default: no change
+               for (j = i + 1, k = 0; (j < argc) && (k < (int)(sizeof(setVal.setValue.sw8.digOut) * 4 - 1)); j++, k++) {
+                  setVal.setValue.sw8.digOut[k / 4] |= ((uint8_t)atoi(argv[j]) & 0x03) << ((k % 4) * 2);
+               }
+               break;
+            }
+         }
+      }
+   }
+
+   if (operation == OP_INVALID) {
       /* get info */
       for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-info") == 0) {
@@ -425,6 +443,12 @@ int main(int argc, char *argv[]) {
          }
          break;
       case OP_SET_VALUE_DO31:
+         ret = ModulSetValue(moduleAddr, &setVal);
+         if (ret) {
+            printf("OK\r\n");
+         }
+         break;
+      case OP_SET_VALUE_SW8:
          ret = ModulSetValue(moduleAddr, &setVal);
          if (ret) {
             printf("OK\r\n");
@@ -949,16 +973,17 @@ static unsigned long GetTickCount(void) {
 static void PrintUsage(void) {
 
    printf("\r\nUsage:\r\n");
-   printf("busmodulservice -c port -a addr (-na addr                       |\r\n");
-   printf("                                 -setcl addr1 .. addr16         |\r\n");
-   printf("                                 -getcl                         |\r\n");
-   printf("                                 -reset                         |\r\n");
-   printf("                                 -eerd addr len                 |\r\n");
-   printf("                                 -eewr addr data1 .. dataN)     |\r\n");
-   printf("                                 -actval                        |\r\n");
-   printf("                                 -setvaldo31_do do0 .. do30     |\r\n");
-   printf("                                 -setvaldo31_sh sh0 .. sh14     |\r\n");
-   printf("                                 -info)                          \r\n");
+   printf("modulservice -c port -a addr (-na addr                       |\r\n");
+   printf("                              -setcl addr1 .. addr16         |\r\n");
+   printf("                              -getcl                         |\r\n");
+   printf("                              -reset                         |\r\n");
+   printf("                              -eerd addr len                 |\r\n");
+   printf("                              -eewr addr data1 .. dataN)     |\r\n");
+   printf("                              -actval                        |\r\n");
+   printf("                              -setvaldo31_do do0 .. do30     |\r\n");
+   printf("                              -setvaldo31_sh sh0 .. sh14     |\r\n");
+   printf("                              -setvalsw8 do0 .. do7          |\r\n");
+   printf("                              -info)                          \r\n");
    printf("-c port: com1 com2 ..\r\n");
    printf("-a addr: addr = address of module\r\n");
    printf("-na addr: set new address, addr = new address\r\n");
@@ -970,6 +995,7 @@ static void PrintUsage(void) {
    printf("-actval: read actual values from modul\r\n");
    printf("-setvaldo31_do do0 .. do30: set value for dig out\r\n");
    printf("-setvaldo31_sh sh0 .. sh14: set value for shader\r\n");
+   printf("-setvalsw8 do0 .. do7: set value for dig out\r\n");
    printf("-info: read type and version string from modul\r\n");
 }
 

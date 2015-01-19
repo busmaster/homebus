@@ -142,7 +142,9 @@ static TVarLenMsg sReqSetValueSize = {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetValue, devType) +
                         sizeof(TBusDevSetValueDo31)},
-      {0,               0},
+      {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqSetValue, devType) + 
+                        sizeof(TBusDevSetValueSw8)},
       {0,               0},
       {0,               0}
    }

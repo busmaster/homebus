@@ -119,6 +119,9 @@
 #define BUS_TRANSCEIVER_POWER_UP \
    PORTD &= ~(1 << 5)
    
+   
+#define DOUT_PULSE_DURATION_MS  1000 /* ms */
+
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */  
@@ -147,7 +150,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88_grg 0.01";
+char version[] = "Sw88_grg 0.02";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -167,6 +170,9 @@ static uint8_t   sIdle = 0;
 
 static TApplicationButton sApplicationButton[MAX_NUM_APPLICATION_BUTTONS];
 
+static bool      sDigOutIsOn = false;
+static uint16_t  sDigoutOnTimestamp;
+
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -184,6 +190,7 @@ static void CheckButton(void);
 static void ApplicationEventButton(TButtonEvent *pButtonEvent);
 static void ApplicationButtonInit(void);
 static void CheckApplication(void);
+static void CheckDigout(void);
 
 /*-----------------------------------------------------------------------------
 *  program start
@@ -234,8 +241,41 @@ int main(void) {
       ProcessBus();
       CheckButton();
       CheckApplication();
+      CheckDigout();
    }
    return 0;  /* never reached */
+}
+
+/*-----------------------------------------------------------------------------
+*  digout
+*/
+void DigOutOn(void) {
+    
+    OUTPUT_PIN_ON;
+}
+void DigOutOff(void) {
+    
+    OUTPUT_PIN_OFF;
+}
+
+void DigOutTrigger(void) {
+    
+    DigOutOn();
+    sDigOutIsOn = true;
+    GET_TIME_MS16(sDigoutOnTimestamp);
+}
+
+static void CheckDigout(void) {
+
+    uint16_t actualTime16;
+
+    if (sDigOutIsOn) {
+        GET_TIME_MS16(actualTime16);        
+        if (((uint16_t)(actualTime16 - sDigoutOnTimestamp)) >= DOUT_PULSE_DURATION_MS) {
+            DigOutOff();
+            sDigOutIsOn = false;
+        }
+    }
 }
 
 /*-----------------------------------------------------------------------------
@@ -298,12 +338,12 @@ static void ApplicationEventButton(TButtonEvent *pButtonEvent) {
          if (pButtonEvent->pressed) {
             pAppButton->isPressed = true;
             if (pAppButton->pressedDelayMs == 0) {
-               OUTPUT_PIN_ON;
+               DigOutOn();
             } else {
                GET_TIME_MS16(pAppButton->pressedTimeStamp);
             }
          } else {
-            OUTPUT_PIN_OFF;
+            DigOutOff();
             pAppButton->isPressed = false;
          }
       }
@@ -322,7 +362,7 @@ static void CheckApplication(void) {
           (pAppButton->pressedDelayMs > 0)) {
          GET_TIME_MS16(actualTime16);
          if (((uint16_t)(actualTime16 - pAppButton->pressedTimeStamp)) >= pAppButton->pressedDelayMs) {
-            OUTPUT_PIN_ON;
+            DigOutOn();
             pAppButton->isPressed = false;
          }
       }
@@ -530,6 +570,7 @@ static void ProcessBus(void) {
          case eBusDevReqReboot:
          case eBusDevRespSwitchState:
          case eBusDevReqActualValue:
+         case eBusDevReqSetValue:
          case eBusDevReqSetClientAddr:
          case eBusDevReqGetClientAddr:
          case eBusDevReqInfo:
@@ -587,6 +628,21 @@ static void ProcessBus(void) {
             sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.sw8.state = IO_STATE;
             BusSend(&sTxBusMsg);  
             break;
+         case eBusDevReqSetValue:
+             if (spRxBusMsg->msg.devBus.x.devReq.setValue.devType == eBusDevTypeSw8) {
+                 /* bit 2 and 3 contains the setvalue for our output pin */
+                 uint8_t action = (spRxBusMsg->msg.devBus.x.devReq.setValue.setValue.sw8.digOut[0] & 0x0c) >> 2; 
+                 /* support only trigger */
+                 if (action == 1) {
+                     DigOutTrigger();
+                 }
+                 /* respone packet */
+                 sTxBusMsg.type = eBusDevRespSetValue;
+                 sTxBusMsg.senderAddr = MY_ADDR;
+                 sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
+                 BusSend(&sTxBusMsg);
+             }
+             break;            
          case eBusDevReqSetClientAddr:
             sTxBusMsg.senderAddr = MY_ADDR; 
             sTxBusMsg.type = eBusDevRespSetClientAddr;  
