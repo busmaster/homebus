@@ -63,12 +63,16 @@
 /* Bits in EECR */
 #define EEWE     1
 
-#define EEPROM_SIZE (uint8_t *)4096  /* durch 4 teilbar!! */
+
+/* offset addresses in EEPROM */
+#define MODUL_ADDRESS        0
+
+/* DO restore after power fail */
+#define EEPROM_DO_RESTORE_START  (uint8_t *)3072
+#define EEPROM_DO_RESTORE_END    (uint8_t *)4095
 
 /* eigene Adresse am Bus */
 #define MY_ADDR    sMyAddr
-/* im letzten Byte im Flash liegt die eigene Adresse */
-#define FLASH_ADDR 0x1FFFF
 
 #define IDLE_SIO1  0x01
 
@@ -89,7 +93,7 @@ static TBusTelegram *spBusMsg;
 static TBusTelegram  sTxBusMsg;
 
 static const uint8_t *spNextPtrToEeprom;
-static uint8_t         sMyAddr;
+static uint8_t       sMyAddr;
 
 static uint8_t   sIdle = 0;
 
@@ -105,7 +109,6 @@ static void ButtonEvent(uint8_t address, uint8_t button);
 static void SwitchEvent(uint8_t address, uint8_t button, bool pressed);
 static void ProcessBus(uint8_t ret);
 static void RestoreDigOut(void);
-static uint8_t ReadFlash(uint32_t address);
 static void Idle(void);
 static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
@@ -118,8 +121,9 @@ int main(void) {
    uint8_t ret;
    int   sioHdl;
 
-   sMyAddr = ReadFlash(FLASH_ADDR);
-
+   /* get module address from EEPROM */
+   sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+    
    PortInit();
    LedInit();
    TimerInit();
@@ -229,24 +233,29 @@ static void RestoreDigOut(void) {
 
    uint8_t *ptrToEeprom;
    uint8_t buf[4];
-   uint8_t   flags;
+   uint8_t flags;
 
    /* zuletzt gespeicherten Zustand der Ausgänge suchen */
-   for (ptrToEeprom = (uint8_t *)3; ptrToEeprom < EEPROM_SIZE; ptrToEeprom += 4) {
+   for (ptrToEeprom = EEPROM_DO_RESTORE_START + 3; 
+        ptrToEeprom <= EEPROM_DO_RESTORE_END;
+        ptrToEeprom += 4) {
       if ((eeprom_read_byte(ptrToEeprom) & 0x80) == 0x00) {
          break;
       }
    }
-   if (ptrToEeprom >= EEPROM_SIZE) {
+   if (ptrToEeprom > EEPROM_DO_RESTORE_END) {
       /* nichts im EEPROM gefunden -> Ausgänge bleiben ausgeschaltet */
-      spNextPtrToEeprom = 0;
+      spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
       return;
    }
 
    /* wieder auf durch vier teilbare Adresse zurückrechnen */
    ptrToEeprom -= 3;
    /* Schreibhäufigkeit im EEPROM auf alle Adressen verteilen (wegen Lebensdauer) */
-   spNextPtrToEeprom = (const uint8_t *)(((int)ptrToEeprom + 4) % (int)EEPROM_SIZE);
+   spNextPtrToEeprom = (const uint8_t *)((int)ptrToEeprom + 4);
+   if (spNextPtrToEeprom > EEPROM_DO_RESTORE_END) {
+      spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
+    }
 
    /* Ausgangszustand wiederherstellen */
    flags = DISABLE_INT;
@@ -716,13 +725,4 @@ static void PortInit(void) {
    /* PortG.3, PortG.4 LED, Ausgang, high*/
    PORTG = 0b00011000;
    DDRG  = 0b00011111;
-}
-
-/*-----------------------------------------------------------------------------
-*  von Adresse im flash lesen
-*  Aufruf unter gesperrtem Interrupt
-*/
-static uint8_t ReadFlash(uint32_t address) {
-
-   return pgm_read_byte_far(address);
 }
