@@ -66,9 +66,9 @@
 */
 /* eigene Adresse am Bus */
 #define MY_ADDR    sMyAddr
-/* im letzten Byte im Flash liegt die eigene Adresse */
-#define FLASH_ADDR 0x1ffff
 
+/* the module address is stored in the first byte of eeprom */
+#define MODUL_ADDRESS        0
 
 /* Bits in MCUCR */
 #define IVCE     0
@@ -91,8 +91,6 @@
 #define WAIT_FOR_UPD_ENTER          0
 #define WAIT_FOR_UPD_ENTER_TIMEOUT  1
 #define WAIT_FOR_UPD_DATA           2
-
-#define EEPROM_SIZE   4096
 
 /* max. Größe der Firmware */
 #define MAX_FIRMWARE_SIZE   (120UL * 1024UL)
@@ -120,7 +118,7 @@ static uint8_t       sIdle = 0;
 
 /* auf wordaddressbereich 0xff80 .. 0xfffe im Flash sind 255 Byte für den Versionstring reserviert */
 char version[] __attribute__ ((section (".version")));
-char version[] = "DO31_Bootloader_1.10";
+char version[] = "DO31_Bootloader_2.00";
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -131,8 +129,6 @@ static void PortInit(void);
 static void TimerInit(void);
 static void ProcessBus(uint8_t ret);
 static uint8_t CheckTimeout(void);
-static void EepromDelete(void);
-static uint8_t ReadFlash(uint32_t address);
 static void Idle(void);
 static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
@@ -145,9 +141,9 @@ int main(void) {
    uint8_t   ret;
    uint16_t  flashWordAddr;
    uint16_t  sum;
-   int     sioHdl;
+   int       sioHdl;
 
-   sMyAddr = ReadFlash(FLASH_ADDR);
+   sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
 
    PortInit();
    TimerInit();
@@ -273,9 +269,6 @@ static void ProcessBus(uint8_t ret) {
             case WAIT_FOR_UPD_ENTER:
                if ((msgType == eBusDevReqUpdEnter) &&
                    (spBusMsg->msg.devBus.receiverAddr == MY_ADDR)) {
-
-                  /* ganzes EEPROM löschen (Ausgangszustände) */
-                  EepromDelete();
 
                   /* Applicationbereich des Flash löschen */
                   FlashErase();
@@ -434,20 +427,6 @@ static void PortInit(void) {
    DDRG  = 0b00011111;
 }
 
-
-/*-----------------------------------------------------------------------------
-*  EEPROM löschen
-*/
-static void EepromDelete(void) {
-
-   uint16_t i;
-   for (i = 0; i < EEPROM_SIZE; i += 2) {
-      if (eeprom_read_word((uint16_t *)i) != 0xffff) {
-         eeprom_write_word((uint16_t *)i, 0xffff);
-      }
-   }
-}
-
 /*-----------------------------------------------------------------------------*/
 /**
 *   Idle-Mode einschalten
@@ -491,13 +470,3 @@ static void BusTransceiverPowerDown(bool powerDown) {
       BUS_TRANSCEIVER_POWER_UP;
    }
 }
-
-/*-----------------------------------------------------------------------------
-*  von Adresse im flash lesen
-*  Aufruf unter gesperrtem Interrupt
-*/
-static uint8_t ReadFlash(uint32_t address) {
-
-   return pgm_read_byte_far(address);
-}
-
