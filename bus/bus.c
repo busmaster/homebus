@@ -219,7 +219,7 @@ static struct l2State {
 *  Functions
 */
 static uint8_t BusDecode(uint8_t ch);
-static void    TransmitCharProt(uint8_t data);
+static bool    TransmitCharProt(uint8_t data);
 static void    L2StateInit(uint8_t protoState);
  
 /*----------------------------------------------------------------------------
@@ -452,7 +452,7 @@ static uint8_t BusDecode(uint8_t numRxChar) {
 /*-----------------------------------------------------------------------------
 * send bus telegram
 */
-void BusSend(TBusTelegram *pMsg) {
+uint8_t BusSend(TBusTelegram *pMsg) {
   
    uint8_t ch;            
    uint8_t checkSum = CHECKSUM_START;
@@ -461,17 +461,18 @@ void BusSend(TBusTelegram *pMsg) {
    TVarLenMsg    *pVarSize;
    uint8_t len = 0;
    uint8_t numTypes;
+   bool    rc;
 
    numTypes = ARRAY_CNT(sTelegramSize);
    if ((uint8_t)(pMsg->type + 1) >= numTypes) {
-      return; // error
+      return BUS_SEND_BAD_TYPE; // error
    }
    pSize = &sTelegramSize[(uint8_t)(pMsg->type + 1)];
    len = pSize->size;
    if (len == 0) {
       pVarSize = pSize->pVarLen;
       if (pVarSize == 0) {
-         return; // error
+         return BUS_SEND_BAD_VARLEN; // error
       }
       for (i = 0; i < MAX_NUM_VAR_LEN; i++) {
          if (pVarSize->varData[i].value == *((uint8_t *)pMsg + pVarSize->offset)) {
@@ -481,18 +482,24 @@ void BusSend(TBusTelegram *pMsg) {
       }
    }
    if (len == 0) {
-      return; // error
+      return BUS_SEND_BAD_LEN; // error
    }           
    ch = STX;   
-   SioWriteBuffered(sSioHandle, &ch, sizeof(ch));
+   rc = SioWriteBuffered(sSioHandle, &ch, sizeof(ch)) == sizeof(ch) ? true : false;
    checkSum += ch;
-   for (i = 0; i < len; i++) {
+   for (i = 0; rc && (i < len); i++) {
       ch = *((uint8_t *)pMsg + i);
-      TransmitCharProt(ch);
+      rc = TransmitCharProt(ch);
       checkSum += ch;
    }
-   TransmitCharProt(checkSum);
-   SioSendBuffer(sSioHandle);
+   rc = rc && TransmitCharProt(checkSum);
+   rc = rc && SioSendBuffer(sSioHandle);
+   
+   if (rc) {
+       return BUS_SEND_OK;
+   } else {
+       return BUS_SEND_TX_ERROR;
+   }
 }
 
 /*-----------------------------------------------------------------------------
@@ -500,21 +507,23 @@ void BusSend(TBusTelegram *pMsg) {
 *  STX -> ESC + ~STX
 *  ESC -> ESC + ~ESC
 */
-static void TransmitCharProt(uint8_t data) {
+static bool TransmitCharProt(uint8_t data) {
       
    uint8_t tmp;
+   bool    rc;
    
    if (data == STX) {  
       tmp = ESC;
-      SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp));
+      rc = SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp)) == sizeof(tmp) ? true : false;
       tmp = ~STX;
-      SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp));
+      rc = rc && SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp)) == sizeof(tmp) ? true : false;
    } else if (data == ESC) {
       tmp = ESC;
-      SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp));
+      rc = SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp)) == sizeof(tmp) ? true : false;
       tmp = ~ESC;
-      SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp));
+      rc = rc && SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp)) == sizeof(tmp) ? true : false;
    } else {
-      SioWriteBuffered(sSioHandle, &data, sizeof(data));
-   }   
+      rc = SioWriteBuffered(sSioHandle, &data, sizeof(data)) == sizeof(tmp) ? true : false;
+   }
+   return rc;
 }

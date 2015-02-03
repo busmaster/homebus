@@ -57,6 +57,13 @@ extern "C" {
 #define BUS_MSG_RXING  2
 #define BUS_MSG_ERROR  3
 
+/* return codes for function BusSend */
+#define BUS_SEND_OK            0
+#define BUS_SEND_TX_ERROR      1
+#define BUS_SEND_BAD_TYPE      2
+#define BUS_SEND_BAD_VARLEN    3
+#define BUS_SEND_BAD_LEN       4 
+
 /*-----------------------------------------------------------------------------
 *  typedefs
 */
@@ -393,7 +400,7 @@ typedef struct {
 void           BusInit(int sioHandle);
 uint8_t        BusCheck(void);
 TBusTelegram   *BusMsgBufGet(void);
-void           BusSend(TBusTelegram *pMsg);
+uint8_t        BusSend(TBusTelegram *pMsg);
 
 #ifdef __cplusplus
 }
