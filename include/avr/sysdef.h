@@ -96,7 +96,7 @@
            GET_TIME_S(__startTime);                              \
            do {                                                  \
                GET_TIME_S(__actualTime);                         \
-           } while (((uint8_t)(__actualTime - __startTime)) < x);\
+           } while (((uint16_t)(__actualTime - __startTime)) < x);\
         }
 
 
