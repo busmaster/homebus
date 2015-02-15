@@ -51,6 +51,16 @@
 #define TIMER1_MS1       4               // 4 * 256 / 1000000 = 1
 #define TIMER1_MS2       8               // 8 * 256 / 1000000 = 2
 
+#elif (F_CPU == 8000000UL)
+#define UBRR_9600   51     /* 9600 @ 8MHz  */
+#define BRX2_9600   false  /* double baud rate */
+#define ERR_9600    false  /* baud rate is possible */
+
+/* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
+#define TIMER1_PRESCALER (0b101 << CS10) // prescaler clk/1024
+#define TIMER1_MS1       8               // 8  * 1024 / 8000000 = 1
+#define TIMER1_MS2       16              // 16 * 1024 / 8000000 = 2
+
 #else
 #error adjust baud rate settings for your CPU clock frequency
 #endif
