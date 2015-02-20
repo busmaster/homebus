@@ -6,7 +6,7 @@ and /dev/hausbus/10..14 are associated to the pty devices.
 used locally.
 ser2net maps /dev/hausbus0..4 to TCP ports 2000 .. 2004 (see ser2net.conf)
 
-(1) copy portserver to /etc/init.d
+(1) copy portserver to /etc/init.d and set serial port to use into OPTS
 (2) copy ser2net.conf to /etc
 (3) copy portservergetdev.sh to /usr/bin
 (4) copy bin/portserver to /usr/bin
