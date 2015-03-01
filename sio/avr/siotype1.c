@@ -96,7 +96,7 @@ static TIdleStateFunc                 sIdleFunc = 0;
 
 static uint8_t                        sRxBuffer[SIO_RX_BUF_SIZE];
 static uint8_t                        sRxBufWrIdx = 0;
-static uint8_t                        sRxBufRdIdx = 0;
+static uint8_t                        sRxBufRdIdx = SIO_RX_BUF_SIZE - 1; /* last index read */
 static uint8_t                        sTxBuffer[SIO_TX_BUF_SIZE];
 static uint8_t                        sTxBufWrIdx = 0;
 static uint8_t                        sTxBufRdIdx = 0;
@@ -385,27 +385,25 @@ uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
     uint8_t rdIdx;
     bool  flag;
 
+    flag = DISABLE_INT;
+
     rdIdx = sRxBufRdIdx;
     rxLen = SioGetNumRxChar(handle);
-
     if (rxLen < bufSize) {
         bufSize = rxLen;
     }
-
     for (i = 0; i < bufSize; i++) {
         rdIdx++;
         rdIdx &= (SIO_RX_BUF_SIZE - 1);
         *(pBuf + i) = sRxBuffer[rdIdx];
     }
-
     sRxBufRdIdx = rdIdx;
-
-    flag = DISABLE_INT;
     if (SioGetNumRxChar(handle) == 0) {
         if (sIdleFunc != 0) {
             sIdleFunc(true);
         }
     }
+
     RESTORE_INT(flag);
 
     return bufSize;
@@ -418,16 +416,16 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
     uint8_t rxFreeLen;
     uint8_t i;
     uint8_t rdIdx;
-    bool  flag;
+    bool    flag;
 
     bufSize = min(bufSize, SIO_RX_BUF_SIZE);
 
+    flag = DISABLE_INT;
     /* set back read index. so rx interrupt cannot write to undo buffer */
     rdIdx = sRxBufRdIdx;
     rdIdx -= bufSize;
     rdIdx &= (SIO_RX_BUF_SIZE - 1);
 
-    flag = DISABLE_INT;
     /* set back write index if necessary */
     rxFreeLen = SIO_RX_BUF_SIZE - 1 - SioGetNumRxChar(handle);
     if (bufSize > rxFreeLen) {
@@ -437,6 +435,7 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
     RESTORE_INT(flag);
 
     rdIdx++;
+    rdIdx &= (SIO_RX_BUF_SIZE - 1);
     for (i = 0; i < bufSize; i++) {
         sRxBuffer[rdIdx] = *(pBuf + i);
         rdIdx++;

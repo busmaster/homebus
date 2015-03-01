@@ -361,7 +361,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
 
     pChan->valid = true;
     pChan->rxBufWrIdx = 0;
-    pChan->rxBufRdIdx = 0;
+    pChan->rxBufRdIdx = pChan->rxBufSize - 1; /* last index read */
     pChan->txBufWrIdx = 0;
     pChan->txBufBufferedPos = 0;
     pChan->txBufRdIdx = 0;
@@ -564,28 +564,27 @@ uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
     RETURN_0_ON_INVALID_HDL(handle);
     pChan = &sChan[handle];
+
+    flag = DISABLE_INT;
+
     rdIdx = pChan->rxBufRdIdx;
     rxBufSize = pChan->rxBufSize;
     rxLen = SioGetNumRxChar(handle);
-
     if (rxLen < bufSize) {
         bufSize = rxLen;
     }
-
     for (i = 0; i < bufSize; i++) {
         rdIdx++;
         rdIdx &= (rxBufSize - 1);
         *(pBuf + i) = pChan->pRxBuf[rdIdx];
     }
-
     pChan->rxBufRdIdx = rdIdx;
-
-    flag = DISABLE_INT;
     if (SioGetNumRxChar(handle) == 0) {
         if (pChan->idleFunc != 0) {
             pChan->idleFunc(true);
         }
     }
+
     RESTORE_INT(flag);
 
     return bufSize;
@@ -607,12 +606,12 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
     rxBufSize = pChan->rxBufSize;
     bufSize = min(bufSize, rxBufSize);
 
+    flag = DISABLE_INT;
     /* set back read index. so rx interrupt cannot write to undo buffer */
     rdIdx = pChan->rxBufRdIdx;
     rdIdx -= bufSize;
     rdIdx &= (rxBufSize - 1);
 
-    flag = DISABLE_INT;
     /* set back write index if necessary */
     rxFreeLen = rxBufSize - 1 - SioGetNumRxChar(handle);
     if (bufSize > rxFreeLen) {
@@ -622,6 +621,7 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
     RESTORE_INT(flag);
 
     rdIdx++;
+    rdIdx &= (rxBufSize - 1);
     for (i = 0; i < bufSize; i++) {
         pChan->pRxBuf[rdIdx] = *(pBuf + i);
         rdIdx++;
