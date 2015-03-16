@@ -387,6 +387,15 @@ static void BusMonDecoded(int sioHandle) {
                   case eBusDevTypeSw8:
                      fprintf(spOutput, SPACE "device SW8\r\n");
                      break;
+                  case eBusDevTypeSw16:
+                     fprintf(spOutput, SPACE "device SW16\r\n");
+                     break;
+                  case eBusDevTypeLum:
+                     fprintf(spOutput, SPACE "device LUM\r\n");
+                     break;
+                  case eBusDevTypeLed:
+                     fprintf(spOutput, SPACE "device LED\r\n");
+                     break;
                   default:
                      fprintf(spOutput, SPACE "device unknown\r\n");
                      break;

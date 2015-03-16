@@ -38,7 +38,7 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 INCLUDES = -I ../../include/avr -I ../../include 
 
 ## Objects that must be built in order to link
-OBJECTS = main.o bus.o siotype1.o 
+OBJECTS = main.o twislave.o bus.o siotype1.o 
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
@@ -48,6 +48,9 @@ all: $(TARGET) bcu.hex bcu.eep size
 
 ## Compile
 main.o: main.c
+	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
+
+twislave.o: twislave.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 bus.o: ../../bus/bus.c

@@ -58,7 +58,8 @@
 #define OP_GET_ACTUAL_VALUE                 7
 #define OP_SET_VALUE_DO31                   8
 #define OP_SET_VALUE_SW8                    9
-#define OP_INFO                             10
+#define OP_SET_VALUE_SW16                   10
+#define OP_INFO                             11
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -275,7 +276,7 @@ int main(int argc, char *argv[]) {
                setVal.devType = eBusDevTypeSw8;
                operation = OP_SET_VALUE_SW8;
                memset(setVal.setValue.sw8.digOut, 0, sizeof(setVal.setValue.sw8.digOut)); // default: no change
-               for (j = i + 1, k = 0; (j < argc) && (k < (int)(sizeof(setVal.setValue.sw8.digOut) * 4 - 1)); j++, k++) {
+               for (j = i + 1, k = 0; (j < argc) && (k < (int)(sizeof(setVal.setValue.sw8.digOut) * 4)); j++, k++) {
                   setVal.setValue.sw8.digOut[k / 4] |= ((uint8_t)atoi(argv[j]) & 0x03) << ((k % 4) * 2);
                }
                break;
@@ -284,6 +285,22 @@ int main(int argc, char *argv[]) {
       }
    }
 
+   if (operation == OP_INVALID) {
+      /* set value (led) sw16 */
+      for (i = 1; i < argc; i++) {
+         if (strcmp(argv[i], "-setvalsw16") == 0) {
+            if (argc > i) {
+               setVal.devType = eBusDevTypeSw16;
+               operation = OP_SET_VALUE_SW16;
+               memset(setVal.setValue.sw16.led_state, 0, sizeof(setVal.setValue.sw16.led_state));
+               for (j = i + 1, k = 0; (j < argc) && (k < (int)(sizeof(setVal.setValue.sw16.led_state) * 2)); j++, k++) {
+                  setVal.setValue.sw16.led_state[k / 2] |= ((uint8_t)atoi(argv[j]) & 0x0F) << ((k % 2) * 4);
+               }
+               break;
+            }
+         }
+      }
+   }
    if (operation == OP_INVALID) {
       /* get info */
       for (i = 1; i < argc; i++) {
@@ -379,6 +396,9 @@ int main(int argc, char *argv[]) {
                case eBusDevTypeSw8:
                   printf("SW8");
                   break;
+               case eBusDevTypeSw16:
+                  printf("SW16");
+                  break;
                case eBusDevTypeLum:
                   printf("LUM");
                   break;
@@ -422,6 +442,22 @@ int main(int argc, char *argv[]) {
                   }
                   printf("\r\n");
                   break;
+               case eBusDevTypeSw16:
+                  printf("\r\ninput state: ");
+                  for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
+                     if (actVal.actualValue.sw16.input_state & mask) {
+                        printf("1");
+                     } else {
+                        printf("0");
+                     }
+                  }
+                  printf("\r\nled state: ");
+                  for (i = 0; i < sizeof(actVal.actualValue.sw16.led_state); i++) {
+                     printf("%x %x ", actVal.actualValue.sw16.led_state[i] & 0x0f, 
+                                     (actVal.actualValue.sw16.led_state[i] & 0xf0) >> 4);
+                  }
+                  printf("\r\n");
+                  break;
                case eBusDevTypeLum:
                   printf("\r\nstate: ");
                   for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
@@ -443,12 +479,8 @@ int main(int argc, char *argv[]) {
          }
          break;
       case OP_SET_VALUE_DO31:
-         ret = ModulSetValue(moduleAddr, &setVal);
-         if (ret) {
-            printf("OK\r\n");
-         }
-         break;
       case OP_SET_VALUE_SW8:
+      case OP_SET_VALUE_SW16:
          ret = ModulSetValue(moduleAddr, &setVal);
          if (ret) {
             printf("OK\r\n");
@@ -470,6 +502,9 @@ int main(int argc, char *argv[]) {
                   break;
                case eBusDevTypeLed:
                   printf("LED");
+                  break;
+               case eBusDevTypeSw16:
+                  printf("SW16");
                   break;
                default:
                   break;
@@ -637,6 +672,11 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
             break;
          case eBusDevTypeSw8:
             pBuf->actualValue.sw8.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw8.state;
+            break;
+         case eBusDevTypeSw16:
+            memcpy(pBuf->actualValue.sw16.led_state, pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw16.led_state, 
+                   sizeof(pBuf->actualValue.sw16.led_state));
+            pBuf->actualValue.sw16.input_state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw16.input_state;
             break;
          case eBusDevTypeLum:
             pBuf->actualValue.lum.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.state;
@@ -983,6 +1023,7 @@ static void PrintUsage(void) {
    printf("                              -setvaldo31_do do0 .. do30     |\r\n");
    printf("                              -setvaldo31_sh sh0 .. sh14     |\r\n");
    printf("                              -setvalsw8 do0 .. do7          |\r\n");
+   printf("                              -setvalsw16 led0 .. led7       |\r\n");
    printf("                              -info)                          \r\n");
    printf("-c port: com1 com2 ..\r\n");
    printf("-a addr: addr = address of module\r\n");
@@ -996,6 +1037,7 @@ static void PrintUsage(void) {
    printf("-setvaldo31_do do0 .. do30: set value for dig out\r\n");
    printf("-setvaldo31_sh sh0 .. sh14: set value for shader\r\n");
    printf("-setvalsw8 do0 .. do7: set value for dig out\r\n");
+   printf("-setvalsw16 led0 .. led7: set value for led\r\n");
    printf("-info: read type and version string from modul\r\n");
 }
 

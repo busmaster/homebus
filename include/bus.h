@@ -47,6 +47,7 @@ extern "C" {
 #define BUS_DO31_SHADER_SIZE_ACTUAL_VALUE  15   /* 1 Byte je Rollladen */
 
 #define BUS_SW8_DIGOUT_SIZE_SET_VALUE      2    /* 2 byte for 8 DO (2 bit each) */
+#define BUS_SW16_LED_SIZE_SET_VALUE        4    /* 8 leds, 4 bit each -> 4 byte for 8 Leds */
 
 #define BUS_MAX_CLIENT_NUM         16   /* size of list for setting client addresses */
 #define BUS_CLIENT_ADDRESS_INVALID 0xff
@@ -117,11 +118,15 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoLed;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoSw16;
+
 typedef enum {
    eBusDevTypeDo31 = 0x00,
    eBusDevTypeSw8  = 0x01,
    eBusDevTypeLum  = 0x02,
-   eBusDevTypeLed  = 0x03
+   eBusDevTypeLed  = 0x03,
+   eBusDevTypeSw16 = 0x04
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {
@@ -131,7 +136,8 @@ typedef struct {
       TBusDevInfoDo31 do31;
       TBusDevInfoSw8  sw8;
       TBusDevInfoLum  lum;
-      TBusDevInfoLum  led;
+      TBusDevInfoLed  led;
+      TBusDevInfoSw16 sw16;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
 
@@ -247,12 +253,17 @@ typedef struct {
                                                   /*                     254:      no change               */
 } __attribute__ ((packed)) TBusDevSetValueDo31;
 
+typedef struct {
+   uint8_t led_state[BUS_SW16_LED_SIZE_SET_VALUE]; 
+} __attribute__ ((packed)) TBusDevSetValueSw16;
+
 
 typedef struct {
    TBusDevType devType;
    union {
       TBusDevSetValueSw8  sw8;
       TBusDevSetValueDo31 do31;
+      TBusDevSetValueSw16 sw16;
    } setValue;
 } __attribute__ ((packed)) TBusDevReqSetValue;   /* Type 0x1d */
 
@@ -287,49 +298,80 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValueLed;
 
 typedef struct {
+   uint8_t led_state[BUS_SW16_LED_SIZE_SET_VALUE];
+   uint8_t input_state;
+} __attribute__ ((packed)) TBusDevActualValueSw16;
+
+typedef struct {
    TBusDevType devType;
    union {
       TBusDevActualValueDo31 do31;
       TBusDevActualValueSw8  sw8;
       TBusDevActualValueLum  lum;
       TBusDevActualValueLed  led;
+      TBusDevActualValueSw16 sw16;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
 
+typedef struct {
+   TBusDevType devType;
+   union {
+      TBusDevActualValueDo31 do31;
+      TBusDevActualValueSw8  sw8;
+      TBusDevActualValueLum  lum;
+      TBusDevActualValueLed  led;
+      TBusDevActualValueSw16 sw16;
+   } actualValue;
+} __attribute__ ((packed)) TBusDevReqActualValueEvent;  /* Type 0x21 */
+
+typedef struct {
+   TBusDevType devType;
+   union {
+      TBusDevActualValueDo31 do31;
+      TBusDevActualValueSw8  sw8;
+      TBusDevActualValueLum  lum;
+      TBusDevActualValueLed  led;
+      TBusDevActualValueSw16 sw16;
+   } actualValue; /* same as request */
+} __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
+
+
 typedef union {
-   TBusDevReqReboot         reboot;
-   TBusDevReqUpdEnter       updEnter;
-   TBusDevReqUpdData        updData;
-   TBusDevReqUpdTerm        updTerm;
-   TBusDevReqInfo           info;
-   TBusDevReqSetState       setState;
-   TBusDevReqGetState       getState;
-   TBusDevReqSetValue       setValue;
-   TBusDevReqActualValue    actualValue;
-   TBusDevReqSwitchState    switchState;
-   TBusDevReqSetClientAddr  setClientAddr;
-   TBusDevReqGetClientAddr  getClientAddr;
-   TBusDevReqSetAddr        setAddr;
-   TBusDevReqEepromRead     readEeprom;
-   TBusDevReqEepromWrite    writeEeprom;
+   TBusDevReqReboot           reboot;
+   TBusDevReqUpdEnter         updEnter;
+   TBusDevReqUpdData          updData;
+   TBusDevReqUpdTerm          updTerm;
+   TBusDevReqInfo             info;
+   TBusDevReqSetState         setState;
+   TBusDevReqGetState         getState;
+   TBusDevReqSetValue         setValue;
+   TBusDevReqActualValue      actualValue;
+   TBusDevReqActualValueEvent actualValueEvent;
+   TBusDevReqSwitchState      switchState;
+   TBusDevReqSetClientAddr    setClientAddr;
+   TBusDevReqGetClientAddr    getClientAddr;
+   TBusDevReqSetAddr          setAddr;
+   TBusDevReqEepromRead       readEeprom;
+   TBusDevReqEepromWrite      writeEeprom;
 } __attribute__ ((packed)) TUniDevReq;
 
 typedef union {
-   TBusDevRespUpdEnter       updEnter;
-   TBusDevRespUpdData        updData;
-   TBusDevRespUpdTerm        updTerm;
-   TBusDevRespInfo           info;
-   TBusDevRespSetState       setState;
-   TBusDevRespGetState       getState;
-   TBusDevRespSetValue       setValue;
-   TBusDevRespActualValue    actualValue;
-   TBusDevRespSwitchState    switchState;
-   TBusDevRespSetClientAddr  setClientAddr;
-   TBusDevRespGetClientAddr  getClientAddr;
-   TBusDevRespSetAddr        setAddr;
-   TBusDevRespEepromRead     readEeprom;
-   TBusDevRespEepromWrite    writeEeprom;
+   TBusDevRespUpdEnter         updEnter;
+   TBusDevRespUpdData          updData;
+   TBusDevRespUpdTerm          updTerm;
+   TBusDevRespInfo             info;
+   TBusDevRespSetState         setState;
+   TBusDevRespGetState         getState;
+   TBusDevRespSetValue         setValue;
+   TBusDevRespActualValue      actualValue;
+   TBusDevRespActualValueEvent actualValueEvent;
+   TBusDevRespSwitchState      switchState;
+   TBusDevRespSetClientAddr    setClientAddr;
+   TBusDevRespGetClientAddr    getClientAddr;
+   TBusDevRespSetAddr          setAddr;
+   TBusDevRespEepromRead       readEeprom;
+   TBusDevRespEepromWrite      writeEeprom;
 } __attribute__ ((packed)) TUniDevResp;
 
 typedef struct {
@@ -380,6 +422,8 @@ typedef enum {
    eBusDevRespSetValue =                 0x1e,
    eBusDevReqActualValue =               0x1f,
    eBusDevRespActualValue =              0x20,
+   eBusDevReqActualValueEvent =          0x21,
+   eBusDevRespActualValueEvent =         0x22,
    eBusDevStartup =                      0xff
 } __attribute__ ((packed)) TBusMsgType;
 

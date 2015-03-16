@@ -37,12 +37,20 @@
 #include "sysdef.h"
 #include "bus.h"
 
+#include "twislave.h"
+#define SLAVE_ADRESSE 0x3F 								// TWI - Slave-Adresse
+
 /*-----------------------------------------------------------------------------
 *  Macros  
 */         
 /* offset addresses in EEPROM */
 #define MODUL_ADDRESS       0
 #define OSCCAL_CORR         1
+
+#define COLOR_LED_BASE 40	/* offset für LED Farben beim startup */
+
+#define BUTTON_EVENT_ADRESS_BASE      50  /* offset für die Sender-Adressen */
+#define NUM_BUTTON_EVENT_ADDRESSES    4
 
 /* Button pressed telegram repetition time (time granularity is 16 ms) */
 #define BUTTON_TELEGRAM_REPEAT_DIFF    48  /* time in ms */
@@ -51,10 +59,7 @@
 #define BUTTON_TELEGRAM_REPEAT_TIMEOUT 8  /* time in seconds */
 
 /* our bus address */
-#define MY_ADDR_0    sMyAddr
-#define MY_ADDR_1    (sMyAddr + 1)
-#define MY_ADDR_2    (sMyAddr + 2)
-#define MY_ADDR_3    (sMyAddr + 3)
+#define MY_ADDR    sMyAddr
 
 #define IDLE_SIO  0x01
 
@@ -70,9 +75,9 @@
 #define BUTTON_TX_ON      1
 #define BUTTON_TX_TIMEOUT 2
 
-/*-----------------------------------------------------------------------------
-*  Typedefs
-*/  
+#define BUS_SW16_LED_SIZE_SET_VALUE    4    /* 4 byte for 8 Leds */
+#define NR_OF_LEDS                     8    /* 8 Leds */
+
 
 /*-----------------------------------------------------------------------------
 *  Variables
@@ -88,7 +93,15 @@ volatile uint16_t gTimeS;
 
 static uint8_t   sMyAddr;
 
+static uint8_t	 sMySwitchAddr[NUM_BUTTON_EVENT_ADDRESSES];
+
+static uint8_t   sInputState;
+
 static uint8_t   sIdle = 0;
+
+static uint8_t   sNewLedData[BUS_SW16_LED_SIZE_SET_VALUE];
+
+static uint8_t   sLedData[BUS_SW16_LED_SIZE_SET_VALUE];
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -101,50 +114,84 @@ static void ProcessBus(void);
 static void SendStartupMsg(void);
 static void IdleSio(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
-static uint8_t GetInputState(void);
+
 
 /*-----------------------------------------------------------------------------
 *  program start
 */
 int main(void) {                      
 
-   int     sioHandle;
-   uint8_t inputState;
+    int     sioHandle;
+    uint8_t i;
+    uint8_t u8;
 
-   MCUSR = 0;
-   wdt_disable();
+    MCUSR = 0;
+    wdt_disable();
 
-   /* get module address from EEPROM */
-   sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+    /* get module address from EEPROM */
+    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+    for (i = 0; i < NUM_BUTTON_EVENT_ADDRESSES; i++) {
+        sMySwitchAddr[i] = eeprom_read_byte((const uint8_t *)(BUTTON_EVENT_ADRESS_BASE + i));
+    }
    
-   PortInit();
-   TimerInit();
-   SioInit();
-   SioRandSeed(sMyAddr);
-   sioHandle = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
-                       eSioStopBits1, eSioModeHalfDuplex);
-   SioSetIdleFunc(sioHandle, IdleSio);
-   SioSetTransceiverPowerDownFunc(sioHandle, BusTransceiverPowerDown);
+    PortInit();
+    TimerInit();
+    SioInit();
+    SioRandSeed(MY_ADDR);
+    sioHandle = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
+                        eSioStopBits1, eSioModeHalfDuplex);
+    SioSetIdleFunc(sioHandle, IdleSio);
+    SioSetTransceiverPowerDownFunc(sioHandle, BusTransceiverPowerDown);
 
-   BusTransceiverPowerDown(true);
+    BusTransceiverPowerDown(true);
    
-   BusInit(sioHandle);
-   spRxBusMsg = BusMsgBufGet();
+    BusInit(sioHandle);
+    spRxBusMsg = BusMsgBufGet();
 
-   /* enable global interrupts */
-   ENABLE_INT;  
+    /* enable global interrupts */
+    ENABLE_INT;  
+    i2c_slave(SLAVE_ADRESSE);
 
-   SendStartupMsg();
+    button_register = 0;
+
+    init_BJ(SLAVE_ADRESSE);
+
+    for (i = 0; i < NR_OF_LEDS; i++) {
+        u8 = eeprom_read_byte((const uint8_t *)(COLOR_LED_BASE + i));
+        set_LED(i, u8);
+        sNewLedData[i / 2] |= (u8 & 0x0f) << ((i % 2) ? 4 : 0);
+    }
+
+    i2c_slave(SLAVE_ADRESSE);
+
+    SendStartupMsg();
    
-   while (1) { 
-      Idle();
-   
-      inputState = GetInputState(); 
-      ProcessButton(inputState);
+    while (1) { 
+        Idle();
+        if (send_startup == 1) {
+            init_BJ(SLAVE_ADRESSE);
+            for (i = 0; i < NR_OF_LEDS; i++) {
+                set_LED(i, eeprom_read_byte((const uint8_t *)(COLOR_LED_BASE + i)));
+            }
+        }
+        sInputState = button_register; 
+        ProcessButton(sInputState);
 
-      ProcessBus();
-   }
-   return 0;  /* never reached */
+        ProcessBus();
+
+        for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
+            if ((sNewLedData[i] & 0x0f) != (sLedData[i] & 0x0f) ) { // linke LED
+                set_LED(i * 2, sNewLedData[i] & 0x0f);
+                i2c_slave(SLAVE_ADRESSE);
+            }
+            if ((sNewLedData[i] & 0xf0) != (sLedData[i] & 0xf0) ) { // rechte LED
+                set_LED(i * 2 + 1, (sNewLedData[i] & 0xf0) >> 4);
+                i2c_slave(SLAVE_ADRESSE);
+            }
+            sLedData[i] = sNewLedData[i];
+        }
+    }
+    return 0;  /* never reached */
 }
 
 /*-----------------------------------------------------------------------------
@@ -162,16 +209,6 @@ static void Idle(void) {
    } else {
       sei();
    }
-}
-
-/*-----------------------------------------------------------------------------
-*  get the button state
-*/
-static uint8_t GetInputState(void) {
-   
-   uint8_t state = 0x00;
-
-   return state;   
 }
 
 /*-----------------------------------------------------------------------------
@@ -206,120 +243,120 @@ static void BusTransceiverPowerDown(bool powerDown) {
 */
 static void ProcessButton(uint8_t buttonState) {
 
-   static uint8_t  sSequenceState = BUTTON_TX_OFF;
-   static uint16_t sStartTimeS;
-   static uint8_t  sTimeStampMs;
-   bool            pressed;
-   uint16_t        actualTimeS;
-   uint8_t         actualTimeMs;
-   uint8_t         address;
+    static uint8_t  sSequenceState = BUTTON_TX_OFF;
+    static uint16_t sStartTimeS;
+    static uint8_t  sTimeStampMs;
+    bool            pressed;
+    uint16_t        actualTimeS;
+    uint8_t         actualTimeMs;
+    uint8_t         address;
 
-   /* TODO: gleichzeitiges druecken von Tasten */
+    /* TODO: gleichzeitiges druecken von Tasten */
 
-   /* buttons pull down pins to ground when pressed */
-   switch (buttonState) {
-      case 0b00000001:
-         sTxBusMsg.type = eBusButtonPressed1;
-         pressed = true;
-         address = MY_ADDR_0;
-         break;
-      case 0b00000010:
-         sTxBusMsg.type = eBusButtonPressed2;
-         pressed = true;
-         address = MY_ADDR_0;
-         break;
-      case 0b00000011:
-         sTxBusMsg.type = eBusButtonPressed1_2;
-         pressed = true;
-         address = MY_ADDR_0;
-         break;
-      case 0b00000100:
-         sTxBusMsg.type = eBusButtonPressed1;
-         pressed = true;
-         address = MY_ADDR_1;
-         break;
-      case 0b00001000:
-         sTxBusMsg.type = eBusButtonPressed2;
-         pressed = true;
-         address = MY_ADDR_1;
-         break;
-      case 0b00001100:
-         sTxBusMsg.type = eBusButtonPressed1_2;
-         pressed = true;
-         address = MY_ADDR_1;
-         break;
-      case 0b00010000:
-         sTxBusMsg.type = eBusButtonPressed1;
-         pressed = true;
-         address = MY_ADDR_2;
-         break;
-      case 0b00100000:
-         sTxBusMsg.type = eBusButtonPressed2;
-         pressed = true;
-         address = MY_ADDR_2;
-         break;
-      case 0b00110000:
-         sTxBusMsg.type = eBusButtonPressed1_2;
-         pressed = true;
-         address = MY_ADDR_2;
-         break;
-      case 0b01000000:
-         sTxBusMsg.type = eBusButtonPressed1;
-         pressed = true;
-         address = MY_ADDR_2;
-         break;
-      case 0b10000000:
-         sTxBusMsg.type = eBusButtonPressed2;
-         pressed = true;
-         address = MY_ADDR_3;
-         break;
-      case 0b11000000:
-         sTxBusMsg.type = eBusButtonPressed1_2;
-         pressed = true;
-         address = MY_ADDR_3;
-         break;
-      default:
-         pressed = false;
-         break;
-   }
+    switch (buttonState) {
+    case 0b00000001:
+        sTxBusMsg.type = eBusButtonPressed1;
+        pressed = true;
+        address = sMySwitchAddr[0];
+        break;
+    case 0b00000010:
+        sTxBusMsg.type = eBusButtonPressed2;
+        pressed = true;
+        address = sMySwitchAddr[0];
+        break;
+    case 0b00000011:
+        sTxBusMsg.type = eBusButtonPressed1_2;
+        pressed = true;
+        address = sMySwitchAddr[0];
+        break;
+    case 0b00000100:
+        sTxBusMsg.type = eBusButtonPressed1;
+        pressed = true;
+        address = sMySwitchAddr[1];
+        break;
+    case 0b00001000:
+        sTxBusMsg.type = eBusButtonPressed2;
+        pressed = true;
+        address = sMySwitchAddr[1];
+        break;
+    case 0b00001100:
+        sTxBusMsg.type = eBusButtonPressed1_2;
+        pressed = true;
+        address = sMySwitchAddr[1];
+        break;
+    case 0b00010000:
+        sTxBusMsg.type = eBusButtonPressed1;
+        pressed = true;
+        address = sMySwitchAddr[2];
+        break;
+    case 0b00100000:
+        sTxBusMsg.type = eBusButtonPressed2;
+        pressed = true;
+        address = sMySwitchAddr[2];
+        break;
+    case 0b00110000:
+        sTxBusMsg.type = eBusButtonPressed1_2;
+        pressed = true;
+        address = sMySwitchAddr[2];
+        break;
+    case 0b01000000:
+        sTxBusMsg.type = eBusButtonPressed1;
+        pressed = true;
+        address = sMySwitchAddr[3];
+        break;
+    case 0b10000000:
+        sTxBusMsg.type = eBusButtonPressed2;
+        pressed = true;
+        address = sMySwitchAddr[3];
+        break;
+    case 0b11000000:
+        sTxBusMsg.type = eBusButtonPressed1_2;
+        pressed = true;
+        address = sMySwitchAddr[3];
+        break;
+    default:
+        pressed = false;
+        address = MY_ADDR;
+        break;
+    }
 
-   switch (sSequenceState) {
-      case BUTTON_TX_OFF:
-         if (pressed) {
+    switch (sSequenceState) {
+    case BUTTON_TX_OFF:
+        if (pressed) {
             /* begin transmission of eBusButtonPressed* telegram */
             GET_TIME_S(sStartTimeS);
             sTimeStampMs = GET_TIME_MS;
             sTxBusMsg.senderAddr = address;
             BusSend(&sTxBusMsg);
             sSequenceState = BUTTON_TX_ON;
-         }
-         break;
-      case BUTTON_TX_ON:
-         if (pressed) {
+        }
+        break;
+    case BUTTON_TX_ON:
+        if (pressed) {
             GET_TIME_S(actualTimeS);
             if ((uint16_t)(actualTimeS - sStartTimeS) < BUTTON_TELEGRAM_REPEAT_TIMEOUT) {
-               actualTimeMs = GET_TIME_MS; 
-               if ((uint8_t)(actualTimeMs - sTimeStampMs) >= BUTTON_TELEGRAM_REPEAT_DIFF) {
-                  sTimeStampMs = GET_TIME_MS;
-                  sTxBusMsg.senderAddr = address;
-                  BusSend(&sTxBusMsg);
-               }
+                actualTimeMs = GET_TIME_MS; 
+                if ((uint8_t)(actualTimeMs - sTimeStampMs) >= BUTTON_TELEGRAM_REPEAT_DIFF) {
+                    sTimeStampMs = GET_TIME_MS;
+                    sTxBusMsg.senderAddr = address;
+                    BusSend(&sTxBusMsg);
+                }
             } else {
-               sSequenceState = BUTTON_TX_TIMEOUT;
+                sSequenceState = BUTTON_TX_TIMEOUT;
             }
-         } else {
+        } else {
             sSequenceState = BUTTON_TX_OFF;
-         }
-         break;
-      case BUTTON_TX_TIMEOUT:
-         if (!pressed) {
+        }
+        break;
+    case BUTTON_TX_TIMEOUT:
+        if (!pressed) {
             sSequenceState = BUTTON_TX_OFF;
-         }
-         break;
-      default:
-         sSequenceState = BUTTON_TX_OFF;
-         break;
-   }
+        }
+        break;
+    default:
+        sSequenceState = BUTTON_TX_OFF;
+        break;
+    }
 }
 
 /*-----------------------------------------------------------------------------
@@ -343,7 +380,8 @@ static void ProcessBus(void) {
          case eBusDevReqSetAddr:
          case eBusDevReqEepromRead:
          case eBusDevReqEepromWrite:
-            if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR_0) {
+         case eBusDevReqSetValue:
+            if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                msgForMe = true;
             }
             break;
@@ -364,25 +402,27 @@ static void ProcessBus(void) {
             while (1);
             break;   
          case eBusDevReqActualValue:
-            sTxBusMsg.senderAddr = MY_ADDR_0; 
+            sTxBusMsg.senderAddr = MY_ADDR; 
             sTxBusMsg.type = eBusDevRespActualValue;
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
-            sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeSw8;
-            sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.sw8.state = GetInputState();
+            sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeSw16;
+            sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.sw16.input_state = sInputState;
+            memcpy(sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.sw16.led_state, 
+                   sLedData, BUS_SW16_LED_SIZE_SET_VALUE);
             BusSend(&sTxBusMsg);  
             break;            
          case eBusDevReqInfo:
             sTxBusMsg.type = eBusDevRespInfo;  
-            sTxBusMsg.senderAddr = MY_ADDR_0; 
+            sTxBusMsg.senderAddr = MY_ADDR; 
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
-            sTxBusMsg.msg.devBus.x.devResp.info.devType = eBusDevTypeSw8;
+            sTxBusMsg.msg.devBus.x.devResp.info.devType = eBusDevTypeSw16;
             strncpy((char *)(sTxBusMsg.msg.devBus.x.devResp.info.version),
                version, BUS_DEV_INFO_VERSION_LEN); 
             sTxBusMsg.msg.devBus.x.devResp.info.version[BUS_DEV_INFO_VERSION_LEN - 1] = '\0';
             BusSend(&sTxBusMsg);  
             break;
          case eBusDevReqSetAddr:
-            sTxBusMsg.senderAddr = MY_ADDR_0; 
+            sTxBusMsg.senderAddr = MY_ADDR; 
             sTxBusMsg.type = eBusDevRespSetAddr;  
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
             p = &(spRxBusMsg->msg.devBus.x.devReq.setAddr.addr);
@@ -390,7 +430,7 @@ static void ProcessBus(void) {
             BusSend(&sTxBusMsg);  
             break;
          case eBusDevReqEepromRead:
-            sTxBusMsg.senderAddr = MY_ADDR_0; 
+            sTxBusMsg.senderAddr = MY_ADDR; 
             sTxBusMsg.type = eBusDevRespEepromRead;
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
             sTxBusMsg.msg.devBus.x.devResp.readEeprom.data = 
@@ -398,12 +438,20 @@ static void ProcessBus(void) {
             BusSend(&sTxBusMsg);  
             break;
          case eBusDevReqEepromWrite:
-            sTxBusMsg.senderAddr = MY_ADDR_0; 
+            sTxBusMsg.senderAddr = MY_ADDR; 
             sTxBusMsg.type = eBusDevRespEepromWrite;
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
             p = &(spRxBusMsg->msg.devBus.x.devReq.writeEeprom.data);
             eeprom_write_byte((uint8_t *)spRxBusMsg->msg.devBus.x.devReq.readEeprom.addr, *p);
             BusSend(&sTxBusMsg);  
+            break;
+         case eBusDevReqSetValue:
+            sTxBusMsg.senderAddr = MY_ADDR;
+            sTxBusMsg.type = eBusDevRespSetValue;
+            sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
+            memcpy(sNewLedData, spRxBusMsg->msg.devBus.x.devReq.setValue.setValue.sw16.led_state,
+                   BUS_SW16_LED_SIZE_SET_VALUE);
+            BusSend(&sTxBusMsg);
             break;
          default:
             break;
@@ -422,8 +470,8 @@ static void PortInit(void) {
    PORTB = 0b11111111;
    DDRB =  0b00000000;
 
-   PORTB = 0b11111111;
-   DDRB =  0b00000000;
+   PORTC = 0b11111111;
+   DDRC =  0b00000000;
 
    /* set PD2 and PD5 to output mode */
    PORTD = 0b11111111;
@@ -455,25 +503,11 @@ static void SendStartupMsg(void) {
     do {
         GET_TIME_MS16(cntMs);
         diff =  cntMs - startCnt;
-    } while (diff < ((uint16_t)MY_ADDR_0 * 100));
+    } while (diff < ((uint16_t)MY_ADDR * 100));
 
     sTxBusMsg.type = eBusDevStartup;
-    sTxBusMsg.senderAddr = MY_ADDR_0;
+    sTxBusMsg.senderAddr = MY_ADDR;
     BusSend(&sTxBusMsg);
-
-/*   
-    DELAY_MS(100);
-    sTxBusMsg.senderAddr = MY_ADDR_1;
-    BusSend(&sTxBusMsg);
-
-    DELAY_MS(100);
-    sTxBusMsg.senderAddr = MY_ADDR_2;
-    BusSend(&sTxBusMsg);
-
-    DELAY_MS(100);
-    sTxBusMsg.senderAddr = MY_ADDR_3;
-    BusSend(&sTxBusMsg);
-*/ 
 }
 
 /*-----------------------------------------------------------------------------
