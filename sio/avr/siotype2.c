@@ -177,7 +177,7 @@ static uint16_t sRand;
 /*-----------------------------------------------------------------------------
 *  Functions
 */
-static uint8_t SioGetNumTxFreeChar(TChanDesc *pChan);
+static uint8_t GetNumTxFreeChar(TChanDesc *pChan);
 static void UdreInt(int handle);
 static void TxcInt(int handle);
 static void RxcInt(int handle);
@@ -422,7 +422,7 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
     pStart = pChan->pTxBuf;
     txBufSize = pChan->txBufSize;
     wrIdx = pChan->txBufWrIdx;
-    txFree = SioGetNumTxFreeChar(pChan);
+    txFree = GetNumTxFreeChar(pChan);
     if (bufSize > txFree) {
         bufSize = txFree;
     }
@@ -480,7 +480,7 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
         return 0;
     }
 
-    return bufSize;
+    return len;
 }
 
 /*-----------------------------------------------------------------------------
@@ -521,7 +521,7 @@ bool SioSendBuffer(int handle) {
 /*-----------------------------------------------------------------------------
 *  free space in tx buffer
 */
-static uint8_t SioGetNumTxFreeChar(TChanDesc *pChan) {
+static uint8_t GetNumTxFreeChar(TChanDesc *pChan) {
     uint8_t rdIdx;
     uint8_t wrIdx;
     uint8_t txBufSize;
@@ -604,7 +604,7 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
     RETURN_0_ON_INVALID_HDL(handle);
     pChan = &sChan[handle];
     rxBufSize = pChan->rxBufSize;
-    bufSize = min(bufSize, rxBufSize);
+    bufSize = min(bufSize, rxBufSize - 1);
 
     flag = DISABLE_INT;
     /* set back read index. so rx interrupt cannot write to undo buffer */

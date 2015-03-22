@@ -110,7 +110,7 @@ static uint16_t sRand;
 /*-----------------------------------------------------------------------------
 *  Functions
 */
-static uint8_t SioGetNumTxFreeChar(int handle);
+static uint8_t GetNumTxFreeChar(int handle);
 static void TimerInit(void);
 static void TimerStart(uint16_t delayTicks);
 static void TimerStop(void);
@@ -259,7 +259,7 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
     } 
 
     pStart = &sTxBuffer[0];
-    txFree = SioGetNumTxFreeChar(handle);
+    txFree = GetNumTxFreeChar(handle);
     if (bufSize > txFree) {
         bufSize = txFree;
     }
@@ -316,7 +316,7 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
         return 0;
     }
 
-    return bufSize;
+    return len;
 }
 
 /*-----------------------------------------------------------------------------
@@ -353,7 +353,7 @@ bool SioSendBuffer(int handle) {
 /*-----------------------------------------------------------------------------
 *  free space in tx buffer
 */
-static uint8_t SioGetNumTxFreeChar(int handle) {
+static uint8_t GetNumTxFreeChar(int handle) {
     uint8_t rdIdx;
     uint8_t wrIdx;
 
@@ -418,7 +418,7 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
     uint8_t rdIdx;
     bool    flag;
 
-    bufSize = min(bufSize, SIO_RX_BUF_SIZE);
+    bufSize = min(bufSize, SIO_RX_BUF_SIZE - 1);
 
     flag = DISABLE_INT;
     /* set back read index. so rx interrupt cannot write to undo buffer */
