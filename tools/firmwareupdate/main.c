@@ -29,6 +29,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #include "sio.h"
 #include "bus.h"
 

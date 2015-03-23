@@ -23,7 +23,7 @@ all:	$(OBJS)
 
 %.o: %.c
 	@mkdir -p $(OBJDIR)
-	$(GCC) -g -c -Wall -I . -I ../../include -I ../../include/linux $< -o $(OBJDIR)/$@
+	$(GCC) -g -c -Wall -I . -I ../../include $< -o $(OBJDIR)/$@
 
 .PHONY: clean
 clean:
