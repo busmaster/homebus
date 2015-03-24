@@ -22,7 +22,7 @@
  */
 
 #define _XOPEN_SOURCE
-#define  DEBUG_LOG
+#undef  DEBUG_LOG
 
 #include <fcntl.h>
 #include <stdlib.h>
