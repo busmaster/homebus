@@ -23,7 +23,8 @@
 
 #include <windows.h>
 #include <stdio.h>
-#include "types.h"
+#include <stdint.h>
+#include <stdbool.h>
 #include "sio.h"
 
 /*-----------------------------------------------------------------------------
@@ -32,18 +33,23 @@
 
 #define MAX_NUM_SIO     4
 #define UNREAD_BUF_SIZE 512  // 2er-Potenz!!
+#define TX_BUF_SIZE     255  // max 255
 
 /*-----------------------------------------------------------------------------
 *  typedefs
 */
 typedef struct {
-   bool   used;
-   HANDLE hCom; 
-   struct {
-      UINT8        buf[UNREAD_BUF_SIZE];
-      unsigned int bufIdxWr;
-      unsigned int bufIdxRd;
-   } unRead;
+    bool   used;
+    HANDLE hCom;
+    struct {
+      uint8_t buf[TX_BUF_SIZE];
+      uint8_t pos; 
+    } bufferedTx;
+    struct {
+        uint8_t      buf[UNREAD_BUF_SIZE];
+        unsigned int bufIdxWr;
+        unsigned int bufIdxRd;
+    } unRead;
 } TSioDesc;
 
 /*-----------------------------------------------------------------------------
@@ -57,14 +63,16 @@ static TSioDesc sSio[MAX_NUM_SIO];
 static bool HandleValid(int handle);
 static void CommErrorClear(int handle);
 static unsigned int UnReadBufLen(int handle);
-static UINT8 ReadUnRead(int handle, UINT8 *pBuf, UINT8 bufSize);
+static uint8_t ReadUnRead(int handle, uint8_t *pBuf, uint8_t bufSize);
 
 /*-----------------------------------------------------------------------------
 *  Sio Initialisierung
 */
 void SioInit(void) {
    
-   for (int i = 0; i < MAX_NUM_SIO; i++) {
+   int i;
+   
+   for (i = 0; i < MAX_NUM_SIO; i++) {
       sSio[i].used = false;
    }
 }
@@ -76,7 +84,8 @@ int SioOpen(const char *pPortName,
             TSioBaud baud, 
             TSioDataBits dataBits, 
             TSioParity parity, 
-            TSioStopBits stopBits
+            TSioStopBits stopBits,
+            TSioMode mode
             ) {
    HANDLE       hCom; 
    DCB          dcb;
@@ -190,7 +199,7 @@ int SioClose(int handle) {
 /*-----------------------------------------------------------------------------
 *  Sio Sendepuffer schreiben
 */
-UINT8 SioWrite(int handle, UINT8 *pBuf, UINT8 bufSize) {
+uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    bool fSuccess;
    unsigned long bytesWritten;
@@ -203,17 +212,67 @@ UINT8 SioWrite(int handle, UINT8 *pBuf, UINT8 bufSize) {
    if (!fSuccess) {
       CommErrorClear(handle);
    }
-   return (UINT8)bytesWritten;           
+   return (uint8_t)bytesWritten;           
+}
+
+/*-----------------------------------------------------------------------------
+*  write data to tx buffer - do not yet start with tx
+*/
+uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
+
+   uint8_t   len;
+   TSioDesc  *pSio;
+
+   if (!HandleValid(handle)) {
+      return 0;
+   }
+   pSio = &sSio[handle];
+   
+   len = sizeof(pSio->bufferedTx.buf) - pSio->bufferedTx.pos;
+   len = min(len, bufSize);
+   memcpy(&pSio->bufferedTx.buf[pSio->bufferedTx.pos], pBuf, len);
+   pSio->bufferedTx.pos += len;
+
+   return (uint8_t)len;           
+}
+
+/*-----------------------------------------------------------------------------
+*  trigger tx of buffer
+*/
+bool SioSendBuffer(int handle) {
+
+    bool fSuccess;
+   unsigned long bytesWritten = 123;    
+   TSioDesc      *pSio;
+   bool          rc = false;
+
+    if (!HandleValid(handle)) {
+        return 0;
+    }
+    pSio = &sSio[handle];
+   
+    fSuccess = WriteFile(pSio->hCom, pSio->bufferedTx.buf, pSio->bufferedTx.pos, &bytesWritten ,NULL);
+    if (!fSuccess) {
+        printf("comm err\n");
+        CommErrorClear(handle);
+    } else {
+        if (bytesWritten == pSio->bufferedTx.pos) {
+            rc = true;
+        }
+    }
+    pSio->bufferedTx.pos = 0;
+   
+    return rc;
 }
 
 /*-----------------------------------------------------------------------------
 *  Sio Empfangspuffer lesen
 */
-UINT8 SioRead(int handle, UINT8 *pBuf, UINT8 bufSize) {
+uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    bool fSuccess;
    unsigned long bytesRead = 0;
-   UINT8 readUnread;
+   uint8_t readUnread;
 
    if (!HandleValid(handle)) {
       return 0;
@@ -239,13 +298,13 @@ if (bytesRead != 0) {
 }
 #endif
 
-   return (UINT8)(bytesRead + readUnread);           
+   return (uint8_t)(bytesRead + readUnread);           
 }
 
 /*-----------------------------------------------------------------------------
 *  Zeichen in Empfangspuffer zurückschreiben
 */
-UINT8 SioUnRead(int handle, UINT8 *pBuf, UINT8 bufSize) {
+uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    unsigned int free;
    unsigned int used;
@@ -277,7 +336,7 @@ UINT8 SioUnRead(int handle, UINT8 *pBuf, UINT8 bufSize) {
 /*-----------------------------------------------------------------------------
 *  Anzahl der Zeichen im Empfangspuffer
 */
-UINT8 SioGetNumRxChar(int handle) {
+uint8_t SioGetNumRxChar(int handle) {
 
    DWORD inLen;
    DWORD numRxChar = 0;
@@ -298,7 +357,7 @@ UINT8 SioGetNumRxChar(int handle) {
 /*-----------------------------------------------------------------------------
 *  Zeichen in Empfangspuffer zurückschreiben
 */
-static UINT8 ReadUnRead(int handle, UINT8 *pBuf, UINT8 bufSize) {
+static uint8_t ReadUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    unsigned int len = 0;
    unsigned int used;
@@ -316,7 +375,7 @@ static UINT8 ReadUnRead(int handle, UINT8 *pBuf, UINT8 bufSize) {
       }
       sSio[handle].unRead.bufIdxRd = rdIdx; 
    }  
-   return (UINT8)len;
+   return (uint8_t)len;
 }
 
 

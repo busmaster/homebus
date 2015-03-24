@@ -48,7 +48,7 @@
 #define MSG_BASE_SIZE2  MSG_BASE_SIZE1 + member_sizeof(TBusDev, receiverAddr)
 
 // max number of length options of variable length telegrams 
-#define MAX_NUM_VAR_LEN 4
+#define MAX_NUM_VAR_LEN  5
 
 
 #define L1_WAIT_FOR_STX      0
@@ -106,7 +106,11 @@ static TVarLenMsg sRespInfoSize = {
       {eBusDevTypeLed,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
                         member_sizeof(TBusDevRespInfo, version) + 
-                        sizeof(TBusDevInfoLed)}
+                        sizeof(TBusDevInfoLed)},
+      {eBusDevTypeSw16, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespInfo, devType) +
+                        member_sizeof(TBusDevRespInfo, version) + 
+                        sizeof(TBusDevInfoSw16)}
    }
 };
 
@@ -116,6 +120,7 @@ static TVarLenMsg sReqSetStateSize = {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetState, devType) +
                         sizeof(TBusDevSetStateDo31)},
+      {0,               0},
       {0,               0},
       {0,               0},
       {0,               0}
@@ -132,6 +137,7 @@ static TVarLenMsg sRespGetStateSize = {
                         member_sizeof(TBusDevRespGetState, devType) +
                         sizeof(TBusDevGetStateSw8)},
       {0,               0},
+      {0,               0},
       {0,               0}
    }
 };
@@ -145,6 +151,9 @@ static TVarLenMsg sReqSetValueSize = {
       {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetValue, devType) + 
                         sizeof(TBusDevSetValueSw8)},
+      {eBusDevTypeSw16, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqSetValue, devType) + 
+                        sizeof(TBusDevSetValueSw16)},
       {0,               0},
       {0,               0}
    }
@@ -164,47 +173,94 @@ static TVarLenMsg sRespActualValueSize = {
                         sizeof(TBusDevActualValueLum)},
       {eBusDevTypeLed,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValue, devType) +
-                        sizeof(TBusDevActualValueLed)}
+                        sizeof(TBusDevActualValueLed)},
+      {eBusDevTypeSw16, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValue, devType) +
+                        sizeof(TBusDevActualValueSw16)}
+   }
+};
+
+static TVarLenMsg sReqActualValueEventSize = {
+   MSG_BASE_SIZE2,
+   {
+      {eBusDevTypeDo31, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueDo31)},
+      {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueSw8)},
+      {eBusDevTypeLum,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueLum)},
+      {eBusDevTypeLed,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueLed)},
+      {eBusDevTypeSw16, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueSw16)}
+   }
+};
+
+static TVarLenMsg sRespActualValueEventSize = {
+   MSG_BASE_SIZE2,
+   {
+      {eBusDevTypeDo31, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueDo31)},
+      {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueSw8)},
+      {eBusDevTypeLum,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueLum)},
+      {eBusDevTypeLed,  MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueLed)},
+      {eBusDevTypeSw16, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueSw16)}
    }
 };
 
 // telegram sizes without STX and checksum
 // array index + 1 = telegram type (eBusDevStartup is 255 -> gets index 0
 static TTelegramSize sTelegramSize[] = {
-   { MSG_BASE_SIZE1,                                    0                    }, // eBusDevStartup
-   { 0,                                                 0                    }, // unused
-   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                    }, // eBusButtonPressed1
-   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                    }, // eBusButtonPressed2
-   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                    }, // eBusButtonPressed1_2
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqReboot),         0                    }, // eBusDevReqReboot
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdEnter),       0                    }, // eBusDevReqUpdEnter
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdEnter),      0                    }, // eBusDevRespUpdEnter
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdData),        0                    }, // eBusDevReqUpdData
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdData),       0                    }, // eBusDevRespUpdData
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdTerm),        0                    }, // eBusDevReqUpdTerm
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdTerm),       0                    }, // eBusDevRespUpdTerm
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqInfo),           0                    }, // eBusDevReqInfo
-   { 0,                                                 &sRespInfoSize       }, // eBusDevRespInfo
-   { 0,                                                 &sReqSetStateSize    }, // eBusDevReqSetState
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetState),      0                    }, // eBusDevRespSetState
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqGetState),       0                    }, // eBusDevReqGetState
-   { 0,                                                 &sRespGetStateSize   }, // eBusDevRespGetState
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSwitchState),    0                    }, // eBusDevReqSwitchState
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSwitchState),   0                    }, // eBusDevRespSwitchState
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSetClientAddr),  0                    }, // eBusDevReqSetClientAddr
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetClientAddr), 0                    }, // eBusDevRespSetClientAddr
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqGetClientAddr),  0                    }, // eBusDevReqGetClientAddr
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespGetClientAddr), 0                    }, // eBusDevRespGetClientAddr
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSetAddr),        0                    }, // eBusDevReqSetAddr
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetAddr),       0                    }, // eBusDevRespSetAddr
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqEepromRead),     0                    }, // eBusDevReqEepromRead
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespEepromRead),    0                    }, // eBusDevRespEepromRead
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqEepromWrite),    0                    }, // eBusDevReqEepromWrite
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespEepromWrite),   0                    }, // eBusDevRespEepromWrite
-   { 0,                                                 &sReqSetValueSize    }, // eBusDevReqSetValue
-   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetValue),      0                    }, // eBusDevRespSetValue
-   { MSG_BASE_SIZE2 + sizeof(TBusDevReqActualValue),    0                    }, // eBusDevReqActualValue
-   { 0,                                                 &sRespActualValueSize}, // eBusDevRespActualValue
+   { MSG_BASE_SIZE1,                                    0                         }, // eBusDevStartup
+   { 0,                                                 0                         }, // unused
+   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                         }, // eBusButtonPressed1
+   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                         }, // eBusButtonPressed2
+   { MSG_BASE_SIZE1 + sizeof(TBusButtonPressed),        0                         }, // eBusButtonPressed1_2
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqReboot),         0                         }, // eBusDevReqReboot
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdEnter),       0                         }, // eBusDevReqUpdEnter
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdEnter),      0                         }, // eBusDevRespUpdEnter
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdData),        0                         }, // eBusDevReqUpdData
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdData),       0                         }, // eBusDevRespUpdData
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqUpdTerm),        0                         }, // eBusDevReqUpdTerm
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespUpdTerm),       0                         }, // eBusDevRespUpdTerm
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqInfo),           0                         }, // eBusDevReqInfo
+   { 0,                                                 &sRespInfoSize            }, // eBusDevRespInfo
+   { 0,                                                 &sReqSetStateSize         }, // eBusDevReqSetState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetState),      0                         }, // eBusDevRespSetState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqGetState),       0                         }, // eBusDevReqGetState
+   { 0,                                                 &sRespGetStateSize        }, // eBusDevRespGetState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSwitchState),    0                         }, // eBusDevReqSwitchState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSwitchState),   0                         }, // eBusDevRespSwitchState
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSetClientAddr),  0                         }, // eBusDevReqSetClientAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetClientAddr), 0                         }, // eBusDevRespSetClientAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqGetClientAddr),  0                         }, // eBusDevReqGetClientAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespGetClientAddr), 0                         }, // eBusDevRespGetClientAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSetAddr),        0                         }, // eBusDevReqSetAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetAddr),       0                         }, // eBusDevRespSetAddr
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqEepromRead),     0                         }, // eBusDevReqEepromRead
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespEepromRead),    0                         }, // eBusDevRespEepromRead
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqEepromWrite),    0                         }, // eBusDevReqEepromWrite
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespEepromWrite),   0                         }, // eBusDevRespEepromWrite
+   { 0,                                                 &sReqSetValueSize         }, // eBusDevReqSetValue
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetValue),      0                         }, // eBusDevRespSetValue
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqActualValue),    0                         }, // eBusDevReqActualValue
+   { 0,                                                 &sRespActualValueSize     }, // eBusDevRespActualValue
+   { 0,                                                 &sReqActualValueEventSize }, // eBusDevReqActualValueEvent
+   { 0,                                                 &sRespActualValueEventSize}, // eBusDevRespActualValueEvent
 };
 
 static struct l2State {

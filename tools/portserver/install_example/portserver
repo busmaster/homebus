@@ -11,6 +11,11 @@
 
 OPTS=/dev/ttyS1
 
+if [ ! -e $OPTS ]; then
+	echo $OPTS does not exist
+	exit 3
+fi
+
 case "$1" in
     start)
         echo "Starting portserver..."

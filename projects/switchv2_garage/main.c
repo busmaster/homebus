@@ -53,7 +53,7 @@
                                  /* 0b11111110 = 0xfe */
 #define PORT_C_CONFIG_PORT    3  /* bitmask for port c:                */
                                  /* 1 pullup, 0 hi-z for inputs        */
-                                 /* 0b00000011 = 0x01 */
+                                 /* 0b00000001 = 0x01 */
 
 /* RXD und INT0 input without pullup                                   */
 /* TXD output high                                                     */
@@ -70,7 +70,7 @@
 #define CLIENT_ADDRESS_BASE   7
 
 /* application button: 3 bytes per button:     */
-/* 1 byte for button addres                    */
+/* 1 byte for button address                   */
 /* 1 byte for input number (1 or 2)            */
 /* 1 byte for pressed delay in 100 msecs       */
 #define APPLICATION_BUTTON_BASE              (CLIENT_ADDRESS_BASE + BUS_MAX_CLIENT_NUM)

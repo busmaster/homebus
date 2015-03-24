@@ -1,24 +1,24 @@
 /*
  * main.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #define _XOPEN_SOURCE
@@ -57,7 +57,7 @@ struct ptyDesc {
 
 static char sTmpFileName[200];
 
-#ifdef DEBUG_LOG
+#undef DEBUG_LOG
 
 static FILE *logFile = 0;
 
@@ -70,7 +70,7 @@ void LogClose(void) {
     }
 }
 
-void LogPrint(char *format, ...) {    
+void LogPrint(char *format, ...) {
    va_list args;
    if (logFile != 0) {
       va_start(args, format);
@@ -84,7 +84,7 @@ void LogPrint(char *format, ...) {
 
 void LogOpen(char *pName) { }
 void LogClose(void) { }
-void LogPrint(char *format, ...) { }  
+void LogPrint(char *format, ...) { }
 
 #endif
 
@@ -101,16 +101,16 @@ int make_nonblocking(int fd)
 }
 
 void Cmd(int cmdFd, struct ptyDesc *pty, int numPtm, int notifyFd) {
-   
+
     char buf[100];
     char *ptsName;
     int len;
     int i;
     struct ptyDesc *p = pty;
-   
+
     len = read(cmdFd, buf, sizeof(buf) - 1);
     buf[len] = '\0';
-   
+
     if (strncmp(buf, CMD_ADD, strlen(CMD_ADD)) == 0) {
         // find unused index
         for (i = 0; i < numPtm; i++) {
@@ -131,9 +131,9 @@ void Cmd(int cmdFd, struct ptyDesc *pty, int numPtm, int notifyFd) {
             grantpt(p->ptmFd);
             unlockpt(p->ptmFd);
             ptsName = ptsname(p->ptmFd);
-         
+
             p->wd = inotify_add_watch(notifyFd, ptsName, IN_CLOSE_WRITE | IN_CLOSE_NOWRITE | IN_OPEN);
-         
+
             LogPrint("add pts: ptmFd=%d, ptsName=%s, wd=%d\n", p->ptmFd, ptsName, p->wd);
 
             write(cmdFd, ptsname(p->ptmFd), strlen(ptsName));
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     sioFd = SioGetFd(sioHandle);
-   
+
     snprintf(devName, sizeof(devName), "%s", argv[1]);
     // replace all / by _
     for (i = 0; i < strlen(devName); i++) {
@@ -241,7 +241,7 @@ int main(int argc, char *argv[]) {
         SioClose(sioHandle);
         exit(EXIT_FAILURE);
     }
-   
+
     p = &pty[1];
     for (i = 1; i < NUM_PTS; i++) {
         p->ptmFd = -1;
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, sighandler);
 
     LogOpen(TMP_DIR "/portserver.log");
-    
+
     notifyFd = inotify_init();
 
     while (1) {
@@ -271,7 +271,7 @@ int main(int argc, char *argv[]) {
         }
         FD_SET(notifyFd, &fds);
         maxFd = max(maxFd, notifyFd);
-        
+
         result = select(maxFd + 1, &fds, 0, 0, 0);
         if (result > 0) {
             // new command
@@ -308,9 +308,9 @@ int main(int argc, char *argv[]) {
 
             // rx from pts
             p = &pty[1];
-            for (i = 1; i < NUM_PTS; i++) {  
+            for (i = 1; i < NUM_PTS; i++) {
                 if ((p->ptmFd != -1) &&
-                    FD_ISSET(p->ptmFd, &fds) && 
+                    FD_ISSET(p->ptmFd, &fds) &&
                     !p->closed) {
                     len = read(p->ptmFd, buf, sizeof(buf));
                     if (len != -1) {
@@ -342,8 +342,8 @@ int main(int argc, char *argv[]) {
                     LogPrint("\n");
                     // write to all pty
                     p = &pty[1];
-                    for (i = 1; i < NUM_PTS; i++) {      
-                        if ((p->ptmFd != -1) && 
+                    for (i = 1; i < NUM_PTS; i++) {
+                        if ((p->ptmFd != -1) &&
                             !p->closed) {
                             lenWr = write(p->ptmFd, buf, len);
                             if (lenWr != len) {
@@ -359,7 +359,7 @@ int main(int argc, char *argv[]) {
         } else if (result < 0) {
             LogPrint("select error\n");
         }
-// usleep(1000000); 
+// usleep(1000000);
     }
 
     return 0;
