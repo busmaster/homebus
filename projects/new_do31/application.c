@@ -55,6 +55,10 @@ typedef struct {
    TFuncReleased1 fReleased1;
 } TUserFunc;
 
+typedef struct {
+   uint32_t		 startTime;
+} TStartTime;
+
 /*-----------------------------------------------------------------------------
 *  Variables
 */
