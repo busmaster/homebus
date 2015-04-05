@@ -32,6 +32,7 @@
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
 #include <avr/pgmspace.h>
+#include <util/delay.h>
 
 #include "sio.h"
 #include "sysdef.h"
@@ -119,7 +120,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88_lum 0.00";
+char version[] = "Sw88_lum 0.02";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -140,7 +141,7 @@ static uint8_t   sIdle = 0;
 static uint8_t   sLuminanceSwitch = 0;
 
 static uint16_t  sMovAv[MOVING_AVERAGE];
-static uint16_t  sAdcAv;
+static volatile  uint16_t  sAdcAv;
 static uint32_t  sAdcAvSum;
 static uint16_t  sAdcAvIdx = 0;
 
@@ -156,7 +157,6 @@ static uint8_t GetUnconfirmedClient(uint8_t actualClient);
 static void SendStartupMsg(void);
 static void IdleSio(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
-static void TriggerAdcConversion(void);
 
 /*-----------------------------------------------------------------------------
 *  program start
@@ -198,13 +198,13 @@ int main(void) {
    BusInit(sioHandle);
    spRxBusMsg = BusMsgBufGet();
 
-   TriggerAdcConversion();
+   _delay_ms(1000);
+
+   // trigger adc conversion and wait for end
+   ADCSRA |= (1 << ADSC);
    while ((ADCSRA & (1 << ADSC)) != 0);
 
-   TriggerAdcConversion();
-   while ((ADCSRA & (1 << ADSC)) != 0);
-
-   adc = ~(ADCL + (ADCH << 8));
+   adc = ~ADCW & ~0x3f;
    sAdcAvSum = 0;
    for (i = 0; i < ARRAY_CNT(sMovAv); i++) {
       sMovAv[i] = adc;
@@ -568,11 +568,6 @@ static void ProcessBus(void) {
    } 
 }
 
-static void TriggerAdcConversion(void) {
-
-   ADCSRA |= (1 << ADSC);
-}
-
 /*-----------------------------------------------------------------------------
 *  port init
 */
@@ -664,14 +659,15 @@ ISR(TIMER0_OVF_vect) {
       if (gTimeS >= nextAdcConversion) {
          nextAdcConversion = gTimeS + ADC_RATE;
 
-         adc = ~(ADCL + (ADCH << 8));
+         adc = ~ADCW & ~0x3f;
          sAdcAvSum -= sMovAv[sAdcAvIdx];
          sAdcAvSum += adc;
          sMovAv[sAdcAvIdx] = adc;
          sAdcAvIdx++;
          sAdcAvIdx %= ARRAY_CNT(sMovAv);
          sAdcAv = sAdcAvSum / ARRAY_CNT(sMovAv);
-         TriggerAdcConversion();
+         // trigger next conversion
+         ADCSRA |= (1 << ADSC);
       }
    }
    

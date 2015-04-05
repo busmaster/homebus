@@ -1,24 +1,24 @@
 /*
  * main.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -38,10 +38,10 @@
 #include "bus.h"
 #include "led.h"
 #include "flash.h"
-        
+
 /*-----------------------------------------------------------------------------
 *  ATMega128 fuse bit settings (3.6864 MHz crystal)
-*   
+*
 *  CKSEL0    = 1
 *  CKSEL1    = 1
 *  CKSEL2    = 1
@@ -59,15 +59,16 @@
 *  OCDEN     = 1
 *  WDTON     = 1
 *  MC103C    = 1
-*/                    
+*/
 
 /*-----------------------------------------------------------------------------
-*  Macros  
-*/                    
+*  Macros
+*/
 /* eigene Adresse am Bus */
-#define MY_ADDR    sMyAddr   
-/* im letzten Byte im EEPROM liegt die eigene Adresse */
-#define EEPROM_ADDR 0xfff   
+#define MY_ADDR    sMyAddr
+
+/* the module address is stored in the eeprom */
+#define MODUL_ADDRESS        0x1ffff
 
 /* Bits in MCUCR */
 #define IVCE     0
@@ -77,7 +78,7 @@
 #define CS00     0
 #define OCIE0    1
 #define WGM00    6
-#define WGM01    3    
+#define WGM01    3
 
 /* Bits in WDTCR */
 #define WDCE     4
@@ -85,16 +86,16 @@
 #define WDP0     0
 #define WDP1     1
 #define WDP2     2
-                               
-/* statemachine für Flashupdate */
-#define WAIT_FOR_UPD_ENTER          0  
-#define WAIT_FOR_UPD_ENTER_TIMEOUT  1  
-#define WAIT_FOR_UPD_DATA           2            
 
-#define EEPROM_SIZE   2048
-                           
+/* statemachine für Flashupdate */
+#define WAIT_FOR_UPD_ENTER          0
+#define WAIT_FOR_UPD_ENTER_TIMEOUT  1
+#define WAIT_FOR_UPD_DATA           2
+
+#define EEPROM_SIZE   4096
+
 /* max. Größe der Firmware */
-#define MAX_FIRMWARE_SIZE   (120UL * 1024UL)   
+#define MAX_FIRMWARE_SIZE   (120UL * 1024UL)
 #define FLASH_CHECKSUM      0x1234  /* Summe, die bei Checksum herauskommen muss */
 #define CHECKSUM_BLOCK_SIZE  256 /* words */
 
@@ -102,35 +103,34 @@
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
-*/  
+*/
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/  
-volatile uint8_t  gTimeMs = 0;  
-volatile uint16_t gTimeMs16 = 0;  
-volatile uint16_t gTimeS = 0;        
+*/
+volatile uint8_t  gTimeMs = 0;
+volatile uint16_t gTimeMs16 = 0;
+volatile uint16_t gTimeS = 0;
 
-static TBusTelegram  *spBusMsg;    
-static TBusTelegram  sTxBusMsg;        
+static TBusTelegram  *spBusMsg;
+static TBusTelegram  sTxBusMsg;
 static uint8_t       sFwuState = WAIT_FOR_UPD_ENTER_TIMEOUT;
 static uint8_t       sMyAddr;
 static uint8_t       sIdle = 0;
 
 /* auf wordaddressbereich 0xff80 .. 0xfffe im Flash sind 255 Byte für den Versionstring reserviert */
 char version[] __attribute__ ((section (".version")));
-char version[] = "DO31_Bootloader_1.12";
+char version[] = "DO31_Bootloader_2.01";
 
 /*-----------------------------------------------------------------------------
 *  Functions
 */
 extern void ApplicationEntry(void);
 
-static void PortInit(void);   
+static void PortInit(void);
 static void TimerInit(void);
-static void ProcessBus(uint8_t ret);      
-static uint8_t CheckTimeout(void); 
-static void EepromDelete(void); 
+static void ProcessBus(uint8_t ret);
+static uint8_t CheckTimeout(void);
 static void Idle(void);
 static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
@@ -140,12 +140,12 @@ static void BusTransceiverPowerDown(bool powerDown);
 */
 int main(void) {
 
-   uint8_t   ret;  
-   uint16_t  flashWordAddr;    
+   uint8_t   ret;
+   uint16_t  flashWordAddr;
    uint16_t  sum;
-   int     sioHdl;
+   int       sioHdl;
 
-   sMyAddr = eeprom_read_byte((const uint8_t *)EEPROM_ADDR);
+   sMyAddr = pgm_read_byte_far((uint32_t)MODUL_ADDRESS);
 
    PortInit();
    TimerInit();
@@ -155,7 +155,7 @@ int main(void) {
    SioInit();
 
    /* sio for bus interface */
-   sioHdl = SioOpen("USART1", eSioBaud9600, eSioDataBits8, eSioParityNo, 
+   sioHdl = SioOpen("USART1", eSioBaud9600, eSioDataBits8, eSioParityNo,
                     eSioStopBits1, eSioModeHalfDuplex);
 
    SioSetIdleFunc(sioHdl, IdleSio1);
@@ -173,9 +173,9 @@ int main(void) {
 
    LedSet(eLedRedOn);
    LedSet(eLedGreenOff);
-      
-   /* warten bis Betriebsspannung auf 12 V-Seite volle Höhe (> 2010) erreicht hat */
-   while (!POWER_GOOD); 
+
+   /* warten bis Betriebsspannung auf 24 V-Seite volle Höhe (> 20 V) erreicht hat */
+   while (!POWER_GOOD);
 
    LedSet(eLedRedOff);
 
@@ -190,23 +190,23 @@ int main(void) {
       LedSet(eLedGreenFlashFast);
    } else {
       /* Fehler */
-      sFwuState = WAIT_FOR_UPD_ENTER;      
+      sFwuState = WAIT_FOR_UPD_ENTER;
       LedSet(eLedRedFlashFast);
    }
 
    ENABLE_INT;
-                          
+
    /* Startup-Msg senden */
-   sTxBusMsg.type = eBusDevStartup;  
-   sTxBusMsg.senderAddr = MY_ADDR; 
-   BusSend(&sTxBusMsg);  
-   
+   sTxBusMsg.type = eBusDevStartup;
+   sTxBusMsg.senderAddr = MY_ADDR;
+   BusSend(&sTxBusMsg);
+
    /* Hauptschleife */
-   while (1) {   
+   while (1) {
       Idle();
       ret = BusCheck();
       ProcessBus(ret);
-      LedCheck();                  
+      LedCheck();
       /* Mit timeout auf Request zum Firmwareupdate warten  */
       if (sFwuState == WAIT_FOR_UPD_ENTER_TIMEOUT) {
          ret = CheckTimeout();
@@ -214,20 +214,20 @@ int main(void) {
             /* Application starten */
             break;
          }
-      } 
-   } 
-           
+      }
+   }
+
    cli();
    /* Umschaltung der Interruptvektor-Tabelle */
    MCUCR = (1 << IVCE);
    /* In Applikationsbereich verschieben */
    MCUCR = (0 << IVSEL);
-   
-   /* zur Applikation springen */       
+
+   /* zur Applikation springen */
    ApplicationEntry();
    /* hier kommen wir nicht her!!*/
    return 0;
-} 
+}
 
 /*-----------------------------------------------------------------------------
 *  liefert bei Timeout 1
@@ -235,9 +235,9 @@ int main(void) {
 static uint8_t CheckTimeout(void) {
 
    uint16_t actTimeS;
-   
+
    GET_TIME_S(actTimeS);
-   
+
    if (actTimeS < 4) {
       return 0;
    } else {
@@ -249,18 +249,18 @@ static uint8_t CheckTimeout(void) {
 *  Verarbeitung der Bustelegramme
 */
 static void ProcessBus(uint8_t ret) {
-   
-   TBusMsgType   msgType;    
+
+   TBusMsgType   msgType;
    uint16_t        *pData;
    uint16_t        wordAddr;
    bool          rc;
 
    if (ret == BUS_MSG_OK) {
-      msgType = spBusMsg->type; 
+      msgType = spBusMsg->type;
       if ((msgType == eBusDevReqReboot) &&
           (spBusMsg->msg.devBus.receiverAddr == MY_ADDR)) {
-         /* Über Watchdog Reset auslösen */    
-         /* Watchdogtimeout auf kurzeste Zeit (14 ms) stellen */                     
+         /* Über Watchdog Reset auslösen */
+         /* Watchdogtimeout auf kurzeste Zeit (14 ms) stellen */
          cli();
          wdt_enable(WDTO_15MS);
          /* warten auf Reset */
@@ -269,71 +269,68 @@ static void ProcessBus(uint8_t ret) {
          switch (sFwuState) {
             case WAIT_FOR_UPD_ENTER_TIMEOUT:
             case WAIT_FOR_UPD_ENTER:
-               if ((msgType == eBusDevReqUpdEnter) && 
+               if ((msgType == eBusDevReqUpdEnter) &&
                    (spBusMsg->msg.devBus.receiverAddr == MY_ADDR)) {
- 
-                  /* ganzes EEPROM löschen (Ausgangszustände) */
-                  EepromDelete();
-               
-                  /* Applicationbereich des Flash löschen */  
+
+                  /* Applicationbereich des Flash löschen */
                   FlashErase();
-               
+
                   /* Antwort senden */
-                  sTxBusMsg.type = eBusDevRespUpdEnter;  
-                  sTxBusMsg.senderAddr = MY_ADDR; 
+                  sTxBusMsg.type = eBusDevRespUpdEnter;
+                  sTxBusMsg.senderAddr = MY_ADDR;
                   sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-                  BusSend(&sTxBusMsg);  
-                  sFwuState = WAIT_FOR_UPD_DATA;     
+                  BusSend(&sTxBusMsg);
+                  sFwuState = WAIT_FOR_UPD_DATA;
                   LedSet(eLedRedFlashFast);
                   LedSet(eLedGreenFlashFast);
-               }           
+               }
                break;
             case WAIT_FOR_UPD_DATA:
-               if ((msgType == eBusDevReqUpdData) && 
+               if ((msgType == eBusDevReqUpdData) &&
                    (spBusMsg->msg.devBus.receiverAddr == MY_ADDR)) {
-                   
+
                   wordAddr = spBusMsg->msg.devBus.x.devReq.updData.wordAddr;
                   pData = spBusMsg->msg.devBus.x.devReq.updData.data;
-                   
+
                   /* Flash programmieren */
                   rc = FlashProgram(wordAddr, pData, sizeof(spBusMsg->msg.devBus.x.devReq.updData.data)/2);
                   /* Antwort senden */
-                  sTxBusMsg.type = eBusDevRespUpdData;  
-                  sTxBusMsg.senderAddr = MY_ADDR; 
+                  sTxBusMsg.type = eBusDevRespUpdData;
+                  sTxBusMsg.senderAddr = MY_ADDR;
                   sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
                   if (rc == true) {
                      /* Falls Programmierung des Block OK: empfange wordAddr zurücksenden */
                      sTxBusMsg.msg.devBus.x.devResp.updData.wordAddr = wordAddr;
-                  } else {                                                                
+                  } else {
                      /* Problem bei Programmierung: -1 als wordAddr zurücksenden */
                      sTxBusMsg.msg.devBus.x.devResp.updData.wordAddr = -1;
                   }
-                  BusSend(&sTxBusMsg);  
-               } else if ((msgType == eBusDevReqUpdTerm) && 
+                  BusSend(&sTxBusMsg);
+               } else if ((msgType == eBusDevReqUpdTerm) &&
                           (spBusMsg->msg.devBus.receiverAddr == MY_ADDR)) {
                   /* programmiervorgang im Flash abschließen (falls erforderlich) */
                   rc = FlashProgramTerminate();
                   /* Antwort senden */
-                  sTxBusMsg.type = eBusDevRespUpdTerm;  
-                  sTxBusMsg.senderAddr = MY_ADDR; 
+                  sTxBusMsg.type = eBusDevRespUpdTerm;
+                  sTxBusMsg.senderAddr = MY_ADDR;
                   sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
                   if (rc == true) {
                      /* Falls Programmierung OK: success auf 1 setzen */
                      sTxBusMsg.msg.devBus.x.devResp.updTerm.success = 1;
-                  } else {                                                                
+                  } else {
                      /* Porblem bei Programmierung: -1 als wordAddr zurücksenden */
                      sTxBusMsg.msg.devBus.x.devResp.updTerm.success = 0;
                   }
-                  BusSend(&sTxBusMsg);  
+                  BusSend(&sTxBusMsg);
                }
                break;
             default:
                break;
          }
-      }   
-   } else if (ret == BUS_MSG_ERROR) {    
+      }
+   } else if (ret == BUS_MSG_ERROR) {
 //      LedSet(eLedRedBlinkOnceLong);
-//      SioDbgSendConstStr("msg error\r\n");  
+//      SioDbgSendConstStr("msg error\r\n");
    }
 }
 
@@ -342,23 +339,23 @@ static void ProcessBus(uint8_t ret) {
 */
 ISR(TIMER0_COMP_vect)  {
 
-   static uint16_t sCounter = 0; 
-   /* Interrupt alle 2ms */   
-   gTimeMs += 2;  
+   static uint16_t sCounter = 0;
+   /* Interrupt alle 2ms */
+   gTimeMs += 2;
    gTimeMs16 += 2;
    sCounter++;
-   if (sCounter >= 500) { 
+   if (sCounter >= 500) {
       sCounter = 0;
       /* Sekundenzähler */
       gTimeS++;
-   }                    
+   }
 }
 
 /*-----------------------------------------------------------------------------
 *  Timerinitialisierung
 */
 static void TimerInit(void) {
- 
+
    /* Verwendung des Compare-Match Interrupt von Timer0 */
    /* Vorteiler bei 1 MHz: 8  */
    /* Vorteiler bei 3.6864 MHz: 64  */
@@ -371,19 +368,19 @@ static void TimerInit(void) {
    /* Timer-Mode: CTC: WGM01:0=2 */
 #if (F_CPU == 1000000UL)
    /* 1 MHz */
-   TCCR0 = (0b010 << CS00) | (0 << WGM00) | (1 << WGM01); 
+   TCCR0 = (0b010 << CS00) | (0 << WGM00) | (1 << WGM01);
    OCR0 = 250 - 1;
-#elif (F_CPU == 1600000UL) 
+#elif (F_CPU == 1600000UL)
    /* 16 MHz */
-   TCCR0 = (0b110 << CS00) | (0 << WGM00) | (1 << WGM01); ; 
+   TCCR0 = (0b110 << CS00) | (0 << WGM00) | (1 << WGM01); ;
    OCR0 = 125 - 1;
-#elif (F_CPU == 3686400UL) 
+#elif (F_CPU == 3686400UL)
    /* 3.6864 MHz */
-   TCCR0 = (0b100 << CS00) | (0 << WGM00) | (1 << WGM01); ; 
+   TCCR0 = (0b100 << CS00) | (0 << WGM00) | (1 << WGM01); ;
    OCR0 = 115 - 1;
 #else
 #error adjust timer settings for your CPU clock frequency
-#endif                                                                     
+#endif
    /* Timer Compare Match Interrupt enable */
    TIMSK |= 1 << OCIE0;
 }
@@ -404,9 +401,9 @@ static void PortInit(void) {
    /* PortB.4 .. PortB7: DO16 .. DO19: Ausgang low */
    /* PortB.0, PortB.2, PortB.3: nicht benutzt, Ausgang, low*/
    /* PortB.1: SCK-Eingang: Eingang, PullUp */
-   PORTB = 0b00000010; 
-   DDRB  = 0b11111101;  
-                 
+   PORTB = 0b00000010;
+   DDRB  = 0b11111101;
+
    /* PortD.0: Interrupteingang für PowerFail: Eingang, kein PullUp*/
    /* PortD.1: unbenutzt oder mit RXD1 verbunden, Eingang, PullUp */
    /* PortD.2: UART RX, Eingang, PullUp */
@@ -421,33 +418,19 @@ static void PortInit(void) {
    /* PortE.7: unbenutzt oder Transceiversteuerung, Ausgang, high*/
    PORTE = 0b10000011;
    DDRE  = 0b11111110;
-   
+
    /* PortF: DO24 .. DO30/31 */
    PORTF = 0b00000000;    /* alle PortF-Leitung auf low */
    DDRF  = 0b11111111;    /* alle PortF-Leitungen auf Ausgang */
 
-   /* PortG.0 .. PortG.2 unbenutzt, Ausgang, low*/    
-   /* PortG.3, PortG.4 LED, Ausgang, high*/    
-   PORTG = 0b00011000;    
-   DDRG  = 0b00011111; 
-}  
-
-
-/*-----------------------------------------------------------------------------
-*  EEPROM löschen
-*/
-static void EepromDelete(void) {
-   
-   uint16_t i;
-   for (i = 0; i < EEPROM_SIZE; i += 2) {
-      if (eeprom_read_word((uint16_t *)i) != 0xffff) {
-         eeprom_write_word((uint16_t *)i, 0xffff); 
-      }
-   }
-}      
+   /* PortG.0 .. PortG.2 unbenutzt, Ausgang, low*/
+   /* PortG.3, PortG.4 LED, Ausgang, high*/
+   PORTG = 0b00011000;
+   DDRG  = 0b00011111;
+}
 
 /*-----------------------------------------------------------------------------*/
-/**  
+/**
 *   Idle-Mode einschalten
 */
 static void Idle(void) {
@@ -468,7 +451,7 @@ static void Idle(void) {
 *  sio idle enable
 */
 static void IdleSio1(bool setIdle) {
-  
+
    if (setIdle == true) {
       sIdle &= ~IDLE_SIO1;
    } else {
@@ -482,13 +465,10 @@ static void IdleSio1(bool setIdle) {
 *  is not required here
 */
 static void BusTransceiverPowerDown(bool powerDown) {
-   
+
    if (powerDown) {
       BUS_TRANSCEIVER_POWER_DOWN;
    } else {
       BUS_TRANSCEIVER_POWER_UP;
    }
 }
-
-
-

@@ -35,6 +35,9 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
+#define NUM_BUTTONS   256  /* 128 Schaltermodule mit je 2 Tastern */ 
+#define TASTTIME 800
+#define NUM_MERKER 10
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -55,6 +58,9 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */
+
+static TStartTime  sSttime[NUM_BUTTONS];
+
 static const TUserFunc sApplicationFuncs[] PROGMEM = {
    {ApplicationPressed1_0,   ApplicationPressed1_1,   ApplicationReleased1_0,   ApplicationReleased1_1},
    {ApplicationPressed2_0,   ApplicationPressed2_1,   ApplicationReleased2_0,   ApplicationReleased2_1},
@@ -234,6 +240,10 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
 } 
 
 void ApplicationInit(void) {
+
+}
+
+void ApplicationStart(void) {
 
 }
 

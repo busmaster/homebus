@@ -11,67 +11,72 @@
 
 OPTS=/dev/ttyS1
 
+if [ ! -e $OPTS ]; then
+	echo $OPTS does not exist
+	exit 3
+fi
+
 case "$1" in
     start)
         echo "Starting portserver..."
         start-stop-daemon -b --start --exec /usr/bin/portserver -- $OPTS
         sleep 2
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus0
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus1
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus2
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus3
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus4
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus10
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus11
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus12
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus13
         chgrp dialout $PTS
         chmod g+r $PTS
 
-        PTS=$(/usr/bin/portservergetdev $OPTS)
+        PTS=$(/usr/bin/portservergetdev.sh $OPTS)
         echo "portserver $PTS"
         ln -s $PTS /dev/hausbus14
         chgrp dialout $PTS

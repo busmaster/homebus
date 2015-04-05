@@ -1,24 +1,24 @@
 /*
  * main.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -44,21 +44,21 @@
 #include "application.h"
 
 /*-----------------------------------------------------------------------------
-*  Macros  
-*/         
+*  Macros
+*/
 
 /* Bits in TCCR0 */
 #define CS00     0
 #define OCIE0    1
 #define WGM00    6
-#define WGM01    3    
-                                               
+#define WGM01    3
+
 /* Bits in WDTCR */
 #define WDCE     4
 #define WDE      3
 #define WDP0     0
 #define WDP1     1
-#define WDP2     2         
+#define WDP2     2
 
 /* Bits in EECR */
 #define EEWE     1
@@ -67,29 +67,30 @@
 
 /* eigene Adresse am Bus */
 #define MY_ADDR    sMyAddr   
+
 /* im letzten Byte im EEPROM liegt die eigene Adresse */
-#define EEPROM_ADDR 0xfff                          
+#define MODUL_ADDRESS 0xfff                          
 
 #define IDLE_SIO1  0x01
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
-*/  
+*/
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/  
-volatile uint8_t  gTimeMs = 0;    
-volatile uint16_t gTimeMs16 = 0;  
-volatile uint32_t gTimeMs32 = 0;  
-volatile uint16_t gTimeS = 0;  
-volatile uint16_t gTime10Ms16 = 0;  
+*/
+volatile uint8_t  gTimeMs = 0;
+volatile uint16_t gTimeMs16 = 0;
+volatile uint16_t gTime10Ms16 = 0;
+volatile uint32_t gTimeMs32 = 0;
+volatile uint16_t gTimeS = 0;
 
-static TBusTelegram *spBusMsg;            
-static TBusTelegram  sTxBusMsg;        
+static TBusTelegram *spBusMsg;
+static TBusTelegram  sTxBusMsg;
 
 static const uint8_t *spNextPtrToEeprom;
-static uint8_t         sMyAddr;
+static uint8_t       sMyAddr;
 
 static uint8_t   sIdle = 0;
 
@@ -98,7 +99,7 @@ int gDbgSioHdl = -1;
 /*-----------------------------------------------------------------------------
 *  Functions
 */
-static void PortInit(void);   
+static void PortInit(void);
 static void TimerInit(void);
 static void CheckButton(void);
 static void ButtonEvent(uint8_t address, uint8_t button);
@@ -112,40 +113,41 @@ static void BusTransceiverPowerDown(bool powerDown);
 /*-----------------------------------------------------------------------------
 *  main
 */
-int main(void) {                      
+int main(void) {
 
    uint8_t ret;
    int   sioHdl;
 
-    sMyAddr = eeprom_read_byte((const uint8_t *)EEPROM_ADDR);
-
-   PortInit();  
+   /* get module address from EEPROM */
+   sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+    
+   PortInit();
    LedInit();
-   TimerInit();           
+   TimerInit();
    ButtonInit();
    DigOutInit();
-   ShaderInit();    
+   ShaderInit();
    ApplicationInit();
-   
+
    SioInit();
    SioRandSeed(sMyAddr);
    /* sio for debug traces */
-   gDbgSioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
+   gDbgSioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
                         eSioStopBits1, eSioModeFullDuplex);
-                   
+
    /* sio for bus interface */
-   sioHdl = SioOpen("USART1", eSioBaud9600, eSioDataBits8, eSioParityNo, 
+   sioHdl = SioOpen("USART1", eSioBaud9600, eSioDataBits8, eSioParityNo,
                     eSioStopBits1, eSioModeHalfDuplex);
 
    SioSetIdleFunc(sioHdl, IdleSio1);
    SioSetTransceiverPowerDownFunc(sioHdl, BusTransceiverPowerDown);
    BusTransceiverPowerDown(true);
-   
+
    BusInit(sioHdl);
    spBusMsg = BusMsgBufGet();
-   
-   /* warten bis Betriebsspannung auf 24 V-Seite volle Höhe erreicht hat */
-   while (!POWER_GOOD); 
+
+   /* warten bis Betriebsspannung auf 12 V-Seite volle Höhe erreicht hat */
+   while (!POWER_GOOD);
 
    /* für Delay wird timer-Interrupt benötigt (DigOutAll() in RestoreDigOut()) */
    ENABLE_INT;
@@ -160,19 +162,19 @@ int main(void) {
 
    ApplicationStart();
 
-   /* Hauptschleife */  
-   while (1) {   
+   /* Hauptschleife */
+   while (1) {
       Idle();
       ret = BusCheck();
       ProcessBus(ret);
       CheckButton();
       DigOutStateCheck();
-      ShaderCheck(); 
+      ShaderCheck();
       LedCheck();
       ApplicationCheck();
-   } 
+   }
    return 0;
-}          
+}
 
 
 /*-----------------------------------------------------------------------------
@@ -196,7 +198,7 @@ static void Idle(void) {
 *  sio idle enable
 */
 static void IdleSio1(bool setIdle) {
-  
+
    if (setIdle == true) {
       sIdle &= ~IDLE_SIO1;
    } else {
@@ -210,7 +212,7 @@ static void IdleSio1(bool setIdle) {
 *  is not required here
 */
 static void BusTransceiverPowerDown(bool powerDown) {
-   
+
    if (powerDown) {
       BUS_TRANSCEIVER_POWER_DOWN;
    } else {
@@ -221,14 +223,14 @@ static void BusTransceiverPowerDown(bool powerDown) {
 
 /*-----------------------------------------------------------------------------
 *  Ausgangszustand wiederherstellen
-*  im EEPROM liegen jeweils 4 Byte mit den 31 Ausgangszuständen. Das MSB im 
+*  im EEPROM liegen jeweils 4 Byte mit den 31 Ausgangszuständen. Das MSB im
 *  letzten Byte zeigt mit dem Wert 0 die Gültigkeit der Daten an
 */
 static void RestoreDigOut(void) {
 
    uint8_t *ptrToEeprom;
    uint8_t buf[4];
-   uint8_t   flags;
+   uint8_t flags;
 
    /* zuletzt gespeicherten Zustand der Ausgänge suchen */  
    for (ptrToEeprom = (uint8_t *)3; ptrToEeprom < EEPROM_SIZE; ptrToEeprom += 4) {
@@ -264,8 +266,9 @@ static void RestoreDigOut(void) {
    eeprom_write_byte((uint8_t *)ptrToEeprom + 2, 0xff);
    eeprom_write_byte((uint8_t *)ptrToEeprom + 3, 0xff);
    RESTORE_INT(flags);
-}                         
-            
+
+}
+
 /*-----------------------------------------------------------------------------
 *  Erkennung von Tasten-Loslass-Ereignissen
 */
@@ -277,332 +280,338 @@ static void CheckButton(void) {
       if (ButtonGetReleaseEvent(i, &buttonEventData) == true) {
          ApplicationEventButton(&buttonEventData);
       }
-   } 
+   }
 }
 
 /*-----------------------------------------------------------------------------
 *  Verarbeitung der Bustelegramme
 */
 static void ProcessBus(uint8_t ret) {
-   TBusMsgType      msgType;    
-   uint8_t            i;
-   uint8_t          *po;
-   /* zum Speichersparen werden die Pointer in einer union gespeichert */
-   /* (max. nur ein Paket in Bearbeitung) */
-   union {
-      TBusDevRespInfo        *pInfo;
-      TBusDevRespGetState    *pGetState;
-      TBusDevRespActualValue *pActVal;
-   } p;
+    TBusMsgType            msgType;
+    uint8_t                i;
+    bool                   msgForMe = false;
+    TShaderState           shaderState;
+    uint8_t                state;
+    TBusDevRespInfo        *pInfo;
+    TBusDevRespGetState    *pGetState;
+    TBusDevRespActualValue *pActVal;
 
-   if (ret == BUS_MSG_OK) {
-      msgType = spBusMsg->type; 
-      switch (msgType) {   
-         case eBusDevReqReboot:
+    if (ret == BUS_MSG_OK) {
+        msgType = spBusMsg->type;
+        switch (msgType) {
+        case eBusDevReqReboot:
+        case eBusDevReqInfo:
+        case eBusDevReqGetState:
+        case eBusDevReqSetState:
+        case eBusDevReqActualValue:
+        case eBusDevReqSetValue:
+        case eBusDevReqSwitchState:
+        case eBusDevReqSetAddr:
+        case eBusDevReqEepromRead:
+        case eBusDevReqEepromWrite:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-               /* Über Watchdog Reset auslösen */    
-               /* Watchdogtimeout auf kurzeste Zeit (14 ms) stellen */                     
-               cli();
-               wdt_enable(WDTO_15MS);
-               /* warten auf Reset */
-               while (1);
-            }
-            break;   
-         case eBusButtonPressed1:
-            ButtonEvent(spBusMsg->senderAddr, 1);
-            break;
-         case eBusButtonPressed2:
-            ButtonEvent(spBusMsg->senderAddr, 2);
-            break;
-         case eBusButtonPressed1_2:
-            ButtonEvent(spBusMsg->senderAddr, 1);
-            ButtonEvent(spBusMsg->senderAddr, 2);
-            break;
-         case eBusDevReqInfo:
-            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-               /* Anwortpaket zusammenstellen */
-               p.pInfo = &sTxBusMsg.msg.devBus.x.devResp.info;
-               sTxBusMsg.type = eBusDevRespInfo;  
-               sTxBusMsg.senderAddr = MY_ADDR; 
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               p.pInfo->devType = eBusDevTypeDo31;
-               strncpy((char *)(p.pInfo->version), ApplicationVersion(), sizeof(p.pInfo->version)); 
-               p.pInfo->version[sizeof(p.pInfo->version) - 1] = '\0';
-               for (i = 0; i < BUS_DO31_NUM_SHADER; i++) {
-                  ShaderGetConfig(i, &(p.pInfo->devInfo.do31.onSwitch[i]), &(p.pInfo->devInfo.do31.dirSwitch[i]));
-               }
-               BusSend(&sTxBusMsg);  
+                msgForMe = true;
             }
             break;
-         case eBusDevReqGetState:
-            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-               TShaderState  shaderState;
-               uint8_t       state;
-                
-               /* Anwortpaket zusammenstellen */
-               p.pGetState = &sTxBusMsg.msg.devBus.x.devResp.getState;
-               sTxBusMsg.type = eBusDevRespGetState;  
-               sTxBusMsg.senderAddr = MY_ADDR; 
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               p.pGetState->devType = eBusDevTypeDo31;
-               DigOutStateAll(p.pGetState->state.do31.digOut, BUS_DO31_DIGOUT_SIZE_GET); 
-
-               /* Init. des Arrays */
-               for (i = 0; i < BUS_DO31_SHADER_SIZE_GET; i++) {
-                  p.pGetState->state.do31.shader[i] = 0;
-               }
-               
-               for (i = 0; i < eShaderNum; i++) {
-                  if (ShaderGetState(i, &shaderState) == true) {
-                     switch (shaderState) {
-                        case eShaderClosing:
-                           state = 0x02;
-                           break;
-                        case eShaderOpening:
-                           state = 0x01;
-                           break;
-                        case eShaderStopped:
-                           state = 0x03;
-                           break;
-                        default:
-                           state = 0x00;
-                           break;
-                     }
-                  } else {
-                     state = 0x00;
-                  }
-                  if ((i / 4) >= BUS_DO31_SHADER_SIZE_GET) {
-                     /* falls im Bustelegram zuwenig Platz -> abbrechen */
-                     /* (sollte nicht auftreten) */
-                     break;
-                  }
-                  p.pGetState->state.do31.shader[i / 4] |= (state << ((i % 4) * 2));
-               }
-               BusSend(&sTxBusMsg);  
-            }
+        case eBusButtonPressed1:
+        case eBusButtonPressed2:
+        case eBusButtonPressed1_2:
+            msgForMe = true;
             break;
-         case eBusDevReqSetState:
-            if ((spBusMsg->msg.devBus.receiverAddr == MY_ADDR) && 
-                (spBusMsg->msg.devBus.x.devReq.setState.devType == eBusDevTypeDo31)) {
+        default:
+            break;
+        }
+    } else if (ret == BUS_MSG_ERROR) {
+        LedSet(eLedRedBlinkOnceShort);
+        ButtonTimeStampRefresh();
+    } 
 
-               for (i = 0; i < eDigOutNum; i++) {
-                  /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */ 
-                  if (!DigOutGetShaderFunction(i)) {
-                     uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.digOut[i / 4] >> 
-                                    ((i % 4) * 2)) & 0x03;
-                     switch (action) {
-                        case 0x00:
-                        case 0x01:
-                           break;
-                        case 0x02:
-                           DigOutOff(i);
-                           break;
-                        case 0x3:
-                           DigOutOn(i);
-                           break;
-                        default:
-                           break;
-                     }
-                  }
-               }
-               for (i = 0; i < eShaderNum; i++) {
-                  uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.shader[i / 4] >> 
+    if (msgForMe == false) {
+       return;
+    }
+   
+    switch (msgType) {
+    case eBusDevReqReboot:
+        /* use watchdog to reboot */
+        /* set the watchdog timeout as short as possible (14 ms) */
+        cli();
+        wdt_enable(WDTO_15MS);
+        /* wait for reset */
+        while (1);
+        break;
+    case eBusButtonPressed1:
+        ButtonEvent(spBusMsg->senderAddr, 1);
+        break;
+    case eBusButtonPressed2:
+        ButtonEvent(spBusMsg->senderAddr, 2);
+        break;
+    case eBusButtonPressed1_2:
+        ButtonEvent(spBusMsg->senderAddr, 1);
+        ButtonEvent(spBusMsg->senderAddr, 2);
+        break;
+    case eBusDevReqInfo:
+        /* response packet */
+        pInfo = &sTxBusMsg.msg.devBus.x.devResp.info;
+        sTxBusMsg.type = eBusDevRespInfo;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        pInfo->devType = eBusDevTypeDo31;
+        strncpy((char *)(pInfo->version), ApplicationVersion(), sizeof(pInfo->version));
+        pInfo->version[sizeof(pInfo->version) - 1] = '\0';
+        for (i = 0; i < BUS_DO31_NUM_SHADER; i++) {
+            ShaderGetConfig(i, &(pInfo->devInfo.do31.onSwitch[i]), &(pInfo->devInfo.do31.dirSwitch[i]));
+        }
+        BusSend(&sTxBusMsg);
+        break;
+    case eBusDevReqGetState:
+        /* response packet */
+        pGetState = &sTxBusMsg.msg.devBus.x.devResp.getState;
+        sTxBusMsg.type = eBusDevRespGetState;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        pGetState->devType = eBusDevTypeDo31;
+        DigOutStateAll(pGetState->state.do31.digOut, BUS_DO31_DIGOUT_SIZE_GET);
+
+        /* array init */
+        for (i = 0; i < BUS_DO31_SHADER_SIZE_GET; i++) {
+            pGetState->state.do31.shader[i] = 0;
+        }
+
+        for (i = 0; i < eShaderNum; i++) {
+            if (ShaderGetState(i, &shaderState) == true) {
+                switch (shaderState) {
+                case eShaderClosing:
+                    state = 0x02;
+                    break;
+                case eShaderOpening:
+                    state = 0x01;
+                    break;
+                case eShaderStopped:
+                    state = 0x03;
+                    break;
+                default:
+                    state = 0x00;
+                    break;
+                }
+            } else {
+                state = 0x00;
+            }
+            if ((i / 4) >= BUS_DO31_SHADER_SIZE_GET) {
+                /* falls im Bustelegram zuwenig Platz -> abbrechen */
+                /* (sollte nicht auftreten) */
+                break;
+            }
+            pGetState->state.do31.shader[i / 4] |= (state << ((i % 4) * 2));
+        }
+        BusSend(&sTxBusMsg);
+        break;
+    case eBusDevReqSetState:
+        if (spBusMsg->msg.devBus.x.devReq.setState.devType != eBusDevTypeDo31) {
+            break;
+        }
+        for (i = 0; i < eDigOutNum; i++) {
+            /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */
+            if (!DigOutGetShaderFunction(i)) {
+                uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.digOut[i / 4] >>
                                  ((i % 4) * 2)) & 0x03;
-                  switch (action) {
-                      case 0x00:
-                         /* keine Aktion */
-                         break;
-                      case 0x01:
-                         ShaderSetAction(i, eShaderOpen);
-                         break;
-                      case 0x02:
-                         ShaderSetAction(i, eShaderClose);
-                         break;
-                      case 0x03:
-                         ShaderSetAction(i, eShaderStop);
-                         break;
-                      default:
-                         break;
-                  }
-               }
-               /* Anwortpaket zusammenstellen */
-               sTxBusMsg.type = eBusDevRespSetState;
-               sTxBusMsg.senderAddr = MY_ADDR;
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               BusSend(&sTxBusMsg);
+                switch (action) {
+                case 0x00:
+                case 0x01:
+                    break;
+                case 0x02:
+                    DigOutOff(i);
+                    break;
+                case 0x3:
+                    DigOutOn(i);
+                    break;
+                default:
+                    break;
+                }
             }
-            break;
-         case eBusDevReqActualValue:
-            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-               TShaderState shaderState;
-               uint8_t      state;
-                
-               /* Anwortpaket zusammenstellen */
-               p.pActVal = &sTxBusMsg.msg.devBus.x.devResp.actualValue;
-               sTxBusMsg.type = eBusDevRespActualValue;  
-               sTxBusMsg.senderAddr = MY_ADDR; 
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               p.pActVal->devType = eBusDevTypeDo31;
-               DigOutStateAll(p.pActVal->actualValue.do31.digOut, BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE); 
+        }
+        for (i = 0; i < eShaderNum; i++) {
+            uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.shader[i / 4] >>
+                             ((i % 4) * 2)) & 0x03;
+            switch (action) {
+            case 0x00:
+                /* no action */
+                break;
+            case 0x01:
+                ShaderSetAction(i, eShaderOpen);
+                break;
+            case 0x02:
+                ShaderSetAction(i, eShaderClose);
+                break;
+            case 0x03:
+                ShaderSetAction(i, eShaderStop);
+                break;
+            default:
+                break;
+            }
+        }
+        /* response packet */
+        sTxBusMsg.type = eBusDevRespSetState;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        BusSend(&sTxBusMsg);
+        break;
+    case eBusDevReqActualValue:
+        /* response packet */
+        pActVal = &sTxBusMsg.msg.devBus.x.devResp.actualValue;
+        sTxBusMsg.type = eBusDevRespActualValue;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        pActVal->devType = eBusDevTypeDo31;
+        DigOutStateAll(pActVal->actualValue.do31.digOut, BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE);
 
-               /* init of array */
-               for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
-                  p.pActVal->actualValue.do31.shader[i] = 0;
-               }
-               
-               for (i = 0; i < eShaderNum; i++) {
-                  state = 252; /* not configured */
-                  if (ShaderGetState(i, &shaderState) == true) {
-                     switch (shaderState) {
-                     case eShaderStopped:
-                        ShaderGetPosition(i, &state);
-                        break;
-                     case eShaderClosing:
-                        state = 253;
-                        break;
-                     case eShaderOpening:
-                        state = 254;
-                        break;
-                     }
-                  }   
-                  p.pActVal->actualValue.do31.shader[i] = state;
-               }
-               BusSend(&sTxBusMsg);  
-            }
-            break;
-         case eBusDevReqSetValue:
-            if ((spBusMsg->msg.devBus.receiverAddr == MY_ADDR) && 
-                (spBusMsg->msg.devBus.x.devReq.setValue.devType == eBusDevTypeDo31)) {
+        /* array init */
+        for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
+            pActVal->actualValue.do31.shader[i] = 0;
+        }
 
-               for (i = 0; i < eDigOutNum; i++) {
-                  /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */ 
-                  if (!DigOutGetShaderFunction(i)) {
-                     uint8_t action = (spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.digOut[i / 4] >> 
-                                    ((i % 4) * 2)) & 0x03;
-                     switch (action) {
-                        case 0x00:
-                           break;
-                        case 0x01:
-                           DigOutTrigger(i);
-                           break;
-                        case 0x02:
-                           DigOutOff(i);
-                           break;
-                        case 0x03:
-                           DigOutOn(i);
-                           break;
-                        default:
-                           break;
-                     }
-                  }
-               }
-               for (i = 0; i < eShaderNum; i++) {
-                  uint8_t position = spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i];
-                  if (position <= 100) {
-                     ShaderSetPosition(i, position);
-                  } else if(position <= 228 && position > 127) {
-				     ShaderSetHandPosition(i, position&~0x80);
-				  } else if (position == 255) {
-                     // stop
-                     ShaderSetAction(i, eShaderStop);
-                  } 
-               }
-               /* Anwortpaket zusammenstellen */
-               sTxBusMsg.type = eBusDevRespSetValue;
-               sTxBusMsg.senderAddr = MY_ADDR;
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               BusSend(&sTxBusMsg);
+        for (i = 0; i < eShaderNum; i++) {
+            state = 252; /* not configured */
+            if (ShaderGetState(i, &shaderState) == true) {
+                switch (shaderState) {
+                case eShaderStopped:
+                    ShaderGetPosition(i, &state);
+                    break;
+                case eShaderClosing:
+                    state = 253;
+                    break;
+                case eShaderOpening:
+                    state = 254;
+                    break;
+                }
             }
+            pActVal->actualValue.do31.shader[i] = state;
+        }
+        BusSend(&sTxBusMsg);
+        break;
+    case eBusDevReqSetValue:
+        if (spBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypeDo31) {
             break;
-         case eBusDevReqSwitchState:
-            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-
-               uint8_t switchState = spBusMsg->msg.devBus.x.devReq.switchState.switchState;
-               if ((switchState & 0x01) != 0) {
-                  SwitchEvent(spBusMsg->senderAddr, 1, true);
-               } else {
-                  SwitchEvent(spBusMsg->senderAddr, 1, false);
-               }
-               if ((switchState & 0x02) != 0) {
-                  SwitchEvent(spBusMsg->senderAddr, 2, true);
-               } else {
-                  SwitchEvent(spBusMsg->senderAddr, 2, false);
-               }                
-               /* Anwortpaket zusammenstellen */
-               sTxBusMsg.type = eBusDevRespSwitchState;  
-               sTxBusMsg.senderAddr = MY_ADDR; 
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               sTxBusMsg.msg.devBus.x.devResp.switchState.switchState = switchState;
-               BusSend(&sTxBusMsg);  
+        }
+        for (i = 0; i < eDigOutNum; i++) {
+            /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */
+            if (!DigOutGetShaderFunction(i)) {
+                uint8_t action = (spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.digOut[i / 4] >>
+                                 ((i % 4) * 2)) & 0x03;
+                switch (action) {
+                case 0x00:
+                    break;
+                case 0x01:
+                    DigOutTrigger(i);
+                    break;
+                case 0x02:
+                    DigOutOff(i);
+                    break;
+                case 0x03:
+                    DigOutOn(i);
+                    break;
+                default:
+                    break;
+                }
             }
-            break;
-		case eBusDevReqEepromRead:
-            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-
-               sTxBusMsg.senderAddr = MY_ADDR;
-               sTxBusMsg.type = eBusDevRespEepromRead;
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               sTxBusMsg.msg.devBus.x.devResp.readEeprom.data =
-                  //(uint8_t)(eeprom_read_word((const uint16_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr)&0xFF);
-				  eeprom_read_byte((const uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr);
-               BusSend(&sTxBusMsg);
+        }
+        for (i = 0; i < eShaderNum; i++) {
+            uint8_t position = spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i];
+            if (position <= 100) {
+                ShaderSetPosition(i, position);
+            } else if(position <= 228 && position > 127) {
+			    ShaderSetHandPosition(i, position&~0x80);
+		    } else if (position == 255) {
+                // stop
+                ShaderSetAction(i, eShaderStop);
+			} else if (position == 250) {
+                // 1 % open
+                ShaderSetSwipp(i, 1);
+            } else if (position == 251) {
+                // 2 % open
+                ShaderSetSwipp(i, 2);
+            } else if (position == 252) {
+                // 3 % open
+                ShaderSetSwipp(i, 3);
             }
-            break;
-         case eBusDevReqEepromWrite:
-			if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {			
-				sTxBusMsg.senderAddr = MY_ADDR; 
-				sTxBusMsg.type = eBusDevRespEepromWrite;
-				sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-				po = &(spBusMsg->msg.devBus.x.devReq.writeEeprom.data);
-				eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr, *po);
-				BusSend(&sTxBusMsg);
-			}
-            break;
-         case eBusDevReqSetAddr:
-            if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
-               sTxBusMsg.senderAddr = MY_ADDR;
-               sTxBusMsg.type = eBusDevRespSetAddr;
-               sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-               po = &(spBusMsg->msg.devBus.x.devReq.setAddr.addr);
-//               eeprom_write_word((uint16_t *)EEPROM_ADDR, ((*po)<<8)+(uint8_t)((eeprom_read_word((uint16_t *)EEPROM_ADDR))&0xFF));
-			   eeprom_write_byte((uint8_t *)EEPROM_ADDR, *po);
-               BusSend(&sTxBusMsg);
-            }
-         default:
-            break;
-      }
-   } else if (ret == BUS_MSG_ERROR) {
-      LedSet(eLedRedBlinkOnceShort);
-//SioWrite(gDbgSioHdl, "msg error\r\n");  
-      ButtonTimeStampRefresh();
-   }
+        }
+        /* response packet */
+        sTxBusMsg.type = eBusDevRespSetValue;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        BusSend(&sTxBusMsg);
+        break;
+    case eBusDevReqSwitchState:
+        state = spBusMsg->msg.devBus.x.devReq.switchState.switchState;
+        if ((state & 0x01) != 0) {
+            SwitchEvent(spBusMsg->senderAddr, 1, true);
+        } else {
+            SwitchEvent(spBusMsg->senderAddr, 1, false);
+        }
+        if ((state & 0x02) != 0) {
+            SwitchEvent(spBusMsg->senderAddr, 2, true);
+        } else {
+            SwitchEvent(spBusMsg->senderAddr, 2, false);
+        }
+        /* response packet */
+        sTxBusMsg.type = eBusDevRespSwitchState;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        sTxBusMsg.msg.devBus.x.devResp.switchState.switchState = state;
+        BusSend(&sTxBusMsg);
+        break;
+    case eBusDevReqSetAddr:
+        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.type = eBusDevRespSetAddr;  
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        eeprom_write_byte((uint8_t *)MODUL_ADDRESS, spBusMsg->msg.devBus.x.devReq.setAddr.addr);
+        BusSend(&sTxBusMsg);  
+        break;
+    case eBusDevReqEepromRead:
+        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.type = eBusDevRespEepromRead;
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        sTxBusMsg.msg.devBus.x.devResp.readEeprom.data = 
+            eeprom_read_byte((const uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr);
+        BusSend(&sTxBusMsg);  
+        break;
+    case eBusDevReqEepromWrite:
+        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.type = eBusDevRespEepromWrite;
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr, 
+                          spBusMsg->msg.devBus.x.devReq.writeEeprom.data);
+        BusSend(&sTxBusMsg);  
+        break;
+    default:
+        break;
+    }
 }
 
 /*-----------------------------------------------------------------------------
 *  create button event for application
 */
-static void ButtonEvent(uint8_t address, uint8_t button) { 
+static void ButtonEvent(uint8_t address, uint8_t button) {
    TButtonEvent buttonEventData;
 
    if (ButtonNew(address, button) == true) {
       buttonEventData.address = spBusMsg->senderAddr;
-      buttonEventData.pressed = true;   
+      buttonEventData.pressed = true;
       buttonEventData.buttonNr = button;
       ApplicationEventButton(&buttonEventData);
    }
-} 
+}
 
 /*-----------------------------------------------------------------------------
 *  create switch event for application
 */
-static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) { 
+static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) {
    TButtonEvent buttonEventData;
 
    buttonEventData.address = spBusMsg->senderAddr;
-   buttonEventData.pressed = pressed;   
+   buttonEventData.pressed = pressed;
    buttonEventData.buttonNr = button;
    ApplicationEventButton(&buttonEventData);
-} 
+}
 
 
 /*-----------------------------------------------------------------------------
@@ -610,7 +619,7 @@ static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) {
 */
 ISR(INT0_vect) {
    uint8_t *ptrToEeprom;
-   uint8_t buf[4];            
+   uint8_t buf[4];
    uint8_t i;
 
    LedSet(eLedGreenOff);
@@ -620,7 +629,7 @@ ISR(INT0_vect) {
    DigOutStateAllStandard(buf, sizeof(buf));
    /* zum Stromsparen alle Ausgänge abschalten */
    DigOutOffAll();
-   
+
    /* neue Zustände speichern */
    ptrToEeprom = (uint8_t *)spNextPtrToEeprom;
    /* Kennzeichnungsbit löschen */
@@ -629,10 +638,10 @@ ISR(INT0_vect) {
       eeprom_write_byte(ptrToEeprom, buf[i]);
       ptrToEeprom++;
    }
-    
+
    /* Wait for completion of previous write */
    while (!eeprom_is_ready());
-   
+
    LedSet(eLedRedOn);
 
    /* auf Powerfail warten */
@@ -642,41 +651,43 @@ ISR(INT0_vect) {
    while (!POWER_GOOD);
 
    /* Versorgung wieder OK */
-   /* Watchdogtimeout auf 2 s stellen */                     
+   /* Watchdogtimeout auf 2 s stellen */
    wdt_enable(WDTO_2S);
-   
+
    /* warten auf Reset */
    while (1);
-}           
-
+}
 
 /*-----------------------------------------------------------------------------
 *  Timer-Interrupt für Zeitbasis (Timer 0 Compare)
 */
 ISR(TIMER0_COMP_vect)  {
-   static uint16_t sCounter = 0; 
+   static uint16_t sCounter1 = 0;
+   static uint8_t  sCounter2 = 0;
 
-   /* Interrupt alle 2ms */   
+   /* Interrupt alle 2ms */
    gTimeMs += 2;
    gTimeMs16 += 2;
    gTimeMs32 += 2;
-   sCounter++;
-   if (sCounter >= 500) { 
-      sCounter = 0;
+   sCounter1++;
+   if (sCounter1 >= 500) {
+      sCounter1 = 0;
       /* Sekundenzähler */
       gTimeS++;
    }
-   if (sCounter%5 == 0) { 
-      /* 100 mSekundenzähler */
+   sCounter2++;
+   if (sCounter2 >= 5) {
+      sCounter2 = 0;
+      /* 10 ms counter */
       gTime10Ms16++;
-   }     
+   } 
 }
 
 /*-----------------------------------------------------------------------------
 *  Timerinitialisierung
 */
 static void TimerInit(void) {
- 
+
    /* Verwendung des Compare-Match Interrupt von Timer0 */
    /* Vorteiler bei 1 MHz: 8  */
    /* Vorteiler bei 3.6864 MHz: 64  */
@@ -689,19 +700,19 @@ static void TimerInit(void) {
    /* Timer-Mode: CTC: WGM01:0=2 */
 #if (F_CPU == 1000000UL)
    /* 1 MHz */
-   TCCR0 = (0b010 << CS00) | (0 << WGM00) | (1 << WGM01); 
+   TCCR0 = (0b010 << CS00) | (0 << WGM00) | (1 << WGM01);
    OCR0 = 250 - 1;
-#elif (F_CPU == 1600000UL) 
+#elif (F_CPU == 1600000UL)
    /* 16 MHz */
-   TCCR0 = (0b110 << CS00) | (0 << WGM00) | (1 << WGM01); 
+   TCCR0 = (0b110 << CS00) | (0 << WGM00) | (1 << WGM01);
    OCR0 = 125 - 1;
-#elif (F_CPU == 3686400UL) 
+#elif (F_CPU == 3686400UL)
    /* 3.6864 MHz */
-   TCCR0 = (0b100 << CS00) | (0 << WGM00) | (1 << WGM01); 
+   TCCR0 = (0b100 << CS00) | (0 << WGM00) | (1 << WGM01);
    OCR0 = 115 - 1;
 #else
 #error adjust timer settings for your CPU clock frequency
-#endif                                                                     
+#endif
    /* Timer Compare Match Interrupt enable */
    TIMSK |= 1 << OCIE0;
 }
@@ -722,9 +733,9 @@ static void PortInit(void) {
    /* PortB.4 .. PortB7: DO16 .. DO19: Ausgang low */
    /* PortB.0, PortB.2, PortB.3: nicht benutzt, Ausgang, low*/
    /* PortB.1: SCK-Eingang: Eingang, PullUp */
-   PORTB = 0b00000010; 
-   DDRB  = 0b11111101;  
-                 
+   PORTB = 0b00000010;
+   DDRB  = 0b11111101;
+
    /* PortD.0: Interrupteingang für PowerFail: Eingang, kein PullUp*/
    /* PortD.1: unbenutzt oder mit RXD1 verbunden, Eingang, PullUp */
    /* PortD.2: UART RX, Eingang, PullUp */
@@ -739,13 +750,13 @@ static void PortInit(void) {
    /* PortE.7: unbenutzt oder Transceiversteuerung, Ausgang, high*/
    PORTE = 0b10000011;
    DDRE  = 0b11111110;
-   
+
    /* PortF: DO24 .. DO30/31 */
    PORTF = 0b00000000;    /* alle PortF-Leitung auf low */
    DDRF  = 0b11111111;    /* alle PortF-Leitungen auf Ausgang */
 
-   /* PortG.0 .. PortG.2 unbenutzt, Ausgang, low*/    
-   /* PortG.3, PortG.4 LED, Ausgang, high*/    
-   PORTG = 0b00011000;    
-   DDRG  = 0b00011111; 
-}  
+   /* PortG.0 .. PortG.2 unbenutzt, Ausgang, low*/
+   /* PortG.3, PortG.4 LED, Ausgang, high*/
+   PORTG = 0b00011000;
+   DDRG  = 0b00011111;
+}
