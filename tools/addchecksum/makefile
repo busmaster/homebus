@@ -1,18 +1,22 @@
 OBJS = main.o
 BIN  = addchecksum
 ARCH = $(TARGET_ARCH)
-OS = $(TARGET_OS)
 OBJDIR = obj
 BINDIR = bin
 
+SYS = $(shell gcc -dumpmachine)
+ifneq (, $(findstring linux, $(SYS)))
+OS = linux
+else ifeq ($(SYS),mingw32)
+OS = win32
+endif
+
 ifeq ($(ARCH),i686)
-	ifeq ($(OS),linux)
-		GCC_PREFIX = i686-linux-gnu-
-	endif
+	GCC_PREFIX = i686-linux-gnu-
 else ifeq ($(ARCH), arm)
-	ifeq ($(OS),linux)
-		GCC_PREFIX = arm-linux-gnueabi-
-	endif
+	GCC_PREFIX = arm-linux-gnueabi-
+else ifeq ($(ARCH), armhf)
+	GCC_PREFIX = arm-linux-gnueabihf-
 endif
 
 GCC = $(GCC_PREFIX)gcc
