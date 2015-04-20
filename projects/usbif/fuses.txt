@@ -1,0 +1,14 @@
+fuse settings for atmega32u4:
+extended fuse byte:
+0xf0 (changed bod level to 000: 4.0 .. 4.5 V)
+fuse byte high:
+0x99 (atmel default)
+fuse byte low:
+0xdf (changed cklsel to 1111: 8-16 MHz crystal, bod enabled;
+      changed ckdiv8 to 1)
+
+
+avrdude -p m32u4 -c stk200 -U efuse:w:0xf0:m
+avrdude -p m32u4 -c stk200 -U lfuse:w:0xdf:m
+
+
