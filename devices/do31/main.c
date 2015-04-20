@@ -63,22 +63,41 @@
 /* Bits in EECR */
 #define EEWE     1
 
-
 /* offset addresses in EEPROM */
-#define MODUL_ADDRESS        0
+#define MODUL_ADDRESS           0  /* 1 byte */
+#define CLIENT_ADDRESS_BASE     1  /* BUS_MAX_CLIENT_NUM from bus.h (16 byte) */
 
 /* DO restore after power fail */
 #define EEPROM_DO_RESTORE_START  (uint8_t *)3072
 #define EEPROM_DO_RESTORE_END    (uint8_t *)4095
 
-/* eigene Adresse am Bus */
+/* our bus address */
 #define MY_ADDR    sMyAddr
 
 #define IDLE_SIO1  0x01
 
+/* acual value event */
+#define RESPONSE_TIMEOUT_MS          50  /* time in ms */
+/* timeout for unreachable client  */
+/* after this time retries are stopped */
+#define RETRY_TIMEOUT_MS            10000 /* time in ms */
+#define RETRY_CYCLE_TIME_MS         200 /* time in ms */
+#define CHANGE_DETECT_CYCLE_TIME_MS 500 /* time in ms */
+
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */
+typedef enum {
+   eInit,
+   eWaitForConfirmation,
+   eConfirmationOK
+} TState;
+
+typedef struct {
+   uint8_t  address;
+   TState   state;
+   uint16_t requestTimeStamp;
+} TClient;
 
 /*-----------------------------------------------------------------------------
 *  Variables
@@ -99,6 +118,14 @@ static uint8_t   sIdle = 0;
 
 int gDbgSioHdl = -1;
 
+static TClient sClient[BUS_MAX_CLIENT_NUM];
+static uint8_t sNumClients;
+
+static uint8_t sOldDigOutActVal[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
+static uint8_t sCurDigOutActVal[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
+static uint8_t sOldShaderActVal[BUS_DO31_SHADER_SIZE_ACTUAL_VALUE];
+static uint8_t sCurShaderActVal[BUS_DO31_SHADER_SIZE_ACTUAL_VALUE];
+
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -112,7 +139,8 @@ static void RestoreDigOut(void);
 static void Idle(void);
 static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
-
+static void CheckEvent(void);
+static void GetClientListFromEeprom(void);
 /*-----------------------------------------------------------------------------
 *  main
 */
@@ -123,6 +151,7 @@ int main(void) {
 
    /* get module address from EEPROM */
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+   GetClientListFromEeprom();
     
    PortInit();
    LedInit();
@@ -175,10 +204,201 @@ int main(void) {
       ShaderCheck();
       LedCheck();
       ApplicationCheck();
+      CheckEvent();
    }
    return 0;
 }
 
+/*-----------------------------------------------------------------------------
+*  get next client array index
+*  if all clients are processed 0xff is returned
+*/
+static uint8_t GetUnconfirmedClient(uint8_t actualClient) {
+
+    uint8_t  i;
+    uint8_t  nextClient;
+    TClient  *pClient;
+
+    if (actualClient >= sNumClients) {
+        return 0xff;
+    }
+   
+    for (i = 0; i < sNumClients; i++) {
+        nextClient = actualClient + i +1;
+        nextClient %= sNumClients;
+        pClient = &sClient[nextClient];
+        if (pClient->state != eConfirmationOK) {
+            break;
+        }
+    }
+    if (i == sNumClients) {
+        /* all client's confirmations received */
+        nextClient = 0xff;
+    }
+    return nextClient;
+}
+
+static void InitClientState(void) {
+
+    TClient *pClient;
+    uint8_t  i;
+
+    for (i = 0, pClient = sClient; i < sNumClients; i++) {
+        pClient->state = eInit;
+    }
+}
+
+static void GetClientListFromEeprom(void) {
+
+    TClient *pClient;
+    uint8_t i;
+    uint8_t numClients;
+    uint8_t clientAddr;
+
+    for (i = 0, numClients = 0, pClient = sClient; i < BUS_MAX_CLIENT_NUM; i++) {
+        clientAddr = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
+        if (clientAddr != BUS_CLIENT_ADDRESS_INVALID) {
+            pClient->address = clientAddr;
+            pClient->state = eInit;
+            pClient++;
+            numClients++;
+        }
+    }
+    sNumClients = numClients;
+}
+
+static uint8_t GetActualValueShader(uint8_t shader) {
+
+    uint8_t      state;
+    TShaderState shaderState;
+
+    state = 252; /* not configured */
+    if (ShaderGetState(shader, &shaderState)) {
+        switch (shaderState) {
+        case eShaderStopped:
+            ShaderGetPosition(shader, &state);
+            break;
+        case eShaderClosing:
+            state = 253;
+            break;
+        case eShaderOpening:
+            state = 254;
+            break;
+        }
+    }
+    return state;
+}
+
+/*-----------------------------------------------------------------------------
+*   post state changes to registered bus clients
+*/
+static void CheckEvent(void) {
+
+    static uint8_t   sActualClient = 0xff; /* actual client's index being processed */
+    static uint16_t  sChangeTimeStamp;
+    static uint16_t  sChangeTestTimeStamp;
+    TClient          *pClient;
+    uint8_t          i;
+    uint16_t         actualTime16;
+    bool             actValChanged;
+    static bool      sNewClientCycleDelay = false;
+    static uint16_t  sNewClientCycleTimeStamp;
+    TBusDevReqActualValueEvent *pActVal;
+    uint8_t          rc;
+    bool             getNextClient;
+    uint8_t          nextClient;
+   
+    if (sNumClients == 0) {
+        return;
+    }
+    
+    /* do the change detection not in each cycle */
+    GET_TIME_MS16(actualTime16);
+    if (((uint16_t)(actualTime16 - sChangeTestTimeStamp)) >= CHANGE_DETECT_CYCLE_TIME_MS) {
+        for (i = 0; i < sizeof(sCurShaderActVal); i++) {
+            sCurShaderActVal[i] = GetActualValueShader(i);
+        }
+        DigOutStateAllStandard(sCurDigOutActVal, sizeof(sCurDigOutActVal));
+       
+        if ((memcmp(sCurShaderActVal, sOldShaderActVal, sizeof(sCurShaderActVal)) == 0) &&
+            (memcmp(sCurDigOutActVal, sOldDigOutActVal, sizeof(sCurDigOutActVal)) == 0)) {
+            actValChanged = false;
+        } else {
+            actValChanged = true;
+        }
+     
+        if (actValChanged) {
+            memcpy(sOldShaderActVal, sCurShaderActVal, sizeof(sOldShaderActVal));
+            memcpy(sOldDigOutActVal, sCurDigOutActVal, sizeof(sOldDigOutActVal));
+            sChangeTimeStamp = actualTime16;
+            sActualClient = 0;
+            sNewClientCycleDelay = false;
+            InitClientState();
+        }
+        sChangeTestTimeStamp = actualTime16;
+    }
+
+    if (sActualClient == 0xff) {
+        return;
+    }
+
+    if (sNewClientCycleDelay) {
+        if (((uint16_t)(actualTime16 - sNewClientCycleTimeStamp)) < RETRY_CYCLE_TIME_MS) {
+            return;
+        } else {
+            sNewClientCycleDelay = false;
+        }
+    }
+
+    pClient = &sClient[sActualClient];
+    getNextClient = true;
+    switch (pClient->state) {
+    case eInit:
+        pActVal = &sTxBusMsg.msg.devBus.x.devReq.actualValueEvent;
+        sTxBusMsg.type = eBusDevReqActualValueEvent;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = pClient->address;
+        pActVal->devType = eBusDevTypeDo31;
+    
+        memcpy(pActVal->actualValue.do31.digOut, sCurDigOutActVal, 
+               sizeof(pActVal->actualValue.do31.digOut));
+        memcpy(pActVal->actualValue.do31.shader, sCurShaderActVal, 
+               sizeof(pActVal->actualValue.do31.shader));
+        
+        rc = BusSend(&sTxBusMsg);
+        if (rc == BUS_SEND_OK) {
+            pClient->state = eWaitForConfirmation;
+            pClient->requestTimeStamp = actualTime16;
+        } else {
+            getNextClient = false;
+        }
+        break;
+    case eWaitForConfirmation:
+        if (((uint16_t)(actualTime16 - pClient->requestTimeStamp)) >= RESPONSE_TIMEOUT_MS) {
+            /* try once more */
+            pClient->state = eInit;
+            getNextClient = false;
+        }
+        break;
+    case eConfirmationOK:
+        break;
+    default:
+        break;
+    }
+    
+    if (getNextClient) {
+        nextClient = GetUnconfirmedClient(sActualClient);
+        if (nextClient <= sActualClient) {
+            sNewClientCycleDelay = true;
+            sNewClientCycleTimeStamp = actualTime16;
+        }
+        sActualClient = nextClient;
+    }
+
+    if (((uint16_t)(actualTime16 - sChangeTimeStamp)) > RETRY_TIMEOUT_MS) {
+        sActualClient = 0xff; // stop 
+    }
+}
 
 /*-----------------------------------------------------------------------------
 *   switch to idle mode
@@ -302,6 +522,7 @@ static void ProcessBus(uint8_t ret) {
     TBusDevRespInfo        *pInfo;
     TBusDevRespGetState    *pGetState;
     TBusDevRespActualValue *pActVal;
+    TClient                *pClient;
 
     if (ret == BUS_MSG_OK) {
         msgType = spBusMsg->type;
@@ -316,6 +537,9 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqSetAddr:
         case eBusDevReqEepromRead:
         case eBusDevReqEepromWrite:
+        case eBusDevReqSetClientAddr:
+        case eBusDevReqGetClientAddr:
+        case eBusDevRespActualValueEvent:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
             }
@@ -475,23 +699,8 @@ static void ProcessBus(uint8_t ret) {
         for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
             pActVal->actualValue.do31.shader[i] = 0;
         }
-
         for (i = 0; i < eShaderNum; i++) {
-            state = 252; /* not configured */
-            if (ShaderGetState(i, &shaderState) == true) {
-                switch (shaderState) {
-                case eShaderStopped:
-                    ShaderGetPosition(i, &state);
-                    break;
-                case eShaderClosing:
-                    state = 253;
-                    break;
-                case eShaderOpening:
-                    state = 254;
-                    break;
-                }
-            }
-            pActVal->actualValue.do31.shader[i] = state;
+            pActVal->actualValue.do31.shader[i] = GetActualValueShader(i);
         }
         BusSend(&sTxBusMsg);
         break;
@@ -576,6 +785,52 @@ static void ProcessBus(uint8_t ret) {
         sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr, 
                           spBusMsg->msg.devBus.x.devReq.writeEeprom.data);
+        BusSend(&sTxBusMsg);  
+        break;
+    case eBusDevRespActualValueEvent:
+        pClient = sClient;
+        for (i = 0; i < sNumClients; i++) {
+            if ((pClient->address == spBusMsg->senderAddr) &&
+                (pClient->state == eWaitForConfirmation)) {
+                TBusDevActualValueDo31 *p;
+                uint8_t j;
+                uint8_t buf[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
+
+                DigOutStateAllStandard(buf, sizeof(buf));
+
+                p = &spBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do31;
+                for (j = 0; 
+                     (j < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE) &&
+                     (p->shader[j] == GetActualValueShader(j));
+                     j++);
+                if ((j == BUS_DO31_SHADER_SIZE_ACTUAL_VALUE) &&
+                    (memcmp(p->digOut, buf, sizeof(buf)) == 0)) {
+                    pClient->state = eConfirmationOK;
+                }
+                break;
+            }
+            pClient++;
+        }
+        break;
+    case eBusDevReqSetClientAddr:
+        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.type = eBusDevRespSetClientAddr;  
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
+            uint8_t *p = &(sTxBusMsg.msg.devBus.x.devReq.setClientAddr.clientAddr[i]);
+            eeprom_write_byte((uint8_t *)(CLIENT_ADDRESS_BASE + i), *p);
+        }
+        BusSend(&sTxBusMsg);
+        GetClientListFromEeprom();
+        break;
+    case eBusDevReqGetClientAddr:
+        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.type = eBusDevRespGetClientAddr;  
+        sTxBusMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
+            uint8_t *p = &(sTxBusMsg.msg.devBus.x.devResp.getClientAddr.clientAddr[i]);
+            *p = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
+        }
         BusSend(&sTxBusMsg);  
         break;
     default:
