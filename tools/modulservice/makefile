@@ -1,9 +1,15 @@
 OBJS = main.o
 BIN  = modulservice
 ARCH = $(TARGET_ARCH)
-OS = $(TARGET_OS)
 OBJDIR = obj
 BINDIR = bin
+
+SYS = $(shell gcc -dumpmachine)
+ifneq (, $(findstring linux, $(SYS)))
+OS = linux
+else ifeq ($(SYS),mingw32)
+OS = win32
+endif
 
 SUBDIRS = ../../bus
 ifeq ($(OS),win32)
@@ -32,13 +38,11 @@ LIBRARY += rt
 endif
 
 ifeq ($(ARCH),i686)
-	ifeq ($(OS),linux)
 		GCC_PREFIX = i686-linux-gnu-
-	endif
 else ifeq ($(ARCH), arm)
-	ifeq ($(OS),linux)
 		GCC_PREFIX = arm-linux-gnueabi-
-	endif
+else ifeq ($(ARCH), armhf)
+		GCC_PREFIX = arm-linux-gnueabihf-
 endif
 
 GCC = $(GCC_PREFIX)gcc
@@ -46,9 +50,10 @@ INC_PATH=$(foreach d, $(INCLUDE_PATH), -I$d)
 LIB_PATH=$(foreach d, $(LIBRARY_PATH), -L$d)
 LIBS=$(foreach d, $(LIBRARY), -l$d)
 
+.PHONY: all
 all: $(OBJS)
 	for d in $(SUBDIRS); do \
-		(cd $$d; make all)  \
+		(cd $$d; $(MAKE) all)  \
 	done
 	@mkdir -p $(BINDIR)
 	$(GCC) $(OBJDIR)/$(OBJS) $(LIB_PATH) $(LIBS) -o $(BINDIR)/$(BIN)
@@ -57,12 +62,9 @@ all: $(OBJS)
 	@mkdir -p $(OBJDIR)
 	$(GCC) -g -c -Wall $(INC_PATH) $< -o $(OBJDIR)/$@
 
-
 .PHONY: clean
 clean:
 	rm -rf $(BINDIR) $(OBJDIR)
 	for d in $(SUBDIRS); do \
-		(cd $$d; make clean)  \
+		(cd $$d; $(MAKE) clean)  \
 	done
-
-

@@ -1,5 +1,5 @@
 OBJS = main.o
-BIN  = firmwareupdate
+BIN  = eventmonitor
 ARCH = $(TARGET_ARCH)
 OBJDIR = obj
 BINDIR = bin
@@ -68,3 +68,5 @@ clean:
 	for d in $(SUBDIRS); do \
 		(cd $$d; $(MAKE) clean) \
 	done
+
+

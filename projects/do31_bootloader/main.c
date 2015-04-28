@@ -67,8 +67,8 @@
 /* eigene Adresse am Bus */
 #define MY_ADDR    sMyAddr
 
-/* the module address is stored in the eeprom */
-#define MODUL_ADDRESS        0x1ffff
+/* the module address is stored in the first byte of eeprom */
+#define MODUL_ADDRESS        0
 
 /* Bits in MCUCR */
 #define IVCE     0
@@ -91,8 +91,6 @@
 #define WAIT_FOR_UPD_ENTER          0
 #define WAIT_FOR_UPD_ENTER_TIMEOUT  1
 #define WAIT_FOR_UPD_DATA           2
-
-#define EEPROM_SIZE   4096
 
 /* max. Größe der Firmware */
 #define MAX_FIRMWARE_SIZE   (120UL * 1024UL)
@@ -145,7 +143,7 @@ int main(void) {
    uint16_t  sum;
    int       sioHdl;
 
-   sMyAddr = pgm_read_byte_far((uint32_t)MODUL_ADDRESS);
+   sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
 
    PortInit();
    TimerInit();
