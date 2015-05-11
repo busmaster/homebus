@@ -22,7 +22,7 @@
  */
 
 #define _XOPEN_SOURCE
-#define  DEBUG_LOG
+#undef  DEBUG_LOG
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -57,7 +57,7 @@ struct ptyDesc {
 
 static char sTmpFileName[200];
 
-#undef DEBUG_LOG
+#ifdef DEBUG_LOG
 
 static FILE *logFile = 0;
 
