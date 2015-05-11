@@ -77,7 +77,7 @@
 #define IDLE_SIO1  0x01
 
 /* acual value event */
-#define RESPONSE_TIMEOUT_MS          50  /* time in ms */
+#define RESPONSE_TIMEOUT_MS         100  /* time in ms */
 /* timeout for unreachable client  */
 /* after this time retries are stopped */
 #define RETRY_TIMEOUT_MS            10000 /* time in ms */
