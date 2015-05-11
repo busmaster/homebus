@@ -616,14 +616,18 @@ void ApplicationPressed30_0(void) {
       DigOutDelayedOff(eDigOut18, 250);
    }
 
-   /* Licht in Ess- und Wohnzimmer kurz umschalten */
+   /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
    DigOutToggle(eDigOut13);
    DigOutToggle(eDigOut15);
+   DigOutToggle(eDigOut23);
+   DigOutToggle(eDigOut24);
 }
 void ApplicationReleased30_0(void) {
-   /* Licht in Ess- und Wohnzimmer kurz umschalten */
+   /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
    DigOutToggle(eDigOut13);
    DigOutToggle(eDigOut15);
+   DigOutToggle(eDigOut23);
+   DigOutToggle(eDigOut24);
 }
 void ApplicationPressed30_1(void) {}
 void ApplicationReleased30_1(void) {}
