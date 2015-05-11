@@ -57,7 +57,7 @@ struct ptyDesc {
 
 static char sTmpFileName[200];
 
-#undef DEBUG_LOG
+#ifdef DEBUG_LOG
 
 static FILE *logFile = 0;
 
