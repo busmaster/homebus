@@ -48,7 +48,7 @@
 #define MSG_BASE_SIZE2  MSG_BASE_SIZE1 + member_sizeof(TBusDev, receiverAddr)
 
 // max number of length options of variable length telegrams 
-#define MAX_NUM_VAR_LEN  5
+#define MAX_NUM_VAR_LEN  6
 
 
 #define L1_WAIT_FOR_STX      0
@@ -110,7 +110,12 @@ static TVarLenMsg sRespInfoSize = {
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
                         member_sizeof(TBusDevRespInfo, version) + 
-                        sizeof(TBusDevInfoSw16)}
+                        sizeof(TBusDevInfoSw16)},
+      {eBusDevTypeWind, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespInfo, devType) +
+                        member_sizeof(TBusDevRespInfo, version) + 
+                        sizeof(TBusDevInfoWind)}
+                        
    }
 };
 
@@ -120,6 +125,7 @@ static TVarLenMsg sReqSetStateSize = {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetState, devType) +
                         sizeof(TBusDevSetStateDo31)},
+      {0,               0},
       {0,               0},
       {0,               0},
       {0,               0},
@@ -138,6 +144,7 @@ static TVarLenMsg sRespGetStateSize = {
                         sizeof(TBusDevGetStateSw8)},
       {0,               0},
       {0,               0},
+      {0,               0},
       {0,               0}
    }
 };
@@ -154,6 +161,7 @@ static TVarLenMsg sReqSetValueSize = {
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetValue, devType) + 
                         sizeof(TBusDevSetValueSw16)},
+      {0,               0},
       {0,               0},
       {0,               0}
    }
@@ -176,7 +184,10 @@ static TVarLenMsg sRespActualValueSize = {
                         sizeof(TBusDevActualValueLed)},
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValue, devType) +
-                        sizeof(TBusDevActualValueSw16)}
+                        sizeof(TBusDevActualValueSw16)},
+      {eBusDevTypeWind, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValue, devType) +
+                        sizeof(TBusDevActualValueWind)}
    }
 };
 
@@ -197,7 +208,10 @@ static TVarLenMsg sReqActualValueEventSize = {
                         sizeof(TBusDevActualValueLed)},
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqActualValueEvent, devType) +
-                        sizeof(TBusDevActualValueSw16)}
+                        sizeof(TBusDevActualValueSw16)},
+      {eBusDevTypeWind, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueWind)}
    }
 };
 
@@ -218,7 +232,10 @@ static TVarLenMsg sRespActualValueEventSize = {
                         sizeof(TBusDevActualValueLed)},
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValueEvent, devType) +
-                        sizeof(TBusDevActualValueSw16)}
+                        sizeof(TBusDevActualValueSw16)},
+      {eBusDevTypeWind, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueWind)}
    }
 };
 

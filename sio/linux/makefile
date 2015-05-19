@@ -1,28 +1,31 @@
 OBJS = sio.o
 BIN  = libsio.a
 ARCH = $(TARGET_ARCH)
-OS = $(TARGET_OS)
+OS = linux
 OBJDIR = obj
 BINDIR = bin
 
+INCLUDE_PATH = . ../../include ../../include/linux
+
 ifeq ($(ARCH),i686)
-	ifeq ($(OS),linux)
-		GCC_PREFIX = i686-linux-gnu-
-	endif
+	GCC_PREFIX = i686-linux-gnu-
 else ifeq ($(ARCH), arm)
-	ifeq ($(OS),linux)
-		GCC_PREFIX = arm-linux-gnueabi-
-	endif
+	GCC_PREFIX = arm-linux-gnueabi-
+else ifeq ($(ARCH), armhf)
+	GCC_PREFIX = arm-linux-gnueabihf-
 endif
 
 GCC = $(GCC_PREFIX)gcc
 AR = ar
 
+INC_PATH=$(foreach d, $(INCLUDE_PATH), -I$d)
+
 %.o : %.c
 	@mkdir -p $(OBJDIR)
-	$(GCC) -c -Wall -I . -I ../../include -I ../../include/linux $< -o $(OBJDIR)/$@
+	$(GCC) -c -Wall $(INC_PATH) $< -o $(OBJDIR)/$@
 
-all:	$(OBJS)
+.PHONY: all
+all: $(OBJS)
 	@mkdir -p $(BINDIR)
 	$(AR) rcs $(BINDIR)/$(BIN) $(OBJDIR)/$(OBJS)
 
