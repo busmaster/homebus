@@ -121,12 +121,16 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoSw16;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoWind;
+
 typedef enum {
    eBusDevTypeDo31 = 0x00,
    eBusDevTypeSw8  = 0x01,
    eBusDevTypeLum  = 0x02,
    eBusDevTypeLed  = 0x03,
-   eBusDevTypeSw16 = 0x04
+   eBusDevTypeSw16 = 0x04,
+   eBusDevTypeWind = 0x05
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {
@@ -138,6 +142,7 @@ typedef struct {
       TBusDevInfoLum  lum;
       TBusDevInfoLed  led;
       TBusDevInfoSw16 sw16;
+      TBusDevInfoWind wind;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
 
@@ -303,6 +308,11 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValueSw16;
 
 typedef struct {
+   uint8_t state;              /* state of luminance switches       */
+   uint8_t wind;               /* actual wind                       */
+} __attribute__ ((packed)) TBusDevActualValueWind;
+
+typedef struct {
    TBusDevType devType;
    union {
       TBusDevActualValueDo31 do31;
@@ -310,6 +320,7 @@ typedef struct {
       TBusDevActualValueLum  lum;
       TBusDevActualValueLed  led;
       TBusDevActualValueSw16 sw16;
+      TBusDevActualValueWind wind;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
@@ -322,6 +333,7 @@ typedef struct {
       TBusDevActualValueLum  lum;
       TBusDevActualValueLed  led;
       TBusDevActualValueSw16 sw16;
+      TBusDevActualValueWind wind;
    } actualValue;
 } __attribute__ ((packed)) TBusDevReqActualValueEvent;  /* Type 0x21 */
 
@@ -333,6 +345,7 @@ typedef struct {
       TBusDevActualValueLum  lum;
       TBusDevActualValueLed  led;
       TBusDevActualValueSw16 sw16;
+      TBusDevActualValueWind wind;
    } actualValue; /* same as request */
 } __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
 

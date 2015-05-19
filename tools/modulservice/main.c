@@ -405,6 +405,9 @@ int main(int argc, char *argv[]) {
                case eBusDevTypeLed:
                   printf("LED");
                   break;
+               case eBusDevTypeWind:
+                  printf("WIND");
+                  break;
                default:
                   break;
             }
@@ -472,6 +475,17 @@ int main(int argc, char *argv[]) {
                case eBusDevTypeLed:
                   printf("\r\nLED state: %02x\r\n", actVal.actualValue.led.state);
                   break;
+               case eBusDevTypeWind:
+                  printf("\r\nstate: ");
+                  for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
+                     if (actVal.actualValue.wind.state & mask) {
+                        printf("1");
+                     } else {
+                        printf("0");
+                     }
+                  }
+                  printf("\r\nWIND:  0x%02x\r\n", actVal.actualValue.wind.wind);
+                  break;
                default:
                   break;
             }
@@ -505,6 +519,9 @@ int main(int argc, char *argv[]) {
                   break;
                case eBusDevTypeSw16:
                   printf("SW16");
+                  break;
+               case eBusDevTypeWind:
+                  printf("WIND");
                   break;
                default:
                   break;
@@ -685,6 +702,10 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
             break;
          case eBusDevTypeLed:
             pBuf->actualValue.led.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.led.state;
+            break;
+         case eBusDevTypeWind:
+            pBuf->actualValue.wind.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.state;
+            pBuf->actualValue.wind.wind = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.wind;
             break;
          default:
             break;
