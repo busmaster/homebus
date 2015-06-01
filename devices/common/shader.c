@@ -126,11 +126,11 @@ void ShaderSetConfig(TShaderNumber number,
    pShader = &sShader[number];
    pShader->onSwitch = onSwitch;
    pShader->dirSwitch = dirSwitch;
-   pShader->actualPosition = 100; /* default: shader is completely open*/
-   pShader->startingPosition = 100;
+   pShader->actualPosition = 50; /* default: middle position */
+   pShader->startingPosition = 50;
    pShader->openDuration = openDurationMs / 10; /* in 10 ms */
    pShader->closeDuration = closeDurationMs / 10;  /* in 10 ms */
-   pShader->setPosition = 100; /* default: shader is completely open */
+   pShader->setPosition = 50; /* default: shader is completely open */
 }
 
 /*-----------------------------------------------------------------------------
@@ -229,7 +229,7 @@ bool ShaderSetPosition(TShaderNumber number, uint8_t position) {
 }
 
 /*-----------------------------------------------------------------------------
-*  Set targetPosition for shader
+*  Get position of shader
 */
 bool ShaderGetPosition(TShaderNumber number, uint8_t *pPosition) {
 
