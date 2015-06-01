@@ -47,7 +47,8 @@
 
 #define CLIENT_ADDRESS_BASE     2 /* BUS_MAX_CLIENT_NUM from bus.h (16 byte) */
 
-#define WIND_LEVEL              18
+#define WIND_THRESHOLD1         18
+#define WIND_THRESHOLD2         19
 
 #define STARTUP_DELAY  10 /* delay in seconds */
 
@@ -109,6 +110,7 @@ static uint8_t   sIdle = 0;
 static uint8_t   sWindSwitchOld;
 static uint8_t   sWindSwitch;
 static uint8_t   sWind;
+static uint8_t   sMaxWind;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -129,44 +131,57 @@ static void BusTransceiverPowerDown(bool powerDown);
 */
 int main(void) {                      
 
-   int     sioHandle;
-   uint8_t windLevel;
+    int     sioHandle;
+    uint8_t windThreshold1;
+    uint8_t windThreshold2;
 
-   MCUSR = 0;
-   wdt_disable();
+    MCUSR = 0;
+    wdt_disable();
 
-   /* get module address from EEPROM */
-   sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
-   windLevel = eeprom_read_byte((const uint8_t *)WIND_LEVEL);
-   GetClientListFromEeprom();
+    /* get module address from EEPROM */
+    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+    windThreshold1 = eeprom_read_byte((const uint8_t *)WIND_THRESHOLD1);
+    windThreshold2 = eeprom_read_byte((const uint8_t *)WIND_THRESHOLD2);
+    GetClientListFromEeprom();
 
-   PortInit();
-   TimerInit();
-   SioInit();
-   sioHandle = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
-                       eSioStopBits1, eSioModeHalfDuplex);
-   SioSetIdleFunc(sioHandle, IdleSio);
-   SioSetTransceiverPowerDownFunc(sioHandle, BusTransceiverPowerDown);
+    PortInit();
+    TimerInit();
+    SioInit();
+    sioHandle = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
+                        eSioStopBits1, eSioModeHalfDuplex);
+    SioSetIdleFunc(sioHandle, IdleSio);
+    SioSetTransceiverPowerDownFunc(sioHandle, BusTransceiverPowerDown);
 
-   BusTransceiverPowerDown(true);
+    BusTransceiverPowerDown(true);
    
-   BusInit(sioHandle);
-   spRxBusMsg = BusMsgBufGet();
+    BusInit(sioHandle);
+    spRxBusMsg = BusMsgBufGet();
 
-   /* enable global interrupts */
-   ENABLE_INT;  
+    /* enable global interrupts */
+    ENABLE_INT;  
 
-   SendStartupMsg();
+    SendStartupMsg();
 
-   /* wait for controller startup delay for sending first state telegram */
-   DELAY_S(STARTUP_DELAY);
+    /* wait for controller startup delay for sending first state telegram */
+    DELAY_S(STARTUP_DELAY);
 
-   while (1) { 
-      Idle();
-      ProcessSwitch();
-      ProcessBus();
-   }
-   return 0;  /* never reached */
+    while (1) { 
+        Idle();
+        ProcessSwitch();
+        ProcessBus();
+      
+        if (sWind >= windThreshold1) {
+            sWindSwitch |= 0x01;
+        } else {
+            sWindSwitch &= ~0x01;    
+        }
+        if (sWind >= windThreshold2) {
+            sWindSwitch |= 0x02;
+        } else {
+            sWindSwitch &= ~0x02;    
+        }    
+    }
+    return 0;  /* never reached */
 }
 
 /*-----------------------------------------------------------------------------
@@ -429,7 +444,7 @@ static void ProcessBus(void) {
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeWind;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.state = sWindSwitch;
-        sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.wind = sWind;
+        sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.wind = sMaxWind; //sWind;
         BusSend(&sTxBusMsg);           
         break;
     case eBusDevReqSetClientAddr:
@@ -497,35 +512,35 @@ static void ProcessBus(void) {
 */
 static void PortInit(void) {
 
-   /* configure port b pins to output low (unused pins) */
-   PORTB = 0b00000000;
-   DDRB =  0b11111111;
+    /* configure port b pins to output low (unused pins) */
+    PORTB = 0b00000000;
+    DDRB =  0b11111111;
     
-   /* port c: */ 
-   /* unused pins: output low */
-   /* pc.0: input pin hi-z */
-   /* pc.1: output pin hi */
-   PORTC = 0b00000010;
-   DDRC =  0b11111110;            
+    /* port c: */ 
+    /* unused pins: output low */
+    /* pc.0: input pin hi-z */
+    /* pc.1: output pin hi */
+    PORTC = 0b00000010;
+    DDRC =  0b11111110;            
 
-   /* port d: */
-   /* pd0: input, no pull up (RXD) */
-   /* pd1: output (TXD)            */
-   /* pd2: input, no pull up (TXD) */
-   /* pd5: output (bus transceiver power state) */
-   /* other pd: unused, output low */
-   PORTD = 0b00100010;
-   DDRD =  0b11111010;
+    /* port d: */
+    /* pd0: input, no pull up (RXD) */
+    /* pd1: output (TXD)            */
+    /* pd2: input, no pull up (TXD) */
+    /* pd5: output (bus transceiver power state) */
+    /* other pd: unused, output low */
+    PORTD = 0b00100010;
+    DDRD =  0b11111010;
 }
 
 /*-----------------------------------------------------------------------------
 *  port init
 */
 static void TimerInit(void) {
-   /* configure Timer 0 */
-   /* prescaler clk/64 -> Interrupt period 256/1000000 * 64 = 16.384 ms */
-   TCCR0B = 3 << CS00; 
-   TIMSK0 = 1 << TOIE0;
+    /* configure Timer 0 */
+    /* prescaler clk/64 -> Interrupt period 256/1000000 * 64 = 16.384 ms */
+    TCCR0B = 3 << CS00; 
+    TIMSK0 = 1 << TOIE0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -533,21 +548,21 @@ static void TimerInit(void) {
 */
 static void SendStartupMsg(void) {
 
-   uint16_t startCnt;
-   uint16_t cntMs;
-   uint16_t diff;
+    uint16_t startCnt;
+    uint16_t cntMs;
+    uint16_t diff;
 
-   /* send startup message */
-   /* delay depends on module address (address * 100 ms) */
-   GET_TIME_MS16(startCnt);
-   do {
-      GET_TIME_MS16(cntMs);
-      diff =  cntMs - startCnt;
-   } while (diff < ((uint16_t)MY_ADDR * 100));
+    /* send startup message */
+    /* delay depends on module address (address * 100 ms) */
+    GET_TIME_MS16(startCnt);
+    do {
+        GET_TIME_MS16(cntMs);
+        diff =  cntMs - startCnt;
+    } while (diff < ((uint16_t)MY_ADDR * 100));
 
-   sTxBusMsg.type = eBusDevStartup;
-   sTxBusMsg.senderAddr = MY_ADDR;
-   BusSend(&sTxBusMsg);
+    sTxBusMsg.type = eBusDevStartup;
+    sTxBusMsg.senderAddr = MY_ADDR;
+    BusSend(&sTxBusMsg);
 }
 
 /*-----------------------------------------------------------------------------
@@ -556,23 +571,27 @@ static void SendStartupMsg(void) {
 */
 ISR(TIMER0_OVF_vect) {
 
-   static uint8_t intCnt = 0;
-   static uint8_t oldSensor = 0;
-   uint8_t sensor;
-   
-   sensor = INPUT_SENSOR;
-   sWindSwitch = sensor;
-   if ((sensor ^ oldSensor) != 0) {
-       sWind++;
-       oldSensor = sensor;
-   }
-   
-   /* ms counter */
-   gTimeMs16 += 16;  
-   gTimeMs += 16;
-   intCnt++;
-   if (intCnt >= 61) { /* 16.384 ms * 61 = 1 s*/
-      intCnt = 0;
-      gTimeS++;
-   }
+    static uint8_t intCnt = 0;
+    static uint8_t oldSensor = 0;
+    static uint8_t windCnt;
+    uint8_t sensor;
+
+    sensor = INPUT_SENSOR;
+    if ((sensor ^ oldSensor) != 0) {
+        oldSensor = sensor;
+        windCnt++;
+    }
+    /* ms counter */
+    gTimeMs16 += 16;  
+    gTimeMs += 16;
+    intCnt++;
+    if (intCnt >= 61) { /* 16.384 ms * 61 = 1 s*/
+        intCnt = 0;
+        gTimeS++;
+        sWind = windCnt;
+        windCnt = 0;
+        if (sWind > sMaxWind) {
+            sMaxWind = sWind;
+        }
+    }
 }
