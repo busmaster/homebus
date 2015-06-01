@@ -837,9 +837,23 @@ void ApplicationReleased44_0(void) {}
 void ApplicationPressed44_1(void) {}
 void ApplicationReleased44_1(void) {}
                                       
-void ApplicationPressed45_0(void) {}
+void ApplicationPressed45_0(void) {
+    
+    uint8_t actual_position;
+    TShaderState actual_state;
+    
+    ShaderGetState(eShader2, &actual_state);
+    if (actual_state != eShaderOpening) {
+        ShaderGetPosition(eShader2, &actual_position);
+        if (actual_position < 60) {
+            ShaderSetPosition(eShader2, 60);
+        }
+    }
+}
 void ApplicationReleased45_0(void) {}
-void ApplicationPressed45_1(void) {}
+void ApplicationPressed45_1(void) {
+    ShaderSetPosition(eShader2, 100);
+}
 void ApplicationReleased45_1(void) {}
                                       
 void ApplicationPressed46_0(void) {}
