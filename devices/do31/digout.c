@@ -155,7 +155,7 @@ void DigOutOn(TDigOutNumber number) {
 
    TFuncOn fOn = (TFuncOn)pgm_read_word(&sDigOutFuncs[number].fOn);
    fOn();
-   sDigOutShadow |= 1 << (uint32_t)number;
+   sDigOutShadow |= 1UL << (uint32_t)number;
 }
 
 /*-----------------------------------------------------------------------------
@@ -165,7 +165,7 @@ void DigOutOff(TDigOutNumber number) {
 
    TFuncOff fOff = (TFuncOff)pgm_read_word(&sDigOutFuncs[number].fOff);
    fOff();
-   sDigOutShadow &= ~(1 << (uint32_t)number);
+   sDigOutShadow &= ~(1UL << (uint32_t)number);
 }
 
 /*-----------------------------------------------------------------------------
@@ -186,7 +186,7 @@ bool DigOutState(TDigOutNumber number) {
 
    uint32_t bitMask;
 
-   bitMask = 1 << (uint32_t)number;
+   bitMask = 1UL << (uint32_t)number;
    return (sDigOutShadow & bitMask) != 0;
 }
 
@@ -251,7 +251,7 @@ void DigOutToggle(TDigOutNumber number) {
 
    uint32_t bitMask;
 
-   bitMask = 1 << (uint32_t)number;
+   bitMask = 1UL << (uint32_t)number;
    if ((sDigOutShadow & bitMask) == 0) {
       DigOutOn(number);
    } else {
