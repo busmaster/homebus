@@ -683,8 +683,6 @@ void ApplicationPressed37_1(void) {}
 void ApplicationReleased37_1(void) {}
 
 void ApplicationPressed38_0(void) {
-   /* Keller Vorraum */
-   DigOutToggle(eDigOut25);
    /* Keller Stiege */
    DigOutToggle(eDigOut22);
 }
@@ -725,13 +723,14 @@ void ApplicationPressed42_1(void) {}
 void ApplicationReleased42_1(void) {}
 
 void ApplicationPressed43_0(void) {
-   /* Keller Vorraum */
-   DigOutToggle(eDigOut25);
    /* Keller Stiege */
    DigOutToggle(eDigOut22);
 }
 void ApplicationReleased43_0(void) {}
-void ApplicationPressed43_1(void) {}
+void ApplicationPressed43_1(void) {
+   /* Keller Vorraum */
+   DigOutToggle(eDigOut25);
+}
 void ApplicationReleased43_1(void) {}
 
 void ApplicationPressed44_0(void) {}
