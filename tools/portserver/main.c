@@ -337,7 +337,7 @@ int main(int argc, char *argv[]) {
                         LogPrint("\n");
                         lenWr = write(sioFd, buf, len);
                         if (lenWr != len) {
-                            LogPrint("write sio: buf len %d, len written\n", len, lenWr);
+                            LogPrint("write sio: buf len %d, len written %d\n", len, lenWr);
                         }
                     } else {
                         LogPrint("read ptm %d: errno %d (%s)\n", p->ptmFd, errno, strerror(errno));
