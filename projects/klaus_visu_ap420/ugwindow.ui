@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ugwindow</class>
+ <widget class="QDialog" name="ugwindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>480</width>
+    <height>250</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <widget class="QPushButton" name="pushButtonBack">
+   <property name="geometry">
+    <rect>
+     <x>370</x>
+     <y>180</y>
+     <width>99</width>
+     <height>61</height>
+    </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="text">
+    <string>Zurück</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightVorraum">
+   <property name="geometry">
+    <rect>
+     <x>130</x>
+     <y>90</y>
+     <width>100</width>
+     <height>70</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Vorraum</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightTechnik">
+   <property name="geometry">
+    <rect>
+     <x>130</x>
+     <y>170</y>
+     <width>100</width>
+     <height>70</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Technik</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightLager">
+   <property name="geometry">
+    <rect>
+     <x>130</x>
+     <y>10</y>
+     <width>100</width>
+     <height>70</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Lager</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightFitness">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>170</y>
+     <width>100</width>
+     <height>70</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Fitness</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightArbeit">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>100</width>
+     <height>70</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Arbeit</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightStiege">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>90</y>
+     <width>100</width>
+     <height>70</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Stiege</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>pushButtonBack</sender>
+   <signal>clicked()</signal>
+   <receiver>ugwindow</receiver>
+   <slot>hide()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>339</x>
+     <y>256</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>199</x>
+     <y>149</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
