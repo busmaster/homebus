@@ -56,7 +56,7 @@ all: $(OBJS)
 		(cd $$d; $(MAKE) all)  \
 	done
 	@mkdir -p $(BINDIR)
-	$(GCC) $(OBJDIR)/$(OBJS) $(LIB_PATH) $(LIBS) -o $(BINDIR)/$(BIN)
+	$(GCC) $(OBJDIR)/$(OBJS) $(LIB_PATH) $(LIBS) -o $(BINDIR)/$(BIN) -Wall
 
 %.o: %.c
 	@mkdir -p $(OBJDIR)

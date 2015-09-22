@@ -1,24 +1,24 @@
 /*
  * siotype0.c for ATmega8
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -31,14 +31,14 @@
 
 /*-----------------------------------------------------------------------------
 *  Macros
-*/          
+*/
 
-#ifndef SIO_RX_BUF_SIZE 
+#ifndef SIO_RX_BUF_SIZE
 #define SIO_RX_BUF_SIZE 16  /* 2er-Potenz!!*/
 #endif
-#ifndef SIO_TX_BUF_SIZE  
+#ifndef SIO_TX_BUF_SIZE
 #define SIO_TX_BUF_SIZE 32 /* 2er-Potenz!!*/
-#endif      
+#endif
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -46,7 +46,7 @@
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/                                
+*/
 static uint8_t          sRxBuffer[SIO_RX_BUF_SIZE];
 static uint8_t          sRxBufWrIdx = 0;
 static uint8_t          sRxBufRdIdx = 0;
@@ -58,8 +58,8 @@ static uint8_t sTxBufRdIdx = 0;
 
 #if (F_CPU == 1000000UL)
 #define UBRR_9600   12     /* 9600 @ 1MHz  */
-#define BRX2_9600   true   /* double baud rate */       
-#define ERR_9600    false  /* baud rate is possible */ 
+#define BRX2_9600   true   /* double baud rate */
+#define ERR_9600    false  /* baud rate is possible */
 #else
 #error adjust baud rate settings for your CPU clock frequency
 #endif
@@ -73,7 +73,7 @@ static uint8_t SioGetNumTxFreeChar(int handle);
 *  Sio Initialisierung
 */
 void SioInit(TIdleStateFunc idleFunc) {
-     
+
    sIdleFunc = idleFunc;
 }
 
@@ -81,14 +81,14 @@ void SioInit(TIdleStateFunc idleFunc) {
 *  Sio Initialisierung
 */
 int SioOpen(const char *pPortName,   /* is ignored */
-            TSioBaud baud, 
-            TSioDataBits dataBits, 
-            TSioParity parity, 
+            TSioBaud baud,
+            TSioDataBits dataBits,
+            TSioParity parity,
             TSioStopBits stopBits,
-            TSioMode mode			
+            TSioMode mode
    ) {
-         
-   uint16_t  ubrr; 
+
+   uint16_t  ubrr;
    bool    error = true;
    bool    doubleBr = false;
    uint8_t   ucsrb = 0;
@@ -158,41 +158,41 @@ int SioOpen(const char *pPortName,   /* is ignored */
    /* Enable Receiver und Transmitter */
    ucsrb |= (1 << RXEN) | (1 << RXCIE) | (1 << TXEN) | (0 << UDRIE);;
    UCSRB = ucsrb;
-  
-   return true;             
+
+   return true;
 }
 
 /*-----------------------------------------------------------------------------
 *  Sio Sendepuffer schreiben
 */
 uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
-                        
-   uint8_t *pStart;   
+
+   uint8_t *pStart;
    uint8_t i;
    uint8_t txFree;
    uint8_t wrIdx;
    bool  flag;
-                   
+
    pStart = &sTxBuffer[0];
    txFree = SioGetNumTxFreeChar(handle);
    if (bufSize > txFree) {
       bufSize = txFree;
    }
-   
+
    wrIdx = sTxBufWrIdx;
-   for (i = 0; i < bufSize; i++) {      
-      wrIdx++;                    
+   for (i = 0; i < bufSize; i++) {
+      wrIdx++;
       wrIdx &= (SIO_TX_BUF_SIZE - 1);
       *(pStart + wrIdx) =  *(pBuf + i);
-   }    
+   }
 
    flag = DISABLE_INT;
    sTxBufWrIdx = wrIdx;
    /* enable UART UDRE Interrupt */
-   UCSRB |= 1 << UDRIE;   
+   UCSRB |= 1 << UDRIE;
    RESTORE_INT(flag);
-   
-   return bufSize;           
+
+   return bufSize;
 }
 
 /*-----------------------------------------------------------------------------
@@ -202,23 +202,23 @@ ISR(USART_UDRE_vect) {
 
    uint8_t rdIdx;
    rdIdx = sTxBufRdIdx;
-        
-   if (sTxBufWrIdx != rdIdx) { 
+
+   if (sTxBufWrIdx != rdIdx) {
       /* disable receiver (damit die eigenen gesendeten Daten nicht empfangen werden */
       if ((UCSRB & (1 << RXEN)) != 0) {
          UCSRB &= ~(1 << RXEN);
       }
 
       /* nächstes Zeichen aus Sendepuffer holen */
-      rdIdx++;                    
+      rdIdx++;
       rdIdx &= (SIO_TX_BUF_SIZE - 1);
       UDR = sTxBuffer[rdIdx];
       sTxBufRdIdx = rdIdx;
 
-      /* transmit complete interrupt quittieren (durch Schreiben von 1)      */   
+      /* transmit complete interrupt quittieren (durch Schreiben von 1)      */
       if ((UCSRA & (1 << TXC)) != 0) {
          UCSRA |= (1 << TXC);
-      }   
+      }
 
    } else {
       /* enable tramsit complete interrupt (zum Wiederschalten des Empfangs) */
@@ -250,10 +250,10 @@ static uint8_t SioGetNumTxFreeChar(int handle) {
 
    uint8_t rdIdx;
    uint8_t wrIdx;
-                                
-   rdIdx = sTxBufRdIdx;      
+
+   rdIdx = sTxBufRdIdx;
    wrIdx = sTxBufWrIdx;
-   
+
    return (rdIdx - wrIdx - 1) & (SIO_TX_BUF_SIZE - 1);
 }
 
@@ -264,10 +264,10 @@ uint8_t SioGetNumRxChar(int handle) {
 
    uint8_t rdIdx;
    uint8_t wrIdx;
-                                
-   rdIdx = sRxBufRdIdx;      
+
+   rdIdx = sRxBufRdIdx;
    wrIdx = sRxBufWrIdx;
-   
+
    return (wrIdx - rdIdx) & (SIO_RX_BUF_SIZE - 1);
 }
 
@@ -277,7 +277,7 @@ uint8_t SioGetNumRxChar(int handle) {
 uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    uint8_t rxLen;
-   uint8_t i;  
+   uint8_t i;
    uint8_t rdIdx;
    bool  flag;
 
@@ -287,15 +287,15 @@ uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
    if (rxLen < bufSize) {
       bufSize = rxLen;
    }
-              
+
    for (i = 0; i < bufSize; i++) {
-      rdIdx++;                    
+      rdIdx++;
       rdIdx &= (SIO_RX_BUF_SIZE - 1);
       *(pBuf + i) = sRxBuffer[rdIdx];
-   }    
-   
-   sRxBufRdIdx = rdIdx;     
-   
+   }
+
+   sRxBufRdIdx = rdIdx;
+
    flag = DISABLE_INT;
    if (SioGetNumRxChar(handle) == 0) {
       if (sIdleFunc != 0) {
@@ -303,7 +303,7 @@ uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
       }
    }
    RESTORE_INT(flag);
-            
+
    return bufSize;
 }
 
@@ -313,41 +313,47 @@ uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
    uint8_t rxFreeLen;
-   uint8_t i;  
-   uint8_t rdIdx;                    
+   uint8_t i;
+   uint8_t rdIdx;
    bool  flag;
-            
+
    bufSize = min(bufSize, SIO_RX_BUF_SIZE);
-   
+
    /* Readzeiger zurücksetzen damit Rx-Interrupt nicht weiterschreiben kann */
-   rdIdx = sRxBufRdIdx;       
+   rdIdx = sRxBufRdIdx;
    rdIdx -= bufSize;
-   rdIdx &= (SIO_RX_BUF_SIZE - 1);      
+   rdIdx &= (SIO_RX_BUF_SIZE - 1);
 
    flag = DISABLE_INT;
    /* Schreibzeiger falls erforderlich zurücksetzen */
-   rxFreeLen = SIO_RX_BUF_SIZE - 1 - SioGetNumRxChar(handle); 
+   rxFreeLen = SIO_RX_BUF_SIZE - 1 - SioGetNumRxChar(handle);
    if (bufSize > rxFreeLen) {
        sRxBufWrIdx -= (bufSize - rxFreeLen);
-   }    
+   }
    sRxBufRdIdx = rdIdx;
    RESTORE_INT(flag);
 
    rdIdx++;
    for (i = 0; i < bufSize; i++) {
-      sRxBuffer[rdIdx] = *(pBuf + i); 
-      rdIdx++;                    
+      sRxBuffer[rdIdx] = *(pBuf + i);
+      rdIdx++;
       rdIdx &= (SIO_RX_BUF_SIZE - 1);
-   }   
+   }
 
    if ((sIdleFunc != 0) &&
        (bufSize > 0)) {
       sIdleFunc(false);
    }
- 
+
    return bufSize;
 }
 
+/*-----------------------------------------------------------------------------
+*  check handle
+*/
+bool SioHandleValid(int handle) {
+    return true;
+}
 
 /*-----------------------------------------------------------------------------
 *  USART1 Rx-Complete Interrupt
@@ -358,7 +364,7 @@ ISR(USART_RXC_vect) {
    uint8_t dummy;
 
    wrIdx = sRxBufWrIdx;
-   wrIdx++;                    
+   wrIdx++;
    wrIdx &= (SIO_RX_BUF_SIZE - 1);
    if (wrIdx != sRxBufRdIdx) {
       sRxBuffer[wrIdx] = UDR;
@@ -368,7 +374,7 @@ ISR(USART_RXC_vect) {
       wrIdx &= (SIO_RX_BUF_SIZE - 1);
       /* Zeichen muss gelesen werden, sonst bleibt Interrupt stehen */
       dummy = UDR;
-   }  
+   }
    sRxBufWrIdx = wrIdx;
    /* do not go idle when characters are in rxbuffer */
    if (sIdleFunc != 0) {

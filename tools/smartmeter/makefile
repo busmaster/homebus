@@ -1,5 +1,5 @@
 OBJS = main.o
-BIN  = portserver
+BIN  = smartmeter
 ARCH = $(TARGET_ARCH)
 OBJDIR = obj
 BINDIR = bin
@@ -12,25 +12,25 @@ OS = win32
 endif
 
 ifeq ($(OS),win32)
-SUBDIRS += ../../sio/win32
+SUBDIRS = ../../aes ../../sio/win32
 else ifeq ($(OS),linux)
-SUBDIRS += ../../sio/linux
+SUBDIRS = ../../aes ../../sio/linux
 endif
 
 INCLUDE_PATH = . ../../include
 ifeq ($(OS),win32)
-INCLUDE_PATH += ../../include/win32
+INCLUDE_PATH += ../../include/aes ../../include/win32
 else ifeq ($(OS),linux)
-INCLUDE_PATH += ../../include/linux
+INCLUDE_PATH += ../../include/aes ../../include/linux
 endif
 
 ifeq ($(OS),win32)
-LIBRARY_PATH += ../../sio/win32/bin
+LIBRARY_PATH = ../../aes/bin ../../sio/win32/bin
 else ifeq ($(OS),linux)
-LIBRARY_PATH += ../../sio/linux/bin
+LIBRARY_PATH = ../../aes/bin ../../sio/linux/bin
 endif
 
-LIBRARY = sio
+LIBRARY = sio aes
 ifeq ($(OS),linux)
 LIBRARY += rt
 endif

@@ -1,24 +1,24 @@
 /*
  * sio.h
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #ifndef _SIO_H
@@ -34,25 +34,25 @@ extern "C" {
 
 /*-----------------------------------------------------------------------------
 *  Macros
-*/                     
+*/
 
 /*-----------------------------------------------------------------------------
 *  typedefs
 */
 typedef enum {
-   eSioBaud9600   
+   eSioBaud9600
 } TSioBaud;
 
 typedef enum {
-   eSioDataBits8   
+   eSioDataBits8
 } TSioDataBits;
 
 typedef enum {
-   eSioParityNo   
+   eSioParityNo
 } TSioParity;
 
 typedef enum {
-   eSioStopBits1   
+   eSioStopBits1
 } TSioStopBits;
 
 typedef enum {
@@ -64,7 +64,7 @@ typedef void (* TBusTransceiverPowerDownFunc)(bool powerDown);
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/                                
+*/
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -83,9 +83,10 @@ void    SioSetIdleFunc(int handle, TIdleStateFunc idleFunc);
 int     SioGetFd(int handle);
 uint8_t SioWriteBuffered(int handle,  uint8_t *pBuf, uint8_t bufSize);
 bool    SioSendBuffer(int handle);
+bool    SioHandleValid(int handle);
 
 #ifdef __cplusplus
 }
 #endif
-  
+
 #endif

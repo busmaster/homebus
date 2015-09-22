@@ -256,7 +256,7 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
     if (bufSize == 0) {
         return 0;
-    } 
+    }
 
     pStart = &sTxBuffer[0];
     txFree = GetNumTxFreeChar(handle);
@@ -465,7 +465,7 @@ ISR(USART_UDRE_vect) {
         } else {
             // stop jamming
             lastChar = true;
-        } 
+        }
     } else if (sTxBufWrIdx != rdIdx) {
         if (sComm.state == eRxing) {
             sComm.txDelayTicks = INTERCHAR_TIMEOUT;
@@ -506,7 +506,7 @@ ISR(USART_UDRE_vect) {
     } else {
         lastChar = true;
     }
-    
+
     if (lastChar) {
         /* enable transmit complete interrupt */
         UCSR0B |= (1 << TXCIE0);
@@ -676,6 +676,13 @@ static void Timeout(void) {
         sComm.state = eIdle;
         break;
     }
+}
+
+/*-----------------------------------------------------------------------------
+*  check handle
+*/
+bool SioHandleValid(int handle) {
+    return true;
 }
 
 /*-----------------------------------------------------------------------------

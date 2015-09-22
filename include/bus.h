@@ -57,13 +57,14 @@ extern "C" {
 #define BUS_MSG_OK     1
 #define BUS_MSG_RXING  2
 #define BUS_MSG_ERROR  3
+#define BUS_IF_ERROR   4
 
 /* return codes for function BusSend */
 #define BUS_SEND_OK            0
 #define BUS_SEND_TX_ERROR      1
 #define BUS_SEND_BAD_TYPE      2
 #define BUS_SEND_BAD_VARLEN    3
-#define BUS_SEND_BAD_LEN       4 
+#define BUS_SEND_BAD_LEN       4
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -259,7 +260,7 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevSetValueDo31;
 
 typedef struct {
-   uint8_t led_state[BUS_SW16_LED_SIZE_SET_VALUE]; 
+   uint8_t led_state[BUS_SW16_LED_SIZE_SET_VALUE];
 } __attribute__ ((packed)) TBusDevSetValueSw16;
 
 

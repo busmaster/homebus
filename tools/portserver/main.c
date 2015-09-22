@@ -21,7 +21,9 @@
  *
  */
 
+#define _GNU_SOURCE
 #define _XOPEN_SOURCE
+
 #undef  DEBUG_LOG
 
 #include <fcntl.h>
@@ -47,6 +49,8 @@
 
 #define CMD_ADD            "add device"
 #define CMD_REMOVE         "remove device"
+
+#define SIO_DEV_NAME       argv[1]
 
 struct ptyDesc {
    int ptmFd;
@@ -204,7 +208,7 @@ int main(int argc, char *argv[]) {
 
     SioInit();
 
-    sioHandle = SioOpen(argv[1], eSioBaud9600, eSioDataBits8, eSioParityNo, eSioStopBits1, eSioModeHalfDuplex);
+    sioHandle = SioOpen(SIO_DEV_NAME, eSioBaud9600, eSioDataBits8, eSioParityNo, eSioStopBits1, eSioModeHalfDuplex);
 
     if (sioHandle == -1) {
         printf("cannot open %s\r\n", argv[1]);
@@ -258,6 +262,18 @@ int main(int argc, char *argv[]) {
     notifyFd = inotify_init();
 
     while (1) {
+        if (sioHandle == -1) {
+            /* try to reopen the serial device */
+            sleep(3);
+            sioHandle = SioOpen(SIO_DEV_NAME, eSioBaud9600, eSioDataBits8, eSioParityNo, eSioStopBits1, eSioModeHalfDuplex);
+            if (sioHandle == -1) {
+                continue;
+            } else {
+                LogPrint("reopened %s\n", SIO_DEV_NAME);
+                sioFd = SioGetFd(sioHandle);
+            }
+        }
+
         maxFd = sioFd;
         FD_ZERO(&fds);
         FD_SET(sioFd, &fds);
@@ -321,7 +337,7 @@ int main(int argc, char *argv[]) {
                         LogPrint("\n");
                         lenWr = write(sioFd, buf, len);
                         if (lenWr != len) {
-                            LogPrint("write sio: buf len %d, len written\n", len, lenWr);
+                            LogPrint("write sio: buf len %d, len written %d\n", len, lenWr);
                         }
                     } else {
                         LogPrint("read ptm %d: errno %d (%s)\n", p->ptmFd, errno, strerror(errno));
@@ -334,7 +350,7 @@ int main(int argc, char *argv[]) {
             // rx from tty
             if (FD_ISSET(sioFd, &fds)) {
                 len = read(sioFd, buf, sizeof(buf));
-                if (len != -1) {
+                if (len > 0) {
                     LogPrint("read sio: ", buf);
                     for (j = 0; j < len; j++) {
                         LogPrint("%02x ", buf[j]);
@@ -352,6 +368,10 @@ int main(int argc, char *argv[]) {
                         }
                         p++;
                     }
+                } else if (len == 0) {
+                    LogPrint("read sio: %s not available\n", SIO_DEV_NAME);
+                    SioClose(sioHandle);
+                    sioHandle = -1;
                 } else {
                     LogPrint("read sio: errno %d (%s)\n", errno, strerror(errno));
                 }

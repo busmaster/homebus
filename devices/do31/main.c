@@ -66,6 +66,7 @@
 /* offset addresses in EEPROM */
 #define MODUL_ADDRESS           0  /* 1 byte */
 #define CLIENT_ADDRESS_BASE     1  /* BUS_MAX_CLIENT_NUM from bus.h (16 byte) */
+#define CLIENT_RETRY_CNT        17 /* size: 16 byte (BUS_MAX_CLIENT_NUM)      */
 
 /* DO restore after power fail */
 #define EEPROM_DO_RESTORE_START  (uint8_t *)3072
@@ -79,8 +80,6 @@
 /* acual value event */
 #define RESPONSE_TIMEOUT_MS         100  /* time in ms */
 /* timeout for unreachable client  */
-/* after this time retries are stopped */
-#define RETRY_TIMEOUT_MS            10000 /* time in ms */
 #define RETRY_CYCLE_TIME_MS         200 /* time in ms */
 #define CHANGE_DETECT_CYCLE_TIME_MS 500 /* time in ms */
 
@@ -90,11 +89,14 @@
 typedef enum {
    eInit,
    eWaitForConfirmation,
-   eConfirmationOK
+   eConfirmationOK,
+   eMaxRetry
 } TState;
 
 typedef struct {
    uint8_t  address;
+   uint8_t  maxRetry;
+   uint8_t  curRetry;
    TState   state;
    uint16_t requestTimeStamp;
 } TClient;
@@ -123,7 +125,6 @@ static uint8_t sNumClients;
 
 static uint8_t sOldDigOutActVal[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
 static uint8_t sCurDigOutActVal[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
-static uint8_t sOldShaderActVal[BUS_DO31_SHADER_SIZE_ACTUAL_VALUE];
 static uint8_t sCurShaderActVal[BUS_DO31_SHADER_SIZE_ACTUAL_VALUE];
 
 /*-----------------------------------------------------------------------------
@@ -227,12 +228,15 @@ static uint8_t GetUnconfirmedClient(uint8_t actualClient) {
         nextClient = actualClient + i +1;
         nextClient %= sNumClients;
         pClient = &sClient[nextClient];
+        if (pClient->state == eMaxRetry) {
+            continue;
+        }
         if (pClient->state != eConfirmationOK) {
             break;
         }
     }
     if (i == sNumClients) {
-        /* all client's confirmations received */
+        /* all client's confirmations received or retry count expired */
         nextClient = 0xff;
     }
     return nextClient;
@@ -245,6 +249,7 @@ static void InitClientState(void) {
 
     for (i = 0, pClient = sClient; i < sNumClients; i++) {
         pClient->state = eInit;
+        pClient->curRetry = 0;
     }
 }
 
@@ -254,11 +259,14 @@ static void GetClientListFromEeprom(void) {
     uint8_t i;
     uint8_t numClients;
     uint8_t clientAddr;
+    uint8_t retryCnt;
 
     for (i = 0, numClients = 0, pClient = sClient; i < BUS_MAX_CLIENT_NUM; i++) {
         clientAddr = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
+        retryCnt = eeprom_read_byte((const uint8_t *)(CLIENT_RETRY_CNT + i));
         if (clientAddr != BUS_CLIENT_ADDRESS_INVALID) {
             pClient->address = clientAddr;
+            pClient->maxRetry = retryCnt;
             pClient->state = eInit;
             pClient++;
             numClients++;
@@ -295,7 +303,6 @@ static uint8_t GetActualValueShader(uint8_t shader) {
 static void CheckEvent(void) {
 
     static uint8_t   sActualClient = 0xff; /* actual client's index being processed */
-    static uint16_t  sChangeTimeStamp;
     static uint16_t  sChangeTestTimeStamp;
     TClient          *pClient;
     uint8_t          i;
@@ -315,22 +322,18 @@ static void CheckEvent(void) {
     /* do the change detection not in each cycle */
     GET_TIME_MS16(actualTime16);
     if (((uint16_t)(actualTime16 - sChangeTestTimeStamp)) >= CHANGE_DETECT_CYCLE_TIME_MS) {
-        for (i = 0; i < sizeof(sCurShaderActVal); i++) {
-            sCurShaderActVal[i] = GetActualValueShader(i);
-        }
-        DigOutStateAllStandard(sCurDigOutActVal, sizeof(sCurDigOutActVal));
-       
-        if ((memcmp(sCurShaderActVal, sOldShaderActVal, sizeof(sCurShaderActVal)) == 0) &&
-            (memcmp(sCurDigOutActVal, sOldDigOutActVal, sizeof(sCurDigOutActVal)) == 0)) {
+        DigOutStateAll(sCurDigOutActVal, sizeof(sCurDigOutActVal));
+        if (memcmp(sCurDigOutActVal, sOldDigOutActVal, sizeof(sCurDigOutActVal)) == 0) {
             actValChanged = false;
         } else {
             actValChanged = true;
         }
      
         if (actValChanged) {
-            memcpy(sOldShaderActVal, sCurShaderActVal, sizeof(sOldShaderActVal));
+            for (i = 0; i < sizeof(sCurShaderActVal); i++) {
+                sCurShaderActVal[i] = GetActualValueShader(i);
+            }
             memcpy(sOldDigOutActVal, sCurDigOutActVal, sizeof(sOldDigOutActVal));
-            sChangeTimeStamp = actualTime16;
             sActualClient = 0;
             sNewClientCycleDelay = false;
             InitClientState();
@@ -374,10 +377,16 @@ static void CheckEvent(void) {
         }
         break;
     case eWaitForConfirmation:
-        if (((uint16_t)(actualTime16 - pClient->requestTimeStamp)) >= RESPONSE_TIMEOUT_MS) {
-            /* try once more */
-            pClient->state = eInit;
-            getNextClient = false;
+        if ((((uint16_t)(actualTime16 - pClient->requestTimeStamp)) >= RESPONSE_TIMEOUT_MS) &&
+            (pClient->state != eMaxRetry)) {
+            if (pClient->curRetry < pClient->maxRetry) {
+                /* try again */
+                pClient->curRetry++;
+                getNextClient = false;
+                pClient->state = eInit;
+            } else {
+                pClient->state = eMaxRetry;
+            }
         }
         break;
     case eConfirmationOK:
@@ -393,10 +402,6 @@ static void CheckEvent(void) {
             sNewClientCycleTimeStamp = actualTime16;
         }
         sActualClient = nextClient;
-    }
-
-    if (((uint16_t)(actualTime16 - sChangeTimeStamp)) > RETRY_TIMEOUT_MS) {
-        sActualClient = 0xff; // stop 
     }
 }
 

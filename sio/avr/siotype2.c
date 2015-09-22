@@ -310,7 +310,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
         pChan->extIntEIFRVal  = USART0_EIFR_VAL;
 #else
         pChan->extIntEIMSK    = 0;
-#endif        
+#endif
     } else if (strcmp(pPortName, "USART1") == 0) {
         hdl = 1;
         pChan = &sChan[hdl];
@@ -336,7 +336,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
         pChan->extIntEIFRVal  = USART1_EIFR_VAL;
 #else
         pChan->extIntEIMSK    = 0;
-#endif      
+#endif
     } else {
         error = true;
     }
@@ -415,7 +415,7 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
     if (bufSize == 0) {
         return 0;
-    } 
+    }
 
     RETURN_0_ON_INVALID_HDL(handle);
     pChan = &sChan[handle];
@@ -637,6 +637,13 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 }
 
 /*-----------------------------------------------------------------------------
+*  check handle
+*/
+bool SioHandleValid(int handle) {
+    return true;
+}
+
+/*-----------------------------------------------------------------------------
 *  USART0 tx interrupt (data register empty)
 */
 ISR(USART0_UDRE_vect) {
@@ -663,7 +670,7 @@ static void UdreInt(int handle) {
         } else {
             // stop jamming
             lastChar = true;
-        } 
+        }
     } else if (pChan->txBufWrIdx != rdIdx) {
         if (pChan->comm.state == eRxing) {
             pChan->comm.txDelayTicks = INTERCHAR_TIMEOUT;
@@ -943,8 +950,6 @@ static void RxStartDetectionInit(void) {
 #endif
 }
 
-
-
 static void RxStart(int handle) {
     TChanDesc  *pChan = &sChan[handle];
 
@@ -955,7 +960,7 @@ static void RxStart(int handle) {
     *pChan->extIntEIMSK &= ~pChan->extIntEIMSKVal;
 }
 
-#ifdef USART1_EXTVECT 
+#ifdef USART1_EXTVECT
 ISR(USART1_EXTVECT) {
     RxStart(1);
 }

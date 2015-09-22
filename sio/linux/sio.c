@@ -1,24 +1,24 @@
 /*
  * sio.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -35,7 +35,7 @@
 
 /*-----------------------------------------------------------------------------
 *  Macros
-*/                     
+*/
 
 #define MAX_NUM_SIO     4
 #define UNREAD_BUF_SIZE 512  // 2er-Potenz!!
@@ -46,10 +46,10 @@
 */
 typedef struct {
    bool    used;
-   int     fd; 
+   int     fd;
    struct {
       uint8_t buf[TX_BUF_SIZE];
-      uint8_t pos; 
+      uint8_t pos;
    } bufferedTx;
    struct {
       uint8_t        buf[UNREAD_BUF_SIZE];
@@ -60,7 +60,7 @@ typedef struct {
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/                                
+*/
 static TSioDesc sSio[MAX_NUM_SIO];
 
 /*-----------------------------------------------------------------------------
@@ -76,7 +76,7 @@ static uint8_t ReadUnRead(int handle, uint8_t *pBuf, uint8_t bufSize);
 */
 void SioInit(void) {
 
-   int i;   
+   int i;
 
    for (i = 0; i < MAX_NUM_SIO; i++) {
       sSio[i].used = false;
@@ -86,29 +86,29 @@ void SioInit(void) {
 /*-----------------------------------------------------------------------------
 *  Schnittstelle �ffnen
 */
-int SioOpen(const char *pPortName, 
-            TSioBaud baud, 
-            TSioDataBits dataBits, 
-            TSioParity parity, 
+int SioOpen(const char *pPortName,
+            TSioBaud baud,
+            TSioDataBits dataBits,
+            TSioParity parity,
             TSioStopBits stopBits,
             TSioMode mode
             ) {
-   int            fd; 
+   int            fd;
    int            i;
    struct termios settings;
 
    // freien descriptor suchen
    for (i = 0; (i < MAX_NUM_SIO) && (sSio[i].used == true); i++);
-   
+
    if (i == MAX_NUM_SIO) {
       // kein Platz
       printf("no handle for %s\r\n", pPortName);
       return -1;
    }
-               
+
    fd = open(pPortName, O_RDWR | O_NOCTTY | O_NONBLOCK);
-                          
-   if (fd == -1) {                          
+
+   if (fd == -1) {
       return -1;
    }
 
@@ -117,7 +117,7 @@ int SioOpen(const char *pPortName,
    sSio[i].unRead.bufIdxWr = 0;
    sSio[i].unRead.bufIdxRd = 0;
    sSio[i].bufferedTx.pos = 0;
-   
+
    memset(&settings, 0, sizeof(settings));
    tcgetattr(fd, &settings);
    settings.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON);
@@ -142,30 +142,30 @@ int SioOpen(const char *pPortName,
          cfsetospeed(&settings, B9600);
          break;
    }
-      
+
    switch (dataBits) {
       case eSioDataBits8:
-         settings.c_cflag |= CS8;  
+         settings.c_cflag |= CS8;
          break;
       default:
-         settings.c_cflag |= CS8;  
+         settings.c_cflag |= CS8;
          break;
-   }         
+   }
 
    switch (parity) {
       case eSioParityNo:
          break;
       default:
          break;
-   }         
-   
+   }
+
    switch (stopBits) {
       case eSioStopBits1:
          break;
       default:
          break;
-   }         
-   
+   }
+
    /* transfer setup to interface */
    if (tcsetattr(fd, TCSANOW, &settings) < 0) {
       fprintf(stderr, "Error setting terminal attributes for %s (errno: %s)!\n",
@@ -179,22 +179,22 @@ int SioOpen(const char *pPortName,
 *  Schnittstelle schlie�en
 */
 int SioClose(int handle) {
-   
+
    if (!HandleValid(handle)) {
       return -1;
    }
 
    sSio[handle].used = false;
    close(sSio[handle].fd);
-  
-   return 0;         
+
+   return 0;
 }
 
 /*-----------------------------------------------------------------------------
 *  Filehandle holen
 */
 int SioGetFd(int handle) {
-   
+
    if (!HandleValid(handle)) {
       return -1;
    }
@@ -207,15 +207,20 @@ int SioGetFd(int handle) {
 */
 uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
-   unsigned long bytesWritten;
+    int     ret;
+    uint8_t bytesWritten;
 
-   if (!HandleValid(handle)) {
-      return 0;
-   }
-                        
-   bytesWritten = write(sSio[handle].fd, pBuf, bufSize); 
+    if (!HandleValid(handle)) {
+        return 0;
+    }
 
-   return (uint8_t)bytesWritten;           
+    ret = write(sSio[handle].fd, pBuf, bufSize);
+    if (ret == -1) {
+        bytesWritten = 0;
+    } else {
+        bytesWritten = (uint8_t)ret;
+    }
+    return bytesWritten;
 }
 
 /*-----------------------------------------------------------------------------
@@ -230,13 +235,13 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
       return 0;
    }
    pSio = &sSio[handle];
-   
+
    len = sizeof(pSio->bufferedTx.buf) - pSio->bufferedTx.pos;
    len = min(len, bufSize);
    memcpy(&pSio->bufferedTx.buf[pSio->bufferedTx.pos], pBuf, len);
    pSio->bufferedTx.pos += len;
 
-   return (uint8_t)len;           
+   return (uint8_t)len;
 }
 
 /*-----------------------------------------------------------------------------
@@ -244,23 +249,23 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
 */
 bool SioSendBuffer(int handle) {
 
-   unsigned long bytesWritten;    
-   TSioDesc      *pSio;
-   bool          rc;
+   int       ret;
+   TSioDesc  *pSio;
+   bool      rc;
 
    if (!HandleValid(handle)) {
       return 0;
    }
    pSio = &sSio[handle];
-   
-   bytesWritten = write(pSio->fd, pSio->bufferedTx.buf, pSio->bufferedTx.pos);
-   if (bytesWritten == pSio->bufferedTx.pos) {
+
+   ret = write(pSio->fd, pSio->bufferedTx.buf, pSio->bufferedTx.pos);
+   if (ret == pSio->bufferedTx.pos) {
        rc = true;
    } else {
        rc = false;
    }
    pSio->bufferedTx.pos = 0;
-   
+
    return rc;
 }
 
@@ -269,30 +274,23 @@ bool SioSendBuffer(int handle) {
 */
 uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
-   unsigned long bytesRead = 0;
-   uint8_t readUnread;
+    unsigned long bytesRead = 0;
+    uint8_t       readUnread;
+    int           ret;
 
-   if (!HandleValid(handle)) {
-      return 0;
-   }
-      
-   readUnread = ReadUnRead(handle, pBuf, bufSize);
-   if (readUnread < bufSize) {                 
-      // noch Platz im Buffer                 
-      bytesRead = read(sSio[handle].fd, pBuf + readUnread, bufSize - readUnread); 
-   }
+    if (!HandleValid(handle)) {
+        return 0;
+    }
 
-#if 0
-if (bytesRead != 0) {
-   printf("sioread");
-   for (int i = 0; i < bytesRead; i++) {
-      printf(" %02x", *(pBuf + i));
-   }
-   printf("\r\n");
-}
-#endif
-
-   return (uint8_t)(bytesRead + readUnread);           
+    readUnread = ReadUnRead(handle, pBuf, bufSize);
+    if (readUnread < bufSize) {
+        // noch Platz im Buffer
+        ret = read(sSio[handle].fd, pBuf + readUnread, bufSize - readUnread);
+        if (ret > 0) {
+            bytesRead = ret;
+        }
+    }
+    return (uint8_t)(bytesRead + readUnread);
 }
 
 /*-----------------------------------------------------------------------------
@@ -312,18 +310,18 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
       free = UNREAD_BUF_SIZE - 1 - used;
 
       for (i = 0; i < bufSize; i++) {
-         sSio[handle].unRead.buf[wrIdx] = *(pBuf + i); 
-         wrIdx++;                    
+         sSio[handle].unRead.buf[wrIdx] = *(pBuf + i);
+         wrIdx++;
          wrIdx &= (UNREAD_BUF_SIZE - 1);
       }
       // falls alte Daten im unread-buf �berschrieben wurden: rdIdx korr.
       if (free < bufSize) {
          rdIdx = (wrIdx + 1) & (UNREAD_BUF_SIZE - 1);
          sSio[handle].unRead.bufIdxRd = rdIdx;
-      }   
+      }
       sSio[handle].unRead.bufIdxWr = wrIdx;
    }
-   return bufSize;    
+   return bufSize;
 }
 
 
@@ -332,19 +330,22 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 */
 uint8_t SioGetNumRxChar(int handle) {
 
-   uint32_t inLen;
-   uint32_t numRxChar = 0;
+    int      ret;
+    uint32_t inLen;
+    uint32_t numRxChar = 0;
 
-   if (HandleValid(handle)) {
-      ioctl(sSio[handle].fd, FIONREAD, &inLen);
-      numRxChar = inLen + UnReadBufLen(handle);
-      if (numRxChar > 255) {
-         numRxChar = 255;
-      }
-   } 
+    if (HandleValid(handle)) {
+        ret = ioctl(sSio[handle].fd, FIONREAD, &inLen);
+        if (ret == 0) {
+            numRxChar = inLen + UnReadBufLen(handle);
+            if (numRxChar > 255) {
+                numRxChar = 255;
+            }
+        }
+    }
    return numRxChar;
 }
-      
+
 /*-----------------------------------------------------------------------------
 *  Zeichen in Empfangspuffer zur�ckschreiben
 */
@@ -360,12 +361,12 @@ static uint8_t ReadUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
       used = UnReadBufLen(handle);
       len = min(bufSize, used);
       for (i = 0; i < len; i++) {
-         *(pBuf + i) = sSio[handle].unRead.buf[rdIdx]; 
-         rdIdx++;                    
+         *(pBuf + i) = sSio[handle].unRead.buf[rdIdx];
+         rdIdx++;
          rdIdx &= (UNREAD_BUF_SIZE - 1);
       }
-      sSio[handle].unRead.bufIdxRd = rdIdx; 
-   }  
+      sSio[handle].unRead.bufIdxRd = rdIdx;
+   }
    return (uint8_t)len;
 }
 
@@ -378,29 +379,47 @@ static unsigned int UnReadBufLen(int handle) {
    unsigned int used = UNREAD_BUF_SIZE;
 
    if (HandleValid(handle)) {
-      used = (sSio[handle].unRead.bufIdxWr - sSio[handle].unRead.bufIdxRd) & 
+      used = (sSio[handle].unRead.bufIdxWr - sSio[handle].unRead.bufIdxRd) &
              (UNREAD_BUF_SIZE - 1);
-   } 
+   }
    return used;
 }
 
 /*-----------------------------------------------------------------------------
-*  Handle pr�fen
+*  check handle
 */
 static bool HandleValid(int handle) {
-   
-   if ((handle >= MAX_NUM_SIO) ||
-       (handle < 0)) {
-      printf("invalid handle %i\r\n", handle);
-      return false;
-   }
-   
-   if (sSio[handle].used == false) {
-      printf("invalid handle %i\r\n", handle);
-      return false;
-   }
-   
-   return true;
+
+    if ((handle >= MAX_NUM_SIO) ||
+        (handle < 0)) {
+        printf("invalid handle %i\r\n", handle);
+        return false;
+    }
+
+    if (sSio[handle].used == false) {
+        printf("invalid handle %i\r\n", handle);
+        return false;
+    }
+
+    return true;
+}
+
+/*-----------------------------------------------------------------------------
+*  check handle
+*/
+bool SioHandleValid(int handle) {
+
+    uint32_t inLen;
+
+    if (!HandleValid(handle)) {
+        return false;
+    }
+
+    if (ioctl(sSio[handle].fd, FIONREAD, &inLen) == 0) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 

@@ -44,11 +44,12 @@
 #define MAX_NAME_LEN   255
 
 #define STX 0x02
+#define ETX 0x03
 #define ESC 0x1B             
-/* Startwert f�r checksumberechung */
-#define CHECKSUM_START   0x55        
+/* Startwert fuer checksumberechung */
+#define CHECKSUM_START   0x55
 
-#define SPACE "                             "
+#define SPACE "                              "
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -280,7 +281,7 @@ static void BusMonRaw(int sioHandle) {
       if (kbhit()) {
          cKb = getch();
       }
-   } while (cKb != ESC);
+   } while ((cKb != ESC) && (cKb != ETX /* ctrl-c */));
 }
 
 /*-----------------------------------------------------------------------------
@@ -363,7 +364,8 @@ static void BusMonDecoded(int sioHandle) {
                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
                break;
             case eBusDevRespInfo:
-               fprintf(spOutput, "response info\r\n");
+               fprintf(spOutput, "response info ");
+               fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                switch (pBusMsg->msg.devBus.x.devResp.info.devType) {
                   case eBusDevTypeDo31:
                      fprintf(spOutput, SPACE "device DO31\r\n");
@@ -395,6 +397,9 @@ static void BusMonDecoded(int sioHandle) {
                      break;
                   case eBusDevTypeLed:
                      fprintf(spOutput, SPACE "device LED\r\n");
+                     break;
+                  case eBusDevTypeWind:
+                     fprintf(spOutput, SPACE "device WIND\r\n");
                      break;
                   default:
                      fprintf(spOutput, SPACE "device unknown\r\n");
@@ -609,22 +614,222 @@ static void BusMonDecoded(int sioHandle) {
                break;
             case eBusDevRespEepromWrite:
                fprintf(spOutput, "response write eeprom ");
+               fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
                break;
             case eBusDevReqSetValue:
-               fprintf(spOutput, "request set value");
-               // todo
+               fprintf(spOutput, "request set value ");
+               fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+               switch (pBusMsg->msg.devBus.x.devReq.setValue.devType) {
+                  case eBusDevTypeDo31:
+                     fprintf(spOutput, SPACE "device DO31\r\n");
+                     fprintf(spOutput, SPACE "DO: ");
+                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.digOut[i]);
+                     }
+                     fprintf(spOutput, "\r\n");
+                     fprintf(spOutput, SPACE "SH: ");
+                     for (i = 0; i < BUS_DO31_SHADER_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i]);
+                     }
+                     break;
+                  case eBusDevTypeSw8:
+                     fprintf(spOutput, SPACE "device SW8\r\n");
+                     fprintf(spOutput, SPACE "DO: ");
+                     for (i = 0; i < BUS_SW8_DIGOUT_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.sw8.digOut[i]);
+                     }
+                     break;
+                  case eBusDevTypeSw16:
+                     fprintf(spOutput, SPACE "device SW16\r\n");
+                     fprintf(spOutput, SPACE "led_state:   "); 
+                     for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", 
+                                pBusMsg->msg.devBus.x.devReq.setValue.setValue.sw16.led_state[i]);
+                     }
+                     break;
+                  default:
+                     fprintf(spOutput, SPACE "device unknown");
+                     break;
+               }
                break;
             case eBusDevRespSetValue:
-               fprintf(spOutput, "response set value");
-               // todo
+               fprintf(spOutput, "response set value ");
+               fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
                break;
             case eBusDevReqActualValue:
-               fprintf(spOutput, "request actual value");
-               // todo
+               fprintf(spOutput, "request actual value ");
+               fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
                break;
             case eBusDevRespActualValue:
-               fprintf(spOutput, "response actual value");
-               // todo
+               fprintf(spOutput, "response actual value ");
+               fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+               switch (pBusMsg->msg.devBus.x.devResp.actualValue.devType) {
+                  case eBusDevTypeDo31:
+                     fprintf(spOutput, SPACE "device DO31\r\n");
+                     fprintf(spOutput, SPACE "DO: ");
+                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do31.digOut[i]);
+                     }
+                     fprintf(spOutput, "\r\n");
+                     fprintf(spOutput, SPACE "SH: ");
+                     for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do31.shader[i]);
+                     }
+                     break;
+                  case eBusDevTypeSw8:
+                     fprintf(spOutput, SPACE "device SW8\r\n");
+                     fprintf(spOutput, SPACE "state: %02x", 
+                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw8.state);
+                     break;
+                  case eBusDevTypeLum:
+                     fprintf(spOutput, SPACE "device LUM\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.state);
+                     fprintf(spOutput, SPACE "adc:   %04x", 
+                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.lum_low +
+                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.lum_high * 256);
+                     break;
+                  case eBusDevTypeLed:
+                     fprintf(spOutput, SPACE "device LED\r\n");
+                     fprintf(spOutput, SPACE "state: %02x", 
+                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.led.state);
+                     break;
+                  case eBusDevTypeSw16:
+                     fprintf(spOutput, SPACE "device SW16\r\n");
+                     fprintf(spOutput, SPACE "led_state:   "); 
+                     for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", 
+                                pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw16.led_state[i]);
+                     }
+                     fprintf(spOutput, "\r\n");
+                     fprintf(spOutput, SPACE "input_state: %02x", 
+                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw16.input_state);
+                     break;
+                  case eBusDevTypeWind:
+                     fprintf(spOutput, SPACE "device WIND\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.state);
+                     fprintf(spOutput, SPACE "wind:  %02x", 
+                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.wind);
+                     break;
+                  default:
+                     fprintf(spOutput, SPACE "device unknown");
+                     break;
+               }
+               break;
+            case eBusDevReqActualValueEvent:
+               fprintf(spOutput, "request actual value event ");
+               fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+               switch (pBusMsg->msg.devBus.x.devReq.actualValueEvent.devType) {
+                  case eBusDevTypeDo31:
+                     fprintf(spOutput, SPACE "device DO31\r\n");
+                     fprintf(spOutput, SPACE "DO: ");
+                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.digOut[i]);
+                     }
+                     fprintf(spOutput, "\r\n");
+                     fprintf(spOutput, SPACE "SH: ");
+                     for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.shader[i]);
+                     }
+                     break;
+                  case eBusDevTypeSw8:
+                     fprintf(spOutput, SPACE "device SW8\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.sw8.state);
+                     break;
+                  case eBusDevTypeLum:
+                     fprintf(spOutput, SPACE "device LUM\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.lum.state);
+                     fprintf(spOutput, SPACE "adc:   %04x\r\n", 
+                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.lum.lum_low +
+                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.lum.lum_high * 256);
+                     break;
+                  case eBusDevTypeLed:
+                     fprintf(spOutput, SPACE "device LED\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.led.state);
+                     break;
+                  case eBusDevTypeSw16:
+                     fprintf(spOutput, SPACE "device SW16\r\n");
+                     fprintf(spOutput, SPACE "led_state:   "); 
+                     for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", 
+                                pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.sw16.led_state[i]);
+                     }
+                     fprintf(spOutput, "\r\n");
+                     fprintf(spOutput, SPACE "input_state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.sw16.input_state);
+                     break;
+                  case eBusDevTypeWind:
+                     fprintf(spOutput, SPACE "device WIND\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.wind.state);
+                     fprintf(spOutput, SPACE "wind:  %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.wind.wind);
+                     break;
+                  default:
+                     fprintf(spOutput, SPACE "device unknown");
+                     break;
+               }
+               break;
+            case eBusDevRespActualValueEvent:
+               fprintf(spOutput, "response actual value event ");
+               fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+               switch (pBusMsg->msg.devBus.x.devResp.actualValueEvent.devType) {
+                  case eBusDevTypeDo31:
+                     fprintf(spOutput, SPACE "device DO31\r\n");
+                     fprintf(spOutput, SPACE "DO: ");
+                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do31.digOut[i]);
+                     }
+                     fprintf(spOutput, "\r\n");
+                     fprintf(spOutput, SPACE "SH: ");
+                     for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do31.shader[i]);
+                     }
+                     break;
+                  case eBusDevTypeSw8:
+                     fprintf(spOutput, SPACE "device SW8\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state);
+                     break;
+                  case eBusDevTypeLum:
+                     fprintf(spOutput, SPACE "device LUM\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.lum.state);
+                     fprintf(spOutput, SPACE "adc:   %04x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.lum.lum_low +
+                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.lum.lum_high * 256);
+                     break;
+                  case eBusDevTypeLed:
+                     fprintf(spOutput, SPACE "device LED\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.led.state);
+                     break;
+                  case eBusDevTypeSw16:
+                     fprintf(spOutput, SPACE "device SW16\r\n");
+                     fprintf(spOutput, SPACE "led_state:   "); 
+                     for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, SPACE "%02x ", 
+                                pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.sw16.led_state[i]);
+                     }
+                     fprintf(spOutput, "\r\n");
+                     fprintf(spOutput, SPACE "input_state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.sw16.input_state);
+                     break;
+                  case eBusDevTypeWind:
+                     fprintf(spOutput, SPACE "device WIND\r\n");
+                     fprintf(spOutput, SPACE "state: %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.wind.state);
+                     fprintf(spOutput, SPACE "wind:  %02x\r\n", 
+                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.wind.wind);
+                     break;
+                  default:
+                     fprintf(spOutput, SPACE "device unknown");
+                     break;
+               }
                break;
             case eBusDevStartup:
                fprintf(spOutput, "device startup ");
@@ -643,10 +848,10 @@ static void BusMonDecoded(int sioHandle) {
       }
       if (ret != BUS_MSG_OK) {
 #ifdef WIN32
-    	  Sleep(10);
+         Sleep(10);
 #else
-    	  usleep(10000);
+         usleep(10000);
 #endif
       }
-   } while (cKb != ESC);
+   } while ((cKb != ESC) && (cKb != ETX /* ctrl-c */));
 }
