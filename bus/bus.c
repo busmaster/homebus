@@ -1,24 +1,24 @@
 /*
  * bus.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -32,22 +32,22 @@
 
 /*-----------------------------------------------------------------------------
 *  Macros
-*/                                 
+*/
 /* size of buffer for SIO receiving */
 #define BUS_SIO_RX_BUF_SIZE                    10
-                 
+
 #define STX 0x02
-#define ESC 0x1B             
+#define ESC 0x1B
 
 /* start value for checksum calculation */
-#define CHECKSUM_START   0x55        
+#define CHECKSUM_START   0x55
 
 #define member_sizeof(T,F) sizeof(((T *)0)->F)
 
 #define MSG_BASE_SIZE1  member_sizeof(TBusTelegram, type) + member_sizeof(TBusTelegram, senderAddr)
 #define MSG_BASE_SIZE2  MSG_BASE_SIZE1 + member_sizeof(TBusDev, receiverAddr)
 
-// max number of length options of variable length telegrams 
+// max number of length options of variable length telegrams
 #define MAX_NUM_VAR_LEN  6
 
 
@@ -83,9 +83,9 @@ typedef struct {
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/                                
+*/
 /* buffer for bus telegram just receiving/just received */
-static TBusTelegram sRxBuffer; 
+static TBusTelegram sRxBuffer;
 static int sSioHandle;
 
 static TVarLenMsg sRespInfoSize = {
@@ -93,29 +93,29 @@ static TVarLenMsg sRespInfoSize = {
    {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
-                        member_sizeof(TBusDevRespInfo, version) + 
-                        sizeof(TBusDevInfoDo31)}, 
+                        member_sizeof(TBusDevRespInfo, version) +
+                        sizeof(TBusDevInfoDo31)},
       {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
-                        member_sizeof(TBusDevRespInfo, version) + 
+                        member_sizeof(TBusDevRespInfo, version) +
                         sizeof(TBusDevInfoSw8)},
       {eBusDevTypeLum,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
-                        member_sizeof(TBusDevRespInfo, version) + 
+                        member_sizeof(TBusDevRespInfo, version) +
                         sizeof(TBusDevInfoLum)},
       {eBusDevTypeLed,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
-                        member_sizeof(TBusDevRespInfo, version) + 
+                        member_sizeof(TBusDevRespInfo, version) +
                         sizeof(TBusDevInfoLed)},
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
-                        member_sizeof(TBusDevRespInfo, version) + 
+                        member_sizeof(TBusDevRespInfo, version) +
                         sizeof(TBusDevInfoSw16)},
       {eBusDevTypeWind, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
-                        member_sizeof(TBusDevRespInfo, version) + 
+                        member_sizeof(TBusDevRespInfo, version) +
                         sizeof(TBusDevInfoWind)}
-                        
+
    }
 };
 
@@ -138,7 +138,7 @@ static TVarLenMsg sRespGetStateSize = {
    {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespGetState, devType) +
-                        sizeof(TBusDevGetStateDo31)}, 
+                        sizeof(TBusDevGetStateDo31)},
       {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespGetState, devType) +
                         sizeof(TBusDevGetStateSw8)},
@@ -156,10 +156,10 @@ static TVarLenMsg sReqSetValueSize = {
                         member_sizeof(TBusDevReqSetValue, devType) +
                         sizeof(TBusDevSetValueDo31)},
       {eBusDevTypeSw8,  MSG_BASE_SIZE2 +
-                        member_sizeof(TBusDevReqSetValue, devType) + 
+                        member_sizeof(TBusDevReqSetValue, devType) +
                         sizeof(TBusDevSetValueSw8)},
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
-                        member_sizeof(TBusDevReqSetValue, devType) + 
+                        member_sizeof(TBusDevReqSetValue, devType) +
                         sizeof(TBusDevSetValueSw16)},
       {0,               0},
       {0,               0},
@@ -294,12 +294,12 @@ static struct l2State {
 static uint8_t BusDecode(uint8_t ch);
 static bool    TransmitCharProt(uint8_t data);
 static void    L2StateInit(uint8_t protoState);
- 
+
 /*----------------------------------------------------------------------------
-*   init    
+*   init
 */
 void BusInit(int sioHandle) {
-   
+
    sSioHandle = sioHandle;
    L2StateInit(L2_WAIT_FOR_SENDER_ADDR);
 }
@@ -313,17 +313,21 @@ void BusInit(int sioHandle) {
 *              BUS_MSG_ERROR  errorous telegram received (checksum error)
 */
 uint8_t BusCheck(void) {
-                     
+
    uint8_t numRxChar;
    static uint8_t ret = BUS_NO_MSG;
    uint8_t retTmp;
+
+    if (!SioHandleValid(sSioHandle)) {
+        return BUS_IF_ERROR;
+    }
 
    numRxChar = SioGetNumRxChar(sSioHandle);
    if (numRxChar != 0) {
       ret = BusDecode(numRxChar);
       if ((ret == BUS_MSG_ERROR) ||
           (ret == BUS_MSG_OK)) {
-         retTmp = ret; 
+         retTmp = ret;
          ret = BUS_NO_MSG;
          return retTmp;
       }
@@ -333,7 +337,7 @@ uint8_t BusCheck(void) {
 
 /*-----------------------------------------------------------------------------
 * get buffer for telegram
-* buffer is valid when BUS_MSG_OK is returned by BusCheck til next call 
+* buffer is valid when BUS_MSG_OK is returned by BusCheck til next call
 * of BusCheck
 */
 TBusTelegram *BusMsgBufGet(void) {
@@ -356,13 +360,13 @@ static void L2StateInit(uint8_t protoState) {
 * L2 Rx state machine
 */
 static uint8_t L2StateMachine(uint8_t ch) {
-   
+
    uint8_t           rc = L2_ERROR;
    uint8_t           numTypes;
    TTelegramSize     *pSize;
    uint8_t           i;
    struct l2State   *pL2State = &sL2State;
-   
+
    switch (pL2State->protoState) {
       case L2_WAIT_FOR_SENDER_ADDR:
          sRxBuffer.senderAddr = ch;
@@ -427,23 +431,23 @@ static uint8_t L2StateMachine(uint8_t ch) {
 
 /*-----------------------------------------------------------------------------
 *  state machine for telegram decoding
-*  return codes: 
+*  return codes:
 *              BUS_MSG_OK     telegram received completely
 *              BUS_MSG_RXING  telegram receiving in progress
 *              BUS_MSG_ERROR  errorous telegram received (checksum error)
-*  
+*
 *  unkown telegram types are ignored
 */
 static uint8_t BusDecode(uint8_t numRxChar) {
 
    static uint8_t    sL1ProtoState = L1_WAIT_FOR_STX;
    static uint8_t    sSioRxBuffer[BUS_SIO_RX_BUF_SIZE];
-   static uint8_t    sCheckSum; 
+   static uint8_t    sCheckSum;
    static bool       sStuffByte;
    uint8_t           *pBuf = sSioRxBuffer;
-   uint8_t           numRead;    
+   uint8_t           numRead;
    uint8_t           rc = BUS_MSG_RXING;
-   uint8_t           i; 
+   uint8_t           i;
    uint8_t           ch;
    uint8_t           l2State;
 
@@ -520,14 +524,14 @@ static uint8_t BusDecode(uint8_t numRxChar) {
       L2StateInit(L2_WAIT_FOR_SENDER_ADDR);
    }
    return rc;
-}           
+}
 
 /*-----------------------------------------------------------------------------
 * send bus telegram
 */
 uint8_t BusSend(TBusTelegram *pMsg) {
-  
-   uint8_t ch;            
+
+   uint8_t ch;
    uint8_t checkSum = CHECKSUM_START;
    uint8_t i;
    TTelegramSize *pSize;
@@ -556,8 +560,8 @@ uint8_t BusSend(TBusTelegram *pMsg) {
    }
    if (len == 0) {
       return BUS_SEND_BAD_LEN; // error
-   }           
-   ch = STX;   
+   }
+   ch = STX;
    rc = SioWriteBuffered(sSioHandle, &ch, sizeof(ch)) == sizeof(ch) ? true : false;
    checkSum += ch;
    for (i = 0; rc && (i < len); i++) {
@@ -567,7 +571,7 @@ uint8_t BusSend(TBusTelegram *pMsg) {
    }
    rc = rc && TransmitCharProt(checkSum);
    rc = rc && SioSendBuffer(sSioHandle);
-   
+
    if (rc) {
        return BUS_SEND_OK;
    } else {
@@ -581,11 +585,11 @@ uint8_t BusSend(TBusTelegram *pMsg) {
 *  ESC -> ESC + ~ESC
 */
 static bool TransmitCharProt(uint8_t data) {
-      
+
    uint8_t tmp;
    bool    rc;
-   
-   if (data == STX) {  
+
+   if (data == STX) {
       tmp = ESC;
       rc = SioWriteBuffered(sSioHandle, &tmp, sizeof(tmp)) == sizeof(tmp) ? true : false;
       tmp = ~STX;
