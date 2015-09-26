@@ -1,4 +1,4 @@
-SUBDIRS = addchecksum firmwareupdate modulservice monitor
+SUBDIRS = addchecksum firmwareupdate modulservice monitor portserver eventmonitor
 
 all:
 	for d in $(SUBDIRS); do \
