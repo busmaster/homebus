@@ -94,7 +94,7 @@
 /*-----------------------------------------------------------------------------
 *  Variables
 */  
-char version[] = "Sw88_led 0.01";
+char version[] = "Sw88_led 0.02";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -239,7 +239,7 @@ static void ProcessBus(void) {
    TBusMsgType msgType;
    uint8_t     *p;
    bool        msgForMe = false;
-   uint8_t     switchState;
+   uint8_t     val8;
    
    ret = BusCheck();
 
@@ -253,6 +253,7 @@ static void ProcessBus(void) {
          case eBusDevReqSetAddr:
          case eBusDevReqEepromRead:
          case eBusDevReqEepromWrite:
+         case eBusDevReqActualValueEvent:
             if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                msgForMe = true;
             }
@@ -283,8 +284,8 @@ static void ProcessBus(void) {
             BusSend(&sTxBusMsg);  
             break;
          case eBusDevReqSwitchState:
-            switchState = spRxBusMsg->msg.devBus.x.devReq.switchState.switchState;
-            if ((switchState & 0x01) != 0) {
+            val8 = spRxBusMsg->msg.devBus.x.devReq.switchState.switchState;
+            if ((val8 & 0x01) != 0) {
                 sLedState = LED_STATE_GREEN;
             } else {
                 sLedState = LED_STATE_RED;
@@ -293,7 +294,7 @@ static void ProcessBus(void) {
             sTxBusMsg.type = eBusDevRespSwitchState;
             sTxBusMsg.senderAddr = MY_ADDR;
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
-            sTxBusMsg.msg.devBus.x.devResp.switchState.switchState = switchState;
+            sTxBusMsg.msg.devBus.x.devResp.switchState.switchState = val8;
             BusSend(&sTxBusMsg);
             break;
          case eBusDevReqInfo:
@@ -328,6 +329,25 @@ static void ProcessBus(void) {
             sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
             p = &(spRxBusMsg->msg.devBus.x.devReq.writeEeprom.data);
             eeprom_write_byte((uint8_t *)spRxBusMsg->msg.devBus.x.devReq.readEeprom.addr, *p);
+            BusSend(&sTxBusMsg);  
+            break;
+         case eBusDevReqActualValueEvent:
+            /* evaluate avtual value event from switchv2 devices */
+            if (spRxBusMsg->msg.devBus.x.devReq.actualValueEvent.devType != eBusDevTypeSw8) {
+                break;
+            }
+            val8 = spRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.sw8.state;
+            if ((val8 & 0x01) != 0) {
+                sLedState = LED_STATE_GREEN;
+            } else {
+                sLedState = LED_STATE_RED;
+            }
+            /* the response includes the event data */
+            sTxBusMsg.senderAddr = MY_ADDR; 
+            sTxBusMsg.type = eBusDevRespActualValueEvent;
+            sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
+            sTxBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeSw8;
+            sTxBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state = val8;
             BusSend(&sTxBusMsg);  
             break;
          default:
