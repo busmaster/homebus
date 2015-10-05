@@ -180,7 +180,7 @@ void sighandler(int sig) {
 */
 int main(int argc, char *argv[]) {
 
-    int sioHandle;
+    int sioHandle = -1;
     struct ptyDesc pty[NUM_PTS];
     struct ptyDesc *p;
     int sioFd;
@@ -207,14 +207,6 @@ int main(int argc, char *argv[]) {
     }
 
     SioInit();
-
-    sioHandle = SioOpen(SIO_DEV_NAME, eSioBaud9600, eSioDataBits8, eSioParityNo, eSioStopBits1, eSioModeHalfDuplex);
-
-    if (sioHandle == -1) {
-        printf("cannot open %s\r\n", argv[1]);
-        return 0;
-    }
-    sioFd = SioGetFd(sioHandle);
 
     snprintf(devName, sizeof(devName), "%s", argv[1]);
     // replace all / by _
