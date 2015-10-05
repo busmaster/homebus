@@ -250,6 +250,7 @@ static void InitClientState(void) {
     for (i = 0, pClient = sClient; i < sNumClients; i++) {
         pClient->state = eInit;
         pClient->curRetry = 0;
+        pClient++;
     }
 }
 
