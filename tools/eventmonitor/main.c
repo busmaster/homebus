@@ -66,6 +66,7 @@ int main(int argc, char *argv[]) {
     int           sioFd;
     fd_set        rfds;
     int           ret;
+    uint8_t       val8;
 
     signal(SIGPIPE, sighandler);
 
@@ -150,6 +151,19 @@ int main(int argc, char *argv[]) {
                                pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.shader,
                                BUS_DO31_SHADER_SIZE_ACTUAL_VALUE);
                         txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeDo31;
+                        break;
+                    case eBusDevTypeSw8:
+                        Print("SW8\n");
+                        val8 = pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.sw8.state;
+                        for (i = 0, mask = 1; i < 8; i++, mask <<= 1) {
+                            if (val8 & mask) {
+                                Print("1");
+                            } else {
+                                Print("0");
+                            }
+                        }
+                        txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state = val8;
+                        txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeSw8;
                         break;
                     default:
                         break;
