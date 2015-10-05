@@ -67,7 +67,9 @@
 
 /* offset 6 unused */
 
-#define CLIENT_ADDRESS_BASE   7
+#define CLIENT_ADDRESS_BASE   7  /* BUS_MAX_CLIENT_NUM from bus.h (16 bytes) */
+#define CLIENT_RETRY_CNT      (APPLICATION_BUTTON_BASE + APPLICATION_BUTTON_SIZE) 
+                                 /* size: 16 bytes (BUS_MAX_CLIENT_NUM)      */
 
 /* application button: 3 bytes per button:     */
 /* 1 byte for button address                   */
@@ -76,33 +78,13 @@
 #define APPLICATION_BUTTON_BASE              (CLIENT_ADDRESS_BASE + BUS_MAX_CLIENT_NUM)
 #define MAX_NUM_APPLICATION_BUTTONS          3  /* uses 3 * 3 = 9 bytes */
 #define SIZE_APPLICATION_BUTTON_DESC         3
+#define APPLICATION_BUTTON_SIZE              (MAX_NUM_APPLICATION_BUTTONS * SIZE_APPLICATION_BUTTON_DESC) 
 
 #define STARTUP_DELAY  10 /* delay in seconds */
-
-/* inhibit time after sending a client request */
-/* if switch state is changed within this time */
-/* the client request has to be delayed, because */
-/* bus collision is likely (because of client's response) */
-#define RESPONSE_TIMEOUT1_MS  20  /* time in ms */
-
-/* timeout for client's response */
-#define RESPONSE_TIMEOUT2_MS  100 /* time in ms */
-
-/* timeout for unreachable client  */
-/* after this time retries are stopped */
-#define RETRY_TIMEOUT2_MS     10000 /* time in ms */
-
-
-/* Button pressed telegram repetition time (time granularity is 16 ms) */
-#define BUTTON_TELEGRAM_REPEAT_DIFF    48  /* time in ms */
-
-/* Button pressed telegram is repeated for maximum time if button stays closed */
-#define BUTTON_TELEGRAM_REPEAT_TIMEOUT 8  /* time in seconds */
 
 
 /* our bus address */
 #define MY_ADDR    sMyAddr
-
 
 #define IDLE_SIO  0x01
 
@@ -122,21 +104,28 @@
 
 #define DOUT_PULSE_DURATION_MS  1000 /* ms */
 
+/* acual value event */
+#define RESPONSE_TIMEOUT_MS         100  /* time in ms */
+/* timeout for unreachable client  */
+#define RETRY_CYCLE_TIME_MS         200 /* time in ms */
+#define CHANGE_DETECT_CYCLE_TIME_MS 500 /* time in ms */
+
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */
 typedef enum {
-    eInit,
-    eSkip,
-    eWaitForConfirmation1,
-    eWaitForConfirmation2,
-    eConfirmationOK
+   eInit,
+   eWaitForConfirmation,
+   eConfirmationOK,
+   eMaxRetry
 } TState;
 
 typedef struct {
-    uint8_t  address;
-    TState state;
-    uint16_t requestTimeStamp;
+   uint8_t  address;
+   uint8_t  maxRetry;
+   uint8_t  curRetry;
+   TState   state;
+   uint16_t requestTimeStamp;
 } TClient;
 
 typedef struct {
@@ -150,7 +139,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-char version[] = "Sw88_grg 0.02";
+char version[] = "Sw88_grg 0.03";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -159,19 +148,20 @@ volatile uint8_t  gTimeMs;
 volatile uint16_t gTimeMs16;
 volatile uint16_t gTimeS;
 
-static TClient   sClient[BUS_MAX_CLIENT_NUM];
+static TClient    sClient[BUS_MAX_CLIENT_NUM];
+static uint8_t    sNumClients;
 
-static uint8_t   sMyAddr;
+static uint8_t    sMyAddr;
 
-static uint8_t   sSwitchStateOld;
-static uint8_t   sSwitchStateActual;
+static uint8_t    sIoStateOld;
+static uint8_t    sIoStateCur;
 
-static uint8_t   sIdle = 0;
+static uint8_t    sIdle = 0;
 
 static TApplicationButton sApplicationButton[MAX_NUM_APPLICATION_BUTTONS];
 
-static bool      sDigOutIsOn = false;
-static uint16_t  sDigoutOnTimestamp;
+static bool       sDigOutIsOn = false;
+static uint16_t   sDigoutOnTimestamp;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -179,9 +169,7 @@ static uint16_t  sDigoutOnTimestamp;
 static void PortInit(void);
 static void TimerInit(void);
 static void Idle(void);
-static void ProcessSwitch(uint8_t switchState);
 static void ProcessBus(void);
-static uint8_t GetUnconfirmedClient(uint8_t actualClient);
 static void SendStartupMsg(void);
 static void IdleSio(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
@@ -191,6 +179,8 @@ static void ApplicationEventButton(TButtonEvent *pButtonEvent);
 static void ApplicationButtonInit(void);
 static void CheckApplication(void);
 static void CheckDigout(void);
+static void CheckEvent(void);
+static void GetClientListFromEeprom(void);
 
 /*-----------------------------------------------------------------------------
 *  program start
@@ -198,13 +188,13 @@ static void CheckDigout(void);
 int main(void) {
 
     int     sioHandle;
-    uint8_t inputState;
 
     MCUSR = 0;
     wdt_disable();
 
     /* get module address from EEPROM */
     sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+    GetClientListFromEeprom();    
 
     PortInit();
     TimerInit();
@@ -230,20 +220,173 @@ int main(void) {
 
     ApplicationButtonInit();
 
-    inputState = INPUT_PIN;
-    sSwitchStateOld = ~inputState;
-    ProcessSwitch(inputState);
-
     while (1) {
         Idle();
-        inputState = INPUT_PIN;
-        ProcessSwitch(inputState);
         ProcessBus();
         CheckButton();
         CheckApplication();
         CheckDigout();
+        CheckEvent();        
     }
     return 0;  /* never reached */
+}
+
+/*-----------------------------------------------------------------------------
+*  get next client array index
+*  if all clients are processed 0xff is returned
+*/
+static uint8_t GetUnconfirmedClient(uint8_t actualClient) {
+
+    uint8_t  i;
+    uint8_t  nextClient;
+    TClient  *pClient;
+
+    if (actualClient >= sNumClients) {
+        return 0xff;
+    }
+   
+    for (i = 0; i < sNumClients; i++) {
+        nextClient = actualClient + i +1;
+        nextClient %= sNumClients;
+        pClient = &sClient[nextClient];
+        if (pClient->state == eMaxRetry) {
+            continue;
+        }
+        if (pClient->state != eConfirmationOK) {
+            break;
+        }
+    }
+    if (i == sNumClients) {
+        /* all client's confirmations received or retry count expired */
+        nextClient = 0xff;
+    }
+    return nextClient;
+}
+
+static void InitClientState(void) {
+
+    TClient *pClient;
+    uint8_t  i;
+
+    for (i = 0, pClient = sClient; i < sNumClients; i++) {
+        pClient->state = eInit;
+        pClient->curRetry = 0;
+        pClient++;
+    }
+}
+
+static void GetClientListFromEeprom(void) {
+
+    TClient *pClient;
+    uint8_t i;
+    uint8_t numClients;
+    uint8_t clientAddr;
+    uint8_t retryCnt;
+
+    for (i = 0, numClients = 0, pClient = sClient; i < BUS_MAX_CLIENT_NUM; i++) {
+        clientAddr = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
+        retryCnt = eeprom_read_byte((const uint8_t *)(CLIENT_RETRY_CNT + i));
+        if (clientAddr != BUS_CLIENT_ADDRESS_INVALID) {
+            pClient->address = clientAddr;
+            pClient->maxRetry = retryCnt;
+            pClient->state = eInit;
+            pClient++;
+            numClients++;
+        }
+    }
+    sNumClients = numClients;
+}
+
+/*-----------------------------------------------------------------------------
+*   post state changes to registered bus clients
+*/
+static void CheckEvent(void) {
+
+    static uint8_t   sActualClient = 0xff; /* actual client's index being processed */
+    static uint16_t  sChangeTestTimeStamp;
+    TClient          *pClient;
+    uint16_t         actualTime16;
+    static bool      sNewClientCycleDelay = false;
+    static uint16_t  sNewClientCycleTimeStamp;
+    TBusDevReqActualValueEvent *pActVal;
+    uint8_t          rc;
+    bool             getNextClient;
+    uint8_t          nextClient;
+
+    if (sNumClients == 0) {
+        return;
+    }
+
+    /* do the change detection not in each cycle */
+    GET_TIME_MS16(actualTime16);
+    if (((uint16_t)(actualTime16 - sChangeTestTimeStamp)) >= CHANGE_DETECT_CYCLE_TIME_MS) {
+        sIoStateCur = IO_STATE;
+        if (sIoStateCur != sIoStateOld) {
+            sIoStateOld = sIoStateCur;
+            sActualClient = 0;
+            sNewClientCycleDelay = false;
+            InitClientState();
+        }
+        sChangeTestTimeStamp = actualTime16;
+    }
+
+    if (sActualClient == 0xff) {
+        return;
+    }
+
+    if (sNewClientCycleDelay) {
+        if (((uint16_t)(actualTime16 - sNewClientCycleTimeStamp)) < RETRY_CYCLE_TIME_MS) {
+            return;
+        } else {
+            sNewClientCycleDelay = false;
+        }
+    }
+
+    pClient = &sClient[sActualClient];
+    getNextClient = true;
+    switch (pClient->state) {
+    case eInit:
+        pActVal = &sTxBusMsg.msg.devBus.x.devReq.actualValueEvent;
+        sTxBusMsg.type = eBusDevReqActualValueEvent;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = pClient->address;
+        pActVal->devType = eBusDevTypeSw8;
+        pActVal->actualValue.sw8.state = sIoStateCur;
+        rc = BusSend(&sTxBusMsg);
+        if (rc == BUS_SEND_OK) {
+            pClient->state = eWaitForConfirmation;
+            pClient->requestTimeStamp = actualTime16;
+        } else {
+            getNextClient = false;
+        }
+        break;
+    case eWaitForConfirmation:
+        if ((((uint16_t)(actualTime16 - pClient->requestTimeStamp)) >= RESPONSE_TIMEOUT_MS) &&
+            (pClient->state != eMaxRetry)) {
+            if (pClient->curRetry < pClient->maxRetry) {
+                /* try again */
+                pClient->curRetry++;
+                getNextClient = false;
+                pClient->state = eInit;
+            } else {
+                pClient->state = eMaxRetry;
+            }
+        }
+        break;
+    case eConfirmationOK:
+        break;
+    default:
+        break;
+    }
+    
+    if (getNextClient) {
+        nextClient = GetUnconfirmedClient(sActualClient);
+        if (nextClient <= sActualClient) {
+            sNewClientCycleDelay = true;
+            sNewClientCycleTimeStamp = actualTime16;
+        }
+        sActualClient = nextClient;
+    }
 }
 
 /*-----------------------------------------------------------------------------
@@ -413,142 +556,6 @@ static void BusTransceiverPowerDown(bool powerDown) {
     }
 }
 
-/*-----------------------------------------------------------------------------
-*  send switch state change to clients
-*  - client address list is read from eeprom
-*  - if there is no confirmation from client within RESPONSE_TIMEOUT2
-*    the next client in list is processed
-*  - telegrams to clients without response are repeated again and again
-*    till telegrams to all clients in list are confirmed
-*  - if switchStateChanged occurs while client confirmations are missing
-*    actual client process is canceled and the new state telegram is sent
-*    to clients
-*/
-static void ProcessSwitch(uint8_t switchState) {
-
-    static uint8_t   sActualClient = 0xff; /* actual client's index being processed */
-    static uint16_t  sChangeTimeStamp;
-    TClient          *pClient;
-    uint8_t          i;
-    uint16_t         actualTime16;
-    uint8_t          actualTime8;
-    bool             switchStateChanged;
-    bool             startProcess;
-
-    if ((switchState ^ sSwitchStateOld) != 0) {
-        switchStateChanged = true;
-    } else {
-        switchStateChanged = false;
-    }
-
-    if (switchStateChanged) {
-        if (sActualClient < BUS_MAX_CLIENT_NUM) {
-            pClient = &sClient[sActualClient];
-            if (pClient->state == eWaitForConfirmation1) {
-                startProcess = false;
-            } else {
-                startProcess = true;
-                sSwitchStateOld = switchState;
-            }
-        } else {
-            startProcess = true;
-            sSwitchStateOld = switchState;
-        }
-        if (startProcess == true) {
-            sSwitchStateActual = switchState;
-            GET_TIME_MS16(sChangeTimeStamp);
-            /* set up client descriptor array */
-            sActualClient = 0;
-            pClient = &sClient[0];
-            for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
-                pClient->address = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
-                if (pClient->address != BUS_CLIENT_ADDRESS_INVALID) {
-                    pClient->state = eInit;
-                } else {
-                    pClient->state = eSkip;
-                }
-                pClient++;
-            }
-        }
-    }
-
-    if (sActualClient < BUS_MAX_CLIENT_NUM) {
-        GET_TIME_MS16(actualTime16);
-        if (((uint16_t)(actualTime16 - sChangeTimeStamp)) < RETRY_TIMEOUT2_MS) {
-            pClient = &sClient[sActualClient];
-            if (pClient->state == eConfirmationOK) {
-                /* get next client */
-                sActualClient = GetUnconfirmedClient(sActualClient);
-                if (sActualClient < BUS_MAX_CLIENT_NUM) {
-                    pClient = &sClient[sActualClient];
-                } else {
-                    /* we are ready */
-                }
-            }
-            switch (pClient->state) {
-            case eInit:
-                sTxBusMsg.type = eBusDevReqSwitchState;
-                sTxBusMsg.senderAddr = MY_ADDR;
-                sTxBusMsg.msg.devBus.receiverAddr = pClient->address;
-                sTxBusMsg.msg.devBus.x.devReq.switchState.switchState = sSwitchStateActual;
-                BusSend(&sTxBusMsg);
-                pClient->state = eWaitForConfirmation1;
-                GET_TIME_MS16(pClient->requestTimeStamp);
-                break;
-            case eWaitForConfirmation1:
-                actualTime8 = GET_TIME_MS;
-                if (((uint8_t)(actualTime8 - pClient->requestTimeStamp)) >= RESPONSE_TIMEOUT1_MS) {
-                    pClient->state = eWaitForConfirmation2;
-                    GET_TIME_MS16(pClient->requestTimeStamp);
-                }
-                break;
-            case eWaitForConfirmation2:
-                GET_TIME_MS16(actualTime16);
-                if (((uint16_t)(actualTime16 - pClient->requestTimeStamp)) >= RESPONSE_TIMEOUT2_MS) {
-                    /* set client for next try after the other clients */
-                    pClient->state = eInit;
-                    /* try next client */
-                    sActualClient = GetUnconfirmedClient(sActualClient);
-                }
-                break;
-            default:
-                break;
-            }
-        } else {
-            sActualClient = 0xff;
-        }
-    }
-}
-
-/*-----------------------------------------------------------------------------
-*  get next client array index
-*  if all clients are processed 0xff is returned
-*/
-static uint8_t GetUnconfirmedClient(uint8_t actualClient) {
-
-    uint8_t    i;
-    uint8_t    nextClient;
-    TClient  *pClient;
-
-    if (actualClient >= BUS_MAX_CLIENT_NUM) {
-        return 0xff;
-    }
-
-    for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
-        nextClient = actualClient + i +1;
-        nextClient %= BUS_MAX_CLIENT_NUM;
-        pClient = &sClient[nextClient];
-        if ((pClient->state != eSkip) &&
-            (pClient->state != eConfirmationOK)) {
-            break;
-        }
-    }
-    if (i == BUS_MAX_CLIENT_NUM) {
-        /* all client's confirmations received */
-        nextClient = 0xff;
-    }
-    return nextClient;
-}
 
 /*-----------------------------------------------------------------------------
 *  process received bus telegrams
@@ -568,7 +575,6 @@ static void ProcessBus(void) {
         msgType = spRxBusMsg->type;
         switch (msgType) {
         case eBusDevReqReboot:
-        case eBusDevRespSwitchState:
         case eBusDevReqActualValue:
         case eBusDevReqSetValue:
         case eBusDevReqSetClientAddr:
@@ -577,6 +583,7 @@ static void ProcessBus(void) {
         case eBusDevReqSetAddr:
         case eBusDevReqEepromRead:
         case eBusDevReqEepromWrite:
+        case eBusDevRespActualValueEvent:
             if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                msgForMe = true;
             }
@@ -603,22 +610,6 @@ static void ProcessBus(void) {
             /* wait for reset */
             while (1);
             break;
-        case eBusDevRespSwitchState:
-            pClient = &sClient[0];
-            for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
-                if (pClient->state == eSkip) {
-                    pClient++;
-                    continue;
-                } else if ((pClient->address == spRxBusMsg->senderAddr) &&
-                           (spRxBusMsg->msg.devBus.x.devResp.switchState.switchState == sSwitchStateActual) &&
-                           ((pClient->state == eWaitForConfirmation1) ||
-                           (pClient->state == eWaitForConfirmation2))) {
-                    pClient->state = eConfirmationOK;
-                    break;
-                }
-                pClient++;
-            }
-            break;
         case eBusDevReqActualValue:
             sTxBusMsg.senderAddr = MY_ADDR;
             sTxBusMsg.type = eBusDevRespActualValue;
@@ -640,6 +631,19 @@ static void ProcessBus(void) {
                 sTxBusMsg.senderAddr = MY_ADDR;
                 sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
                 BusSend(&sTxBusMsg);
+            }
+            break;
+        case eBusDevRespActualValueEvent:
+            pClient = sClient;
+            for (i = 0; i < sNumClients; i++) {
+                if ((pClient->address == spRxBusMsg->senderAddr) &&
+                    (pClient->state == eWaitForConfirmation)) {
+                    if (spRxBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state == IO_STATE) {
+                        pClient->state = eConfirmationOK;
+                    }
+                    break;
+                }
+                pClient++;
             }
             break;
         case eBusDevReqSetClientAddr:
