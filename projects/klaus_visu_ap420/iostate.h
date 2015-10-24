@@ -59,6 +59,7 @@ public:
         quint32 sum;
         struct {
             int light           : 1;
+            int door            : 1;
         } detail;
     } garageState;
 };

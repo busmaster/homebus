@@ -16,55 +16,73 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
+  <property name="font">
+   <font>
+    <family>Sans</family>
+    <pointsize>10</pointsize>
+    <weight>50</weight>
+    <italic>false</italic>
+    <bold>false</bold>
+   </font>
+  </property>
   <property name="windowTitle">
    <string>Dialog</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: rgb(50,50,50);
+background-color: qlineargradient(spread:pad, x1:0.5, y1:0.0, x2:0.5, y2:0.92, stop:0 rgba(50, 50, 50, 255), stop:1 rgba(0, 0, 0, 255));
+font: 10pt &quot;Sans&quot;;
+</string>
   </property>
   <widget class="QPushButton" name="pushButtonEG">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>100</width>
-     <height>70</height>
+     <x>4</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
     </rect>
    </property>
    <property name="text">
-    <string>EG</string>
+    <string>Erdgeschoß</string>
+   </property>
+   <property name="flat">
+    <bool>false</bool>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButtonOG">
    <property name="geometry">
     <rect>
-     <x>130</x>
-     <y>10</y>
-     <width>100</width>
-     <height>70</height>
+     <x>123</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
     </rect>
    </property>
    <property name="text">
-    <string>OG</string>
+    <string>1. Stock</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButtonUG">
    <property name="geometry">
     <rect>
-     <x>250</x>
-     <y>10</y>
-     <width>100</width>
-     <height>70</height>
+     <x>242</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
     </rect>
    </property>
    <property name="text">
-    <string>UG</string>
+    <string>Keller</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButtonGarage">
    <property name="geometry">
     <rect>
-     <x>370</x>
-     <y>10</y>
-     <width>100</width>
-     <height>70</height>
+     <x>361</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
     </rect>
    </property>
    <property name="text">
@@ -72,29 +90,60 @@
    </property>
   </widget>
   <widget class="QLabel" name="temperature">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>250</y>
-     <width>67</width>
-     <height>17</height>
+     <y>252</y>
+     <width>81</width>
+     <height>20</height>
     </rect>
    </property>
+   <property name="font">
+    <font>
+     <family>Sans</family>
+     <pointsize>11</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="autoFillBackground">
+    <bool>false</bool>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 255, 255);
+background-color: rgba(255, 255, 255, 0);
+font: 11pt &quot;Sans&quot;;</string>
+   </property>
    <property name="text">
-    <string>TextLabel</string>
+    <string/>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
    </property>
   </widget>
   <widget class="QLabel" name="humidity">
    <property name="geometry">
     <rect>
-     <x>150</x>
-     <y>250</y>
-     <width>67</width>
-     <height>17</height>
+     <x>140</x>
+     <y>252</y>
+     <width>81</width>
+     <height>20</height>
     </rect>
    </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: rgba(255, 255, 255, 0);
+color: rgb(255, 255, 255);
+font: 11pt &quot;Sans&quot;;</string>
+   </property>
    <property name="text">
-    <string>TextLabel</string>
+    <string/>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
    </property>
   </widget>
  </widget>

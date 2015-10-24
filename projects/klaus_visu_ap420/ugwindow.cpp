@@ -74,7 +74,7 @@ void ugwindow::on_pushButtonLightStiege_pressed() {
     char command[250];
     char doState[100];
     int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
+    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
     for (i = 0; i < 31; i++) {
         doState[i * 2] = '0';
         doState[i * 2 + 1] = ' ';
@@ -94,7 +94,7 @@ void ugwindow::on_pushButtonLightVorraum_pressed() {
     char command[250];
     char doState[100];
     int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
+    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
     for (i = 0; i < 31; i++) {
         doState[i * 2] = '0';
         doState[i * 2 + 1] = ' ';
@@ -114,7 +114,7 @@ void ugwindow::on_pushButtonLightTechnik_pressed() {
     char command[250];
     char doState[100];
     int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
+    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
     for (i = 0; i < 31; i++) {
         doState[i * 2] = '0';
         doState[i * 2 + 1] = ' ';
@@ -134,7 +134,7 @@ void ugwindow::on_pushButtonLightLager_pressed() {
     char command[250];
     char doState[100];
     int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
+    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
     for (i = 0; i < 31; i++) {
         doState[i * 2] = '0';
         doState[i * 2 + 1] = ' ';
@@ -154,7 +154,7 @@ void ugwindow::on_pushButtonLightFitness_pressed() {
     char command[250];
     char doState[100];
     int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
+    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
     for (i = 0; i < 31; i++) {
         doState[i * 2] = '0';
         doState[i * 2 + 1] = ' ';
@@ -174,7 +174,7 @@ void ugwindow::on_pushButtonLightArbeit_pressed() {
     char command[250];
     char doState[100];
     int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
+    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
     for (i = 0; i < 31; i++) {
         doState[i * 2] = '0';
         doState[i * 2 + 1] = ' ';

@@ -19,14 +19,20 @@
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0.0, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(50, 50, 50, 255));</string>
+  </property>
   <widget class="QPushButton" name="pushButtonBack">
    <property name="geometry">
     <rect>
-     <x>370</x>
-     <y>170</y>
-     <width>100</width>
-     <height>70</height>
+     <x>361</x>
+     <y>168</y>
+     <width>115</width>
+     <height>78</height>
     </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 255, 255);</string>
    </property>
    <property name="text">
     <string>Zurück</string>
@@ -35,23 +41,23 @@
   <widget class="QPushButton" name="pushButtonLight">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>100</width>
-     <height>70</height>
+     <x>4</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
     </rect>
    </property>
    <property name="text">
     <string>Licht</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButtonTor">
+  <widget class="QPushButton" name="pushButtonDoor">
    <property name="geometry">
     <rect>
-     <x>130</x>
-     <y>10</y>
-     <width>100</width>
-     <height>70</height>
+     <x>123</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
     </rect>
    </property>
    <property name="text">

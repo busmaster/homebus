@@ -6,6 +6,7 @@
 #include <iostream>
 #include <QTimer>
 #include <QFile>
+#include <QString>
 
 #include "egwindow.h"
 #include "ogwindow.h"
@@ -61,19 +62,22 @@ private:
 
     QFile *roomTemperature;
     bool roomTemperatureIsAvailable;
+    QString *roomTemperatureStr;
+
     QFile *roomHumidity;
     bool roomHumidityIsAvailable;
+    QString *roomHumidityStr;
 
     ioState *io;
 
     enum {
         eEsWaitForStart,
-        eEsWaitForDo240,
-        eEsWaitForDo241,
-        eEsWaitForSh240,
-        eEsWaitForSh241
+        eEsWaitForDO31_240_Do,
+        eEsWaitForDO31_241_Do,
+        eEsWaitForDO31_240_Sh,
+        eEsWaitForDO31_241_Sh,
+        eEsWaitForSW8_1
     } eventState;
-
 };
 
 #endif // MAINWINDOW_H

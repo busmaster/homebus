@@ -44,18 +44,20 @@ MainWindow::MainWindow(QWidget *parent) :
     if (roomTemperature && roomTemperature->exists()) {
         roomTemperatureIsAvailable = roomTemperature->open(QIODevice::ReadOnly);
         if (roomTemperatureIsAvailable) {
-            QByteArray line = roomTemperature->readLine();
-            ui->temperature->setText((QString)line);
+            roomTemperatureStr = new QString();
         }
+    } else {
+        roomTemperatureIsAvailable = false;
     }
 
     roomHumidity = new QFile("/sys/class/hwmon/hwmon3/humidity1_input");
     if (roomHumidity && roomHumidity->exists()) {
         roomHumidityIsAvailable = roomHumidity->open(QIODevice::ReadOnly);
         if (roomHumidityIsAvailable) {
-            QByteArray line = roomHumidity->readLine();
-            ui->humidity->setText((QString)line);
+            roomHumidityStr = new QString();
         }
+    } else {
+        roomHumidityIsAvailable = false;
     }
 
     cycTimer = new QTimer(this);
@@ -119,13 +121,20 @@ void MainWindow::cycTimerEvent() {
 
     if (roomTemperatureIsAvailable) {
         roomTemperature->seek(0);
-        QByteArray line = roomTemperature->readLine();
-        ui->temperature->setText((QString)line);
+        roomTemperatureStr->clear();
+        roomTemperatureStr->append(roomTemperature->readLine());
+        roomTemperatureStr->insert(roomTemperatureStr->size() - 4, '.');
+        roomTemperatureStr->chop(3);
+        roomTemperatureStr->append(" °C");
+        ui->temperature->setText(*roomTemperatureStr);
     }
     if (roomHumidityIsAvailable) {
         roomHumidity->seek(0);
-        QByteArray line = roomHumidity->readLine();
-        ui->humidity->setText((QString)line);
+        roomHumidityStr->clear();
+        roomHumidityStr->append(roomHumidity->readLine());
+        roomHumidityStr->chop(4);
+        roomHumidityStr->append(" %rF");
+        ui->humidity->setText(*roomHumidityStr);
     }
 }
 
@@ -161,8 +170,11 @@ void MainWindow::InitEventMonitor(void) {
     connect(eventMonitor, SIGNAL(started()), this, SLOT(onStarted()));
     connect(eventMonitor, SIGNAL(finished(int)), this, SLOT(onFinished(int)));
 
-//    QString program = "/home/germana/Oeffentlich/Hausbus-git_working/tools/eventmonitor/bin/eventmonitor";
-    QString program = "/root/eventmonitor";
+#ifdef AP420
+    QString program = "/root/git/homebus/tools/eventmonitor/bin/eventmonitor";
+#else
+    QString program = "/home/germana/Oeffentlich/git/homebus/tools/eventmonitor/bin/eventmonitor";
+#endif
     QStringList arguments;
     arguments << "-c" << "/dev/hausbus0" << "-a" << "250";
 
@@ -183,16 +195,19 @@ void MainWindow::readStdOut() {
 
     for (i = 0; i < ev_lines.size(); i++) {
         if (qstrcmp(ev_lines[i], "event address 240 device type DO31") == 0) {
-           eventState = eEsWaitForDo240;
-           continue;
+            eventState = eEsWaitForDO31_240_Do;
+            continue;
         } else if (qstrcmp(ev_lines[i], "event address 241 device type DO31") == 0) {
-           eventState = eEsWaitForDo241;
-           continue;
+            eventState = eEsWaitForDO31_241_Do;
+            continue;
+        } else if (qstrcmp(ev_lines[i], "event address 36 device type SW8") == 0) {
+            eventState = eEsWaitForSW8_1;
+            continue;
         }
         switch (eventState) {
         case eEsWaitForStart:
             break;
-        case eEsWaitForDo240:
+        case eEsWaitForDO31_240_Do:
 //            std::cout << "do 240: " << ev_lines[i].constData() << std::endl;
             (ev_lines[i].at(0) == '0')  ? io->ogState.detail.lightStiegePwr = 0  : io->ogState.detail.lightStiegePwr = 1;
             (ev_lines[i].at(1) == '0')  ? io->ogState.detail.lightStiege1 = 0    : io->ogState.detail.lightStiege1 = 1;
@@ -220,9 +235,9 @@ void MainWindow::readStdOut() {
             (ev_lines[i].at(24) == '0') ? io->ugState.detail.lightFitness = 0    : io->ugState.detail.lightFitness = 1;
             (ev_lines[i].at(25) == '0') ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum  = 1;
             (ev_lines[i].at(26) == '0') ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
-            eventState = eEsWaitForSh240;
+            eventState = eEsWaitForDO31_240_Sh;
             break;
-        case eEsWaitForDo241:
+        case eEsWaitForDO31_241_Do:
 //            std::cout << "do 241: " << ev_lines[i].constData() << std::endl;
             (ev_lines[i].at(24) == '0') ? io->egState.detail.lightSpeis = 0      : io->egState.detail.lightSpeis = 1;
             (ev_lines[i].at(26) == '0') ? io->egState.detail.lightArbeit = 0     : io->egState.detail.lightArbeit = 1;
@@ -230,19 +245,23 @@ void MainWindow::readStdOut() {
             (ev_lines[i].at(28) == '0') ? io->ogState.detail.lightSeverin = 0    : io->ogState.detail.lightSeverin = 1;
             (ev_lines[i].at(29) == '0') ? io->ogState.detail.lightWC = 0         : io->ogState.detail.lightWC = 1;
             (ev_lines[i].at(30) == '0') ? io->egState.detail.lightKuecheWand = 0 : io->egState.detail.lightKuecheWand = 1;
-            eventState = eEsWaitForSh241;
+            eventState = eEsWaitForDO31_241_Sh;
             break;
-        case eEsWaitForSh240:
+        case eEsWaitForDO31_240_Sh:
 //            std::cout << "sh 240: " << ev_lines[i].constData() << std::endl;
             eventState = eEsWaitForStart;
             break;
-        case eEsWaitForSh241:
+        case eEsWaitForDO31_241_Sh:
 //            std::cout << "sh 241: " << ev_lines[i].constData() << std::endl;
+            eventState = eEsWaitForStart;
+            break;
+        case eEsWaitForSW8_1:
+//            std::cout << "sw8 1: " << ev_lines[i].constData() << std::endl;
+            (ev_lines[i].at(0) == '0') ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
             eventState = eEsWaitForStart;
             break;
         }
     }
-//    ui->textBrowser->append(ev);
 
     if ((egSum != io->egState.sum) ||
         (ogSum != io->ogState.sum) ||
@@ -282,7 +301,11 @@ void MainWindow::readStdOut() {
         if (io->garageState.sum == 0) {
             ui->pushButtonGarage->setStyleSheet("background-color: green");
         } else {
-            ui->pushButtonGarage->setStyleSheet("background-color: yellow");
+            if (io->garageState.detail.door == 0) {
+                ui->pushButtonGarage->setStyleSheet("background-color: yellow");
+            } else {
+                ui->pushButtonGarage->setStyleSheet("background-color: red");
+            }
         }
         ui->pushButtonGarage->update();
     }
