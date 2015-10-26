@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "moduleservice.h"
 #include <QProcess>
 #include <iostream>
 
@@ -8,8 +9,7 @@
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow)
-{
+    ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
     backlightIsAvailable =  false;
@@ -70,16 +70,23 @@ MainWindow::MainWindow(QWidget *parent) :
 
     InitEventMonitor();
 
+    mservice = new moduleservice;
+
     uiEg = new egwindow(this, io);
     uiOg = new ogwindow(this, io);
     uiUg = new ugwindow(this, io);
     uiGarage = new garagewindow(this, io);
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
     eventMonitor->kill();
     eventMonitor->waitForFinished();
+    delete eventMonitor;
+
+    mservice->command("-exit\n");
+    mservice->waitForFinished();
+    delete mservice;
+
     delete ui;
     delete uiEg;
     delete uiOg;
@@ -104,8 +111,7 @@ MainWindow::~MainWindow()
     }
 }
 
-void MainWindow::scrTimerEvent()
-{
+void MainWindow::scrTimerEvent() {
     screensaverOn = true;
     if (backlightIsAvailable) {
         backlightBrightness->write("0");
@@ -138,8 +144,7 @@ void MainWindow::cycTimerEvent() {
     }
 }
 
-bool MainWindow::eventFilter(QObject *obj, QEvent *event)
-{
+bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
    obj = obj;
 
    if (event->type() == QEvent::MouseButtonPress)
@@ -180,6 +185,11 @@ void MainWindow::InitEventMonitor(void) {
 
     eventState = eEsWaitForStart;
     eventMonitor->start(program, arguments);
+}
+
+void MainWindow::onSendServiceCmd(const char *pCmd) {
+
+    mservice->command(pCmd);
 }
 
 void MainWindow::readStdOut() {

@@ -1,5 +1,8 @@
+#include <stdio.h>
+#include <stdint.h>
 #include "egwindow.h"
 #include "ui_egwindow.h"
+#include "moduleservice.h"
 
 egwindow::egwindow(QWidget *parent, ioState *state) :
     QDialog(parent),
@@ -8,7 +11,7 @@ egwindow::egwindow(QWidget *parent, ioState *state) :
     io = state;
     isVisible = false;
     connect(parent, SIGNAL(ioChanged(void)), this, SLOT(onIoStateChanged(void)));
-    modulservice = new QProcess;
+    connect(this, SIGNAL(serviceCmd(const char *)), parent, SLOT(onSendServiceCmd(const char *)));
 }
 
 egwindow::~egwindow() {
@@ -93,202 +96,174 @@ void egwindow::onIoStateChanged(void) {
     }
 }
 
+int egwindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
+    size_t i;
+    int len;
+
+    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
+
+    for (i = 0; i < stateLen; i++) {
+        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
+    }
+    return len;
+}
+
 void egwindow::on_pushButtonLightGang_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightGang == 0) {
-        doState[14 * 2] = '3'; // on
+        doState[14] = 3; // on
     } else {
-        doState[14 * 2] = '2'; // off
+        doState[14] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightGang->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightWohn_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightWohn == 0) {
-        doState[13 * 2] = '3'; // on
+        doState[13] = 3; // on
     } else {
-        doState[13 * 2] = '2'; // off
+        doState[13] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightWohn->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightKueche_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightKueche == 0) {
-        doState[19 * 2] = '3'; // on
+        doState[19] = 3; // on
     } else {
-        doState[19 * 2] = '2'; // off
+        doState[19] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightKueche->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightEss_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightEss == 0) {
-        doState[15 * 2] = '3'; // on
+        doState[15] = 3; // on
     } else {
-        doState[15 * 2] = '2'; // off
+        doState[15] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightEss->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightVorraum_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightVorraum == 0) {
-        doState[16 * 2] = '3'; // on
+        doState[16] = 3; // on
     } else {
-        doState[16 * 2] = '2'; // off
+        doState[16] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightVorraum->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightKuecheWand_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 241 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightKuecheWand == 0) {
-        doState[30 * 2] = '3'; // on
+        doState[30] = 3; // on
     } else {
-        doState[30 * 2] = '2'; // off
+        doState[30] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightKuecheWand->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightArbeit_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 241 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightArbeit == 0) {
-        doState[26 * 2] = '3'; // on
+        doState[26] = 3; // on
     } else {
-        doState[26 * 2] = '2'; // off
+        doState[26] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightArbeit->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightSpeis_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 241 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightSpeis == 0) {
-        doState[24 * 2] = '3'; // on
+        doState[24] = 3; // on
     } else {
-        doState[24 * 2] = '2'; // off
+        doState[24] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightSpeis->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightWC_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightWC == 0) {
-        doState[17 * 2] = '3'; // on
+        doState[17] = 3; // on
     } else {
-        doState[17 * 2] = '2'; // off
+        doState[17] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightWC->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void egwindow::on_pushButtonLightTerrasse_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/git/homebus/tools/modulservice/bin/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[250];
+    uint8_t doState[100];
+
+    memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightTerrasse == 0) {
-        doState[20 * 2] = '3'; // on
+        doState[20] = 3; // on
     } else {
-        doState[20 * 2] = '2'; // off
+        doState[20] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightTerrasse->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }

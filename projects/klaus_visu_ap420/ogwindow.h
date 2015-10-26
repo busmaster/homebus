@@ -1,16 +1,15 @@
 #ifndef OGWINDOW_H
 #define OGWINDOW_H
 
+#include <stdint.h>
 #include <QDialog>
-#include <QProcess>
 #include "iostate.h"
 
 namespace Ui {
 class ogwindow;
 }
 
-class ogwindow : public QDialog
-{
+class ogwindow : public QDialog {
     Q_OBJECT
 
 public:
@@ -18,6 +17,9 @@ public:
     ~ogwindow();
     void show(void);
     void hide(void);
+
+signals:
+    void serviceCmd(const char *);
 
 private slots:
     void onIoStateChanged(void);
@@ -33,10 +35,11 @@ private slots:
     void on_pushButtonLightSchrank_pressed();
 
 private:
+    int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
+
     Ui::ogwindow *ui;
     ioState *io;
     bool isVisible;
-    QProcess *modulservice;
 };
 
 #endif // OGWINDOW_H

@@ -1,16 +1,15 @@
 #ifndef UGWINDOW_H
 #define UGWINDOW_H
 
+#include <stdint.h>
 #include <QDialog>
-#include <QProcess>
 #include "iostate.h"
 
 namespace Ui {
 class ugwindow;
 }
 
-class ugwindow : public QDialog
-{
+class ugwindow : public QDialog {
     Q_OBJECT
 
 public:
@@ -18,6 +17,9 @@ public:
     ~ugwindow();
     void show(void);
     void hide(void);
+
+signals:
+    void serviceCmd(const char *);
 
 private slots:
     void onIoStateChanged(void);
@@ -30,10 +32,10 @@ private slots:
     void on_pushButtonLightArbeit_pressed();
 
 private:
+    int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
     Ui::ugwindow *ui;
     ioState *io;
     bool isVisible;
-    QProcess *modulservice;
 };
 
 #endif // UGWINDOW_H

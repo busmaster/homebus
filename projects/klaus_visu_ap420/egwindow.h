@@ -1,16 +1,15 @@
 #ifndef EGWINDOW_H
 #define EGWINDOW_H
 
+#include <stdint.h>
 #include <QDialog>
-#include <QProcess>
 #include "iostate.h"
 
 namespace Ui {
 class egwindow;
 }
 
-class egwindow : public QDialog
-{
+class egwindow : public QDialog {
     Q_OBJECT
 
 public:
@@ -18,6 +17,9 @@ public:
     ~egwindow();
     void show(void);
     void hide(void);
+
+signals:
+    void serviceCmd(const char *);
 
 private slots:
     void onIoStateChanged(void);
@@ -34,10 +36,10 @@ private slots:
     void on_pushButtonLightTerrasse_pressed();
 
 private:
+    int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
     Ui::egwindow *ui;
     ioState *io;
     bool isVisible;
-    QProcess *modulservice;
 };
 
 #endif // EGWINDOW_H

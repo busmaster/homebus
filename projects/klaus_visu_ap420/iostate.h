@@ -3,8 +3,7 @@
 
 #include <QObject>
 
-class ioState : public QObject
-{
+class ioState : public QObject {
     Q_OBJECT
 public:
     explicit ioState(QObject *parent = 0);

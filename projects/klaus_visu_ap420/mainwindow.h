@@ -13,13 +13,13 @@
 #include "ugwindow.h"
 #include "garagewindow.h"
 #include "iostate.h"
+#include "moduleservice.h"
 
 namespace Ui {
 class MainWindow;
 }
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
@@ -30,6 +30,9 @@ public:
 
 signals:
     void ioChanged(void);
+
+public slots:
+    void onSendServiceCmd(const char *);
 
 private slots:
     void readStdOut();
@@ -78,6 +81,8 @@ private:
         eEsWaitForDO31_241_Sh,
         eEsWaitForSW8_1
     } eventState;
+
+    moduleservice *mservice;
 };
 
 #endif // MAINWINDOW_H
