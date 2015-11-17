@@ -47,7 +47,7 @@
   <widget class="QPushButton" name="pushButtonLightEss">
    <property name="geometry">
     <rect>
-     <x>123</x>
+     <x>242</x>
      <y>86</y>
      <width>115</width>
      <height>78</height>
@@ -99,7 +99,7 @@
   <widget class="QPushButton" name="pushButtonLightSpeis">
    <property name="geometry">
     <rect>
-     <x>242</x>
+     <x>361</x>
      <y>86</y>
      <width>115</width>
      <height>78</height>
@@ -177,6 +177,19 @@
     <string>Terrasse</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="pushButtonLightWohnLese">
+   <property name="geometry">
+    <rect>
+     <x>123</x>
+     <y>86</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Lesen</string>
+   </property>
+  </widget>
   <zorder>pushButtonLightGang</zorder>
   <zorder>pushButtonLightEss</zorder>
   <zorder>pushButtonLightWohn</zorder>
@@ -188,6 +201,7 @@
   <zorder>pushButtonLightWC</zorder>
   <zorder>pushButtonLightTerrasse</zorder>
   <zorder>pushButtonLightKuecheWand</zorder>
+  <zorder>pushButtonLightWohnLese</zorder>
  </widget>
  <resources/>
  <connections>

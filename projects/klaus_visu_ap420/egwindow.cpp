@@ -94,6 +94,13 @@ void egwindow::onIoStateChanged(void) {
     } else {
         ui->pushButtonLightTerrasse->setStyleSheet("background-color: yellow");
     }
+
+    if (io->egState.detail.lightWohnLese == 0) {
+        ui->pushButtonLightWohnLese->setStyleSheet("background-color: green");
+    } else {
+        ui->pushButtonLightWohnLese->setStyleSheet("background-color: yellow");
+    }
+
 }
 
 int egwindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
@@ -114,11 +121,11 @@ void egwindow::on_pushButtonLightGang_pressed() {
 
     memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightGang == 0) {
-        doState[14] = 3; // on
+        doState[25] = 3; // on
     } else {
-        doState[14] = 2; // off
+        doState[25] = 2; // off
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
+    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightGang->setStyleSheet("background-color: grey");
 
     emit serviceCmd(command);
@@ -254,7 +261,7 @@ void egwindow::on_pushButtonLightWC_pressed() {
 
 void egwindow::on_pushButtonLightTerrasse_pressed() {
     char    command[250];
-    uint8_t doState[100];
+    uint8_t doState[31];
 
     memset(doState, 0, sizeof(doState));
     if (io->egState.detail.lightTerrasse == 0) {
@@ -264,6 +271,24 @@ void egwindow::on_pushButtonLightTerrasse_pressed() {
     }
     do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightTerrasse->setStyleSheet("background-color: grey");
+
+    emit serviceCmd(command);
+}
+
+
+
+void egwindow::on_pushButtonLightWohnLese_pressed() {
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
+    if (io->egState.detail.lightWohnLese == 0) {
+        doState[14] = 3; // on
+    } else {
+        doState[14] = 2; // off
+    }
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
+    ui->pushButtonLightWohnLese->setStyleSheet("background-color: grey");
 
     emit serviceCmd(command);
 }

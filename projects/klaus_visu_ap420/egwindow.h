@@ -34,6 +34,7 @@ private slots:
     void on_pushButtonLightSpeis_pressed();
     void on_pushButtonLightWC_pressed();
     void on_pushButtonLightTerrasse_pressed();
+    void on_pushButtonLightWohnLese_pressed();
 
 private:
     int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);

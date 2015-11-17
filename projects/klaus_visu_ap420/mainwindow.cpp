@@ -233,7 +233,7 @@ void MainWindow::readStdOut() {
             (ev_lines[i].at(11) == '0') ? io->ogState.detail.lightVorraum = 0    : io->ogState.detail.lightVorraum = 1;
             (ev_lines[i].at(12) == '0') ? io->ogState.detail.lightBad = 0        : io->ogState.detail.lightBad = 1;
             (ev_lines[i].at(13) == '0') ? io->egState.detail.lightWohn = 0       : io->egState.detail.lightWohn = 1;
-            (ev_lines[i].at(14) == '0') ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
+            (ev_lines[i].at(14) == '0') ? io->egState.detail.lightWohnLese = 0   : io->egState.detail.lightWohnLese = 1;
             (ev_lines[i].at(15) == '0') ? io->egState.detail.lightEss = 0        : io->egState.detail.lightEss = 1;
             (ev_lines[i].at(16) == '0') ? io->egState.detail.lightVorraum = 0    : io->egState.detail.lightVorraum = 1;
             (ev_lines[i].at(17) == '0') ? io->egState.detail.lightWC = 0         : io->egState.detail.lightWC = 1;
@@ -250,6 +250,7 @@ void MainWindow::readStdOut() {
         case eEsWaitForDO31_241_Do:
 //            std::cout << "do 241: " << ev_lines[i].constData() << std::endl;
             (ev_lines[i].at(24) == '0') ? io->egState.detail.lightSpeis = 0      : io->egState.detail.lightSpeis = 1;
+            (ev_lines[i].at(25) == '0') ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
             (ev_lines[i].at(26) == '0') ? io->egState.detail.lightArbeit = 0     : io->egState.detail.lightArbeit = 1;
             (ev_lines[i].at(27) == '0') ? io->ogState.detail.lightAnna = 0       : io->ogState.detail.lightAnna = 1;
             (ev_lines[i].at(28) == '0') ? io->ogState.detail.lightSeverin = 0    : io->ogState.detail.lightSeverin = 1;

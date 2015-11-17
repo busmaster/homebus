@@ -195,7 +195,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * Rueckgabe der Versioninfo (max. Laenge 15 Zeichen)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus1_0.05";
+   return "Klaus1_0.06";
 }
 
 /*----------------------------------------------------------------------------- 
@@ -697,14 +697,20 @@ void ApplicationReleased25_0(void) {}
 void ApplicationPressed25_1(void) {}
 void ApplicationReleased25_1(void) {}
                                       
-void ApplicationPressed26_0(void) {}
+void ApplicationPressed26_0(void) {
+    /* Gang EG */
+    DigOutToggle(eDigOut25);
+}
 void ApplicationReleased26_0(void) {}
 void ApplicationPressed26_1(void) {}
 void ApplicationReleased26_1(void) {}
                                       
 void ApplicationPressed27_0(void) {}
 void ApplicationReleased27_0(void) {}
-void ApplicationPressed27_1(void) {}
+void ApplicationPressed27_1(void) {
+    /* Gang EG */
+    DigOutToggle(eDigOut25);
+}
 void ApplicationReleased27_1(void) {}
                                       
 void ApplicationPressed28_0(void) {}

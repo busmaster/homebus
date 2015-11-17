@@ -21,6 +21,7 @@ public:
             int lightKuecheWand : 1;
             int lightArbeit     : 1;
             int lightTerrasse   : 1;
+            int lightWohnLese   : 1;
         } detail;
     } egState;
     union {
