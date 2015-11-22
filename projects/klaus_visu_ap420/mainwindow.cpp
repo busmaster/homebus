@@ -202,6 +202,8 @@ void MainWindow::readStdOut() {
     quint32 ogSum = io->ogState.sum;
     quint32 ugSum = io->ugState.sum;
     quint32 garageSum = io->garageState.sum;
+    bool    socket_1 = io->socket_1;
+    bool    socket_2 = io->socket_1;
 
     for (i = 0; i < ev_lines.size(); i++) {
         if (qstrcmp(ev_lines[i], "event address 240 device type DO31") == 0) {
@@ -245,6 +247,8 @@ void MainWindow::readStdOut() {
             (ev_lines[i].at(24) == '0') ? io->ugState.detail.lightFitness = 0    : io->ugState.detail.lightFitness = 1;
             (ev_lines[i].at(25) == '0') ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum  = 1;
             (ev_lines[i].at(26) == '0') ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
+            (ev_lines[i].at(27) == '0') ? io->socket_1 = false                   : io->socket_1 = true;
+            (ev_lines[i].at(28) == '0') ? io->socket_2 = false                   : io->socket_2 = true;
             eventState = eEsWaitForDO31_240_Sh;
             break;
         case eEsWaitForDO31_241_Do:
@@ -320,6 +324,18 @@ void MainWindow::readStdOut() {
         }
         ui->pushButtonGarage->update();
     }
+
+    if (socket_1 != io->socket_1) {
+        if (io->socket_1 == 0) {
+            ui->pushButtonInternet->setStyleSheet("background-color: green");
+        } else {
+            ui->pushButtonInternet->setStyleSheet("background-color: yellow");
+        }
+    }
+    if (socket_2 != io->socket_2) {
+
+
+    }
 }
 
 void MainWindow::onStarted(){
@@ -344,4 +360,32 @@ void MainWindow::on_pushButtonUG_clicked() {
 
 void MainWindow::on_pushButtonGarage_clicked() {
     uiGarage->show();
+}
+
+int MainWindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
+    size_t i;
+    int len;
+
+    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
+
+    for (i = 0; i < stateLen; i++) {
+        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
+    }
+    return len;
+}
+
+void MainWindow::on_pushButtonInternet_pressed() {
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
+    if (io->socket_1) {
+        doState[27] = 2; // on
+    } else {
+        doState[27] = 3; // off
+    }
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
+    ui->pushButtonInternet->setStyleSheet("background-color: grey");
+
+    onSendServiceCmd(command);
 }

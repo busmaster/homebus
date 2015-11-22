@@ -19,7 +19,7 @@
   <property name="font">
    <font>
     <family>Sans</family>
-    <pointsize>10</pointsize>
+    <pointsize>12</pointsize>
     <weight>50</weight>
     <italic>false</italic>
     <bold>false</bold>
@@ -31,7 +31,7 @@
   <property name="styleSheet">
    <string notr="true">background-color: rgb(50,50,50);
 background-color: qlineargradient(spread:pad, x1:0.5, y1:0.0, x2:0.5, y2:0.92, stop:0 rgba(50, 50, 50, 255), stop:1 rgba(0, 0, 0, 255));
-font: 10pt &quot;Sans&quot;;
+font: 12pt &quot;Sans&quot;;
 </string>
   </property>
   <widget class="QPushButton" name="pushButtonEG">
@@ -43,8 +43,30 @@ font: 10pt &quot;Sans&quot;;
      <height>78</height>
     </rect>
    </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="font">
+    <font>
+     <family>Sans</family>
+     <pointsize>12</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
    <property name="text">
-    <string>Erdgeschoß</string>
+    <string>Erd-
+geschoß</string>
+   </property>
+   <property name="autoDefault">
+    <bool>false</bool>
+   </property>
+   <property name="default">
+    <bool>false</bool>
    </property>
    <property name="flat">
     <bool>false</bool>
@@ -59,6 +81,21 @@ font: 10pt &quot;Sans&quot;;
      <height>78</height>
     </rect>
    </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="font">
+    <font>
+     <family>Sans</family>
+     <pointsize>12</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
    <property name="text">
     <string>1. Stock</string>
    </property>
@@ -72,6 +109,21 @@ font: 10pt &quot;Sans&quot;;
      <height>78</height>
     </rect>
    </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="font">
+    <font>
+     <family>Sans</family>
+     <pointsize>12</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
    <property name="text">
     <string>Keller</string>
    </property>
@@ -84,6 +136,12 @@ font: 10pt &quot;Sans&quot;;
      <width>115</width>
      <height>78</height>
     </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
    </property>
    <property name="text">
     <string>Garage</string>
@@ -134,6 +192,15 @@ font: 11pt &quot;Sans&quot;;</string>
      <height>20</height>
     </rect>
    </property>
+   <property name="font">
+    <font>
+     <family>Sans</family>
+     <pointsize>11</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
    <property name="styleSheet">
     <string notr="true">background-color: rgba(255, 255, 255, 0);
 color: rgb(255, 255, 255);
@@ -144,6 +211,43 @@ font: 11pt &quot;Sans&quot;;</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonInternet">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>86</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="font">
+    <font>
+     <family>Sans</family>
+     <pointsize>12</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Internet</string>
+   </property>
+   <property name="autoDefault">
+    <bool>false</bool>
+   </property>
+   <property name="default">
+    <bool>false</bool>
+   </property>
+   <property name="flat">
+    <bool>false</bool>
    </property>
   </widget>
  </widget>

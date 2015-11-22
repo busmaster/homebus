@@ -44,8 +44,11 @@ private slots:
     void on_pushButtonOG_clicked();
     void on_pushButtonUG_clicked();
     void on_pushButtonGarage_clicked();
+    void on_pushButtonInternet_pressed();
 
 private:
+    int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
+
     Ui::MainWindow *ui;
     egwindow *uiEg;
     ogwindow *uiOg;

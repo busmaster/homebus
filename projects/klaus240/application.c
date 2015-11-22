@@ -276,7 +276,8 @@ eDigOut23  Arbeit UG
 eDigOut24  Fitness
 eDigOut25  Vorraum UG
 eDigOut26  Technik
-
+eDigOut27  Steckdose Netzwerkverteiler
+eDigOut28  Steckdose Netzwerkverteiler 
 */
 
 void ApplicationPressed1_0(void) {}

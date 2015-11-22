@@ -5,5 +5,7 @@ ioState::ioState(QObject *parent) : QObject(parent) {
    ogState.sum = 0;
    ugState.sum = 0;
    garageState.sum = 0;
+   socket_1 = false;
+   socket_2 = false;
 }
 
