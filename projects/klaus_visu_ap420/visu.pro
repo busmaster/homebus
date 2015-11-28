@@ -19,7 +19,8 @@ SOURCES += main.cpp\
     ogwindow.cpp \
     ugwindow.cpp \
     garagewindow.cpp \
-    moduleservice.cpp
+    moduleservice.cpp \
+    statusled.cpp
 
 HEADERS  += mainwindow.h \
     egwindow.h \
@@ -27,7 +28,8 @@ HEADERS  += mainwindow.h \
     ogwindow.h \
     ugwindow.h \
     garagewindow.h \
-    moduleservice.h
+    moduleservice.h \
+    statusled.h
 
 FORMS    += \
     mainwindow.ui \

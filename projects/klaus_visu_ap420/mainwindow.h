@@ -14,6 +14,7 @@
 #include "garagewindow.h"
 #include "iostate.h"
 #include "moduleservice.h"
+#include "statusled.h"
 
 namespace Ui {
 class MainWindow;
@@ -26,13 +27,14 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     bool eventFilter(QObject *obj, QEvent *event);
-    void InitEventMonitor(void);
+
+    statusled *statusLed;
 
 signals:
     void ioChanged(void);
 
 public slots:
-    void onSendServiceCmd(const char *);
+    void onSendServiceCmd(const char *cmd);
 
 private slots:
     void readStdOut();
@@ -47,6 +49,8 @@ private slots:
     void on_pushButtonInternet_pressed();
 
 private:
+    void InitEventMonitor(void);
+
     int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
 
     Ui::MainWindow *ui;

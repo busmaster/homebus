@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "moduleservice.h"
+#include "statusled.h"
+
 #include <QProcess>
 #include <iostream>
 
@@ -60,6 +62,9 @@ MainWindow::MainWindow(QWidget *parent) :
         roomHumidityIsAvailable = false;
     }
 
+    statusLed = new statusled(this);
+    statusLed->set_state(statusled::eOff);
+
     cycTimer = new QTimer(this);
     connect(cycTimer, SIGNAL(timeout()), this, SLOT(cycTimerEvent()));
     cycTimer->start(5000);
@@ -79,6 +84,7 @@ MainWindow::MainWindow(QWidget *parent) :
 }
 
 MainWindow::~MainWindow() {
+
     eventMonitor->kill();
     eventMonitor->waitForFinished();
     delete eventMonitor;
@@ -108,6 +114,9 @@ MainWindow::~MainWindow() {
     if (roomHumidityIsAvailable) {
         roomHumidity->close();
         delete roomHumidity;
+    }
+    if (statusLed) {
+        delete statusLed;
     }
 }
 
@@ -335,6 +344,17 @@ void MainWindow::readStdOut() {
     if (socket_2 != io->socket_2) {
 
 
+    }
+
+    if ((io->egState.sum == 0) &&
+        (io->ogState.sum == 0) &&
+        (io->ugState.sum == 0) &&
+        (io->garageState.sum == 0)) {
+        if (statusLed) statusLed->set_state(statusled::eGreen);
+    } else if (io->garageState.detail.door != 0) {
+        if (statusLed) statusLed->set_state(statusled::eRedBlink);
+    } else {
+        if (statusLed) statusLed->set_state(statusled::eOrange);
     }
 }
 

@@ -100,7 +100,6 @@ void egwindow::onIoStateChanged(void) {
     } else {
         ui->pushButtonLightWohnLese->setStyleSheet("background-color: yellow");
     }
-
 }
 
 int egwindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
