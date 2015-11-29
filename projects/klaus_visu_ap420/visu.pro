@@ -18,14 +18,18 @@ SOURCES += main.cpp\
     iostate.cpp \
     ogwindow.cpp \
     ugwindow.cpp \
-    garagewindow.cpp
+    garagewindow.cpp \
+    moduleservice.cpp \
+    statusled.cpp
 
 HEADERS  += mainwindow.h \
     egwindow.h \
     iostate.h \
     ogwindow.h \
     ugwindow.h \
-    garagewindow.h
+    garagewindow.h \
+    moduleservice.h \
+    statusled.h
 
 FORMS    += \
     mainwindow.ui \

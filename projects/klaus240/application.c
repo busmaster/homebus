@@ -195,7 +195,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_0.04";
+   return "Klaus2_0.05";
 }
 
 /*-----------------------------------------------------------------------------
@@ -263,7 +263,7 @@ eDigOut10  Bad Spiegel
 eDigOut11  Vorzimmer OG
 eDigOut12  Bad Haengelampe
 eDigOut13  Wohn
-eDigOut14  Gang EG
+eDigOut14  Leselampe Wohn
 eDigOut15  Ess
 eDigOut16  Vorraum EG
 eDigOut17  WC EG
@@ -276,7 +276,8 @@ eDigOut23  Arbeit UG
 eDigOut24  Fitness
 eDigOut25  Vorraum UG
 eDigOut26  Technik
-
+eDigOut27  Steckdose Netzwerkverteiler
+eDigOut28  Steckdose Netzwerkverteiler 
 */
 
 void ApplicationPressed1_0(void) {}
@@ -431,7 +432,10 @@ void ApplicationPressed18_0(void) {
    }
 }
 void ApplicationReleased18_0(void) {}
-void ApplicationPressed18_1(void) {}
+void ApplicationPressed18_1(void) {
+    /* Leselampe Wohn */
+    DigOutToggle(eDigOut14);
+}
 void ApplicationReleased18_1(void) {}
 
 static void StiegeOben(void) {
@@ -569,10 +573,7 @@ void ApplicationPressed25_1(void) {
 }
 void ApplicationReleased25_1(void) {}
 
-void ApplicationPressed26_0(void) {
-   /* Gang EG */
-   DigOutToggle(eDigOut14);
-}
+void ApplicationPressed26_0(void) {}
 void ApplicationReleased26_0(void) {}
 void ApplicationPressed26_1(void) {
    /* Ess */
@@ -585,10 +586,7 @@ void ApplicationPressed27_0(void) {
    DigOutToggle(eDigOut16);
 }
 void ApplicationReleased27_0(void) {}
-void ApplicationPressed27_1(void) {
-   /* Gang EG */
-   DigOutToggle(eDigOut14);
-}
+void ApplicationPressed27_1(void) {}
 void ApplicationReleased27_1(void) {}
 
 void ApplicationPressed28_0(void) {}

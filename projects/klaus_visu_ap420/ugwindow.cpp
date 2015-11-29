@@ -1,5 +1,8 @@
+#include <stdio.h>
+#include <stdint.h>
 #include "ugwindow.h"
 #include "ui_ugwindow.h"
+#include "moduleservice.h"
 
 ugwindow::ugwindow(QWidget *parent, ioState *state) :
     QDialog(parent),
@@ -8,7 +11,7 @@ ugwindow::ugwindow(QWidget *parent, ioState *state) :
     io = state;
     isVisible = false;
     connect(parent, SIGNAL(ioChanged(void)), this, SLOT(onIoStateChanged(void)));
-    modulservice = new QProcess;
+    connect(this, SIGNAL(serviceCmd(const char *)), parent, SLOT(onSendServiceCmd(const char *)));
 }
 
 ugwindow::~ugwindow() {
@@ -70,122 +73,110 @@ void ugwindow::onIoStateChanged(void) {
 
 }
 
+int ugwindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
+    size_t i;
+    int len;
+
+    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
+
+    for (i = 0; i < stateLen; i++) {
+        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
+    }
+    return len;
+}
+
 void ugwindow::on_pushButtonLightStiege_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->ugState.detail.lightStiege == 0) {
-        doState[22 * 2] = '3'; // on
+        doState[22] = 3; // on
     } else {
-        doState[22 * 2] = '2'; // off
+        doState[22] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightStiege->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void ugwindow::on_pushButtonLightVorraum_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->ugState.detail.lightVorraum == 0) {
-        doState[25 * 2] = '3'; // on
+        doState[25] = 3; // on
     } else {
-        doState[25 * 2] = '2'; // off
+        doState[25] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightVorraum->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void ugwindow::on_pushButtonLightTechnik_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->ugState.detail.lightTechnik == 0) {
-        doState[26 * 2] = '3'; // on
+        doState[26] = 3; // on
     } else {
-        doState[26 * 2] = '2'; // off
+        doState[26] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightTechnik->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void ugwindow::on_pushButtonLightLager_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->ugState.detail.lightLager == 0) {
-        doState[21 * 2] = '3'; // on
+        doState[21] = 3; // on
     } else {
-        doState[21 * 2] = '2'; // off
+        doState[21] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightLager->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void ugwindow::on_pushButtonLightFitness_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->ugState.detail.lightFitness == 0) {
-        doState[24 * 2] = '3'; // on
+        doState[24] = 3; // on
     } else {
-        doState[24 * 2] = '2'; // off
+        doState[24] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightFitness->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }
 
 void ugwindow::on_pushButtonLightArbeit_pressed() {
-    char command[250];
-    char doState[100];
-    int i;
-    strcpy(command, "/root/modulservice -c /dev/hausbus1 -a 240 -setvaldo31_do ");
-    for (i = 0; i < 31; i++) {
-        doState[i * 2] = '0';
-        doState[i * 2 + 1] = ' ';
-    }
-    doState[i * 2] = '\0';
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
     if (io->ugState.detail.lightArbeit == 0) {
-        doState[23 * 2] = '3'; // on
+        doState[23] = 3; // on
     } else {
-        doState[23 * 2] = '2'; // off
+        doState[23] = 2; // off
     }
-    strcat(command, doState);
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightArbeit->setStyleSheet("background-color: grey");
-    modulservice->start((QString)command);
+
+    emit serviceCmd(command);
 }

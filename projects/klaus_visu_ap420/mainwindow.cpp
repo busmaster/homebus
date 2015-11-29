@@ -1,5 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "moduleservice.h"
+#include "statusled.h"
+
 #include <QProcess>
 #include <iostream>
 
@@ -8,8 +11,7 @@
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow)
-{
+    ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
     backlightIsAvailable =  false;
@@ -44,19 +46,24 @@ MainWindow::MainWindow(QWidget *parent) :
     if (roomTemperature && roomTemperature->exists()) {
         roomTemperatureIsAvailable = roomTemperature->open(QIODevice::ReadOnly);
         if (roomTemperatureIsAvailable) {
-            QByteArray line = roomTemperature->readLine();
-            ui->temperature->setText((QString)line);
+            roomTemperatureStr = new QString();
         }
+    } else {
+        roomTemperatureIsAvailable = false;
     }
 
     roomHumidity = new QFile("/sys/class/hwmon/hwmon3/humidity1_input");
     if (roomHumidity && roomHumidity->exists()) {
         roomHumidityIsAvailable = roomHumidity->open(QIODevice::ReadOnly);
         if (roomHumidityIsAvailable) {
-            QByteArray line = roomHumidity->readLine();
-            ui->humidity->setText((QString)line);
+            roomHumidityStr = new QString();
         }
+    } else {
+        roomHumidityIsAvailable = false;
     }
+
+    statusLed = new statusled(this);
+    statusLed->set_state(statusled::eOff);
 
     cycTimer = new QTimer(this);
     connect(cycTimer, SIGNAL(timeout()), this, SLOT(cycTimerEvent()));
@@ -68,16 +75,24 @@ MainWindow::MainWindow(QWidget *parent) :
 
     InitEventMonitor();
 
+    mservice = new moduleservice;
+
     uiEg = new egwindow(this, io);
     uiOg = new ogwindow(this, io);
     uiUg = new ugwindow(this, io);
     uiGarage = new garagewindow(this, io);
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
+
     eventMonitor->kill();
     eventMonitor->waitForFinished();
+    delete eventMonitor;
+
+    mservice->command("-exit\n");
+    mservice->waitForFinished();
+    delete mservice;
+
     delete ui;
     delete uiEg;
     delete uiOg;
@@ -100,10 +115,12 @@ MainWindow::~MainWindow()
         roomHumidity->close();
         delete roomHumidity;
     }
+    if (statusLed) {
+        delete statusLed;
+    }
 }
 
-void MainWindow::scrTimerEvent()
-{
+void MainWindow::scrTimerEvent() {
     screensaverOn = true;
     if (backlightIsAvailable) {
         backlightBrightness->write("0");
@@ -119,18 +136,24 @@ void MainWindow::cycTimerEvent() {
 
     if (roomTemperatureIsAvailable) {
         roomTemperature->seek(0);
-        QByteArray line = roomTemperature->readLine();
-        ui->temperature->setText((QString)line);
+        roomTemperatureStr->clear();
+        roomTemperatureStr->append(roomTemperature->readLine());
+        roomTemperatureStr->insert(roomTemperatureStr->size() - 4, '.');
+        roomTemperatureStr->chop(3);
+        roomTemperatureStr->append(" °C");
+        ui->temperature->setText(*roomTemperatureStr);
     }
     if (roomHumidityIsAvailable) {
         roomHumidity->seek(0);
-        QByteArray line = roomHumidity->readLine();
-        ui->humidity->setText((QString)line);
+        roomHumidityStr->clear();
+        roomHumidityStr->append(roomHumidity->readLine());
+        roomHumidityStr->chop(4);
+        roomHumidityStr->append(" %rF");
+        ui->humidity->setText(*roomHumidityStr);
     }
 }
 
-bool MainWindow::eventFilter(QObject *obj, QEvent *event)
-{
+bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
    obj = obj;
 
    if (event->type() == QEvent::MouseButtonPress)
@@ -161,13 +184,21 @@ void MainWindow::InitEventMonitor(void) {
     connect(eventMonitor, SIGNAL(started()), this, SLOT(onStarted()));
     connect(eventMonitor, SIGNAL(finished(int)), this, SLOT(onFinished(int)));
 
-//    QString program = "/home/germana/Oeffentlich/Hausbus-git_working/tools/eventmonitor/bin/eventmonitor";
-    QString program = "/root/eventmonitor";
+#ifdef AP420
+    QString program = "/root/git/homebus/tools/eventmonitor/bin/eventmonitor";
+#else
+    QString program = "/home/germana/Oeffentlich/git/homebus/tools/eventmonitor/bin/eventmonitor";
+#endif
     QStringList arguments;
     arguments << "-c" << "/dev/hausbus0" << "-a" << "250";
 
     eventState = eEsWaitForStart;
     eventMonitor->start(program, arguments);
+}
+
+void MainWindow::onSendServiceCmd(const char *pCmd) {
+
+    mservice->command(pCmd);
 }
 
 void MainWindow::readStdOut() {
@@ -180,19 +211,24 @@ void MainWindow::readStdOut() {
     quint32 ogSum = io->ogState.sum;
     quint32 ugSum = io->ugState.sum;
     quint32 garageSum = io->garageState.sum;
+    bool    socket_1 = io->socket_1;
+    bool    socket_2 = io->socket_1;
 
     for (i = 0; i < ev_lines.size(); i++) {
         if (qstrcmp(ev_lines[i], "event address 240 device type DO31") == 0) {
-           eventState = eEsWaitForDo240;
-           continue;
+            eventState = eEsWaitForDO31_240_Do;
+            continue;
         } else if (qstrcmp(ev_lines[i], "event address 241 device type DO31") == 0) {
-           eventState = eEsWaitForDo241;
-           continue;
+            eventState = eEsWaitForDO31_241_Do;
+            continue;
+        } else if (qstrcmp(ev_lines[i], "event address 36 device type SW8") == 0) {
+            eventState = eEsWaitForSW8_1;
+            continue;
         }
         switch (eventState) {
         case eEsWaitForStart:
             break;
-        case eEsWaitForDo240:
+        case eEsWaitForDO31_240_Do:
 //            std::cout << "do 240: " << ev_lines[i].constData() << std::endl;
             (ev_lines[i].at(0) == '0')  ? io->ogState.detail.lightStiegePwr = 0  : io->ogState.detail.lightStiegePwr = 1;
             (ev_lines[i].at(1) == '0')  ? io->ogState.detail.lightStiege1 = 0    : io->ogState.detail.lightStiege1 = 1;
@@ -208,7 +244,7 @@ void MainWindow::readStdOut() {
             (ev_lines[i].at(11) == '0') ? io->ogState.detail.lightVorraum = 0    : io->ogState.detail.lightVorraum = 1;
             (ev_lines[i].at(12) == '0') ? io->ogState.detail.lightBad = 0        : io->ogState.detail.lightBad = 1;
             (ev_lines[i].at(13) == '0') ? io->egState.detail.lightWohn = 0       : io->egState.detail.lightWohn = 1;
-            (ev_lines[i].at(14) == '0') ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
+            (ev_lines[i].at(14) == '0') ? io->egState.detail.lightWohnLese = 0   : io->egState.detail.lightWohnLese = 1;
             (ev_lines[i].at(15) == '0') ? io->egState.detail.lightEss = 0        : io->egState.detail.lightEss = 1;
             (ev_lines[i].at(16) == '0') ? io->egState.detail.lightVorraum = 0    : io->egState.detail.lightVorraum = 1;
             (ev_lines[i].at(17) == '0') ? io->egState.detail.lightWC = 0         : io->egState.detail.lightWC = 1;
@@ -220,29 +256,36 @@ void MainWindow::readStdOut() {
             (ev_lines[i].at(24) == '0') ? io->ugState.detail.lightFitness = 0    : io->ugState.detail.lightFitness = 1;
             (ev_lines[i].at(25) == '0') ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum  = 1;
             (ev_lines[i].at(26) == '0') ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
-            eventState = eEsWaitForSh240;
+            (ev_lines[i].at(27) == '0') ? io->socket_1 = false                   : io->socket_1 = true;
+            (ev_lines[i].at(28) == '0') ? io->socket_2 = false                   : io->socket_2 = true;
+            eventState = eEsWaitForDO31_240_Sh;
             break;
-        case eEsWaitForDo241:
+        case eEsWaitForDO31_241_Do:
 //            std::cout << "do 241: " << ev_lines[i].constData() << std::endl;
             (ev_lines[i].at(24) == '0') ? io->egState.detail.lightSpeis = 0      : io->egState.detail.lightSpeis = 1;
+            (ev_lines[i].at(25) == '0') ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
             (ev_lines[i].at(26) == '0') ? io->egState.detail.lightArbeit = 0     : io->egState.detail.lightArbeit = 1;
             (ev_lines[i].at(27) == '0') ? io->ogState.detail.lightAnna = 0       : io->ogState.detail.lightAnna = 1;
             (ev_lines[i].at(28) == '0') ? io->ogState.detail.lightSeverin = 0    : io->ogState.detail.lightSeverin = 1;
             (ev_lines[i].at(29) == '0') ? io->ogState.detail.lightWC = 0         : io->ogState.detail.lightWC = 1;
             (ev_lines[i].at(30) == '0') ? io->egState.detail.lightKuecheWand = 0 : io->egState.detail.lightKuecheWand = 1;
-            eventState = eEsWaitForSh241;
+            eventState = eEsWaitForDO31_241_Sh;
             break;
-        case eEsWaitForSh240:
+        case eEsWaitForDO31_240_Sh:
 //            std::cout << "sh 240: " << ev_lines[i].constData() << std::endl;
             eventState = eEsWaitForStart;
             break;
-        case eEsWaitForSh241:
+        case eEsWaitForDO31_241_Sh:
 //            std::cout << "sh 241: " << ev_lines[i].constData() << std::endl;
+            eventState = eEsWaitForStart;
+            break;
+        case eEsWaitForSW8_1:
+//            std::cout << "sw8 1: " << ev_lines[i].constData() << std::endl;
+            (ev_lines[i].at(0) == '0') ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
             eventState = eEsWaitForStart;
             break;
         }
     }
-//    ui->textBrowser->append(ev);
 
     if ((egSum != io->egState.sum) ||
         (ogSum != io->ogState.sum) ||
@@ -282,9 +325,36 @@ void MainWindow::readStdOut() {
         if (io->garageState.sum == 0) {
             ui->pushButtonGarage->setStyleSheet("background-color: green");
         } else {
-            ui->pushButtonGarage->setStyleSheet("background-color: yellow");
+            if (io->garageState.detail.door == 0) {
+                ui->pushButtonGarage->setStyleSheet("background-color: yellow");
+            } else {
+                ui->pushButtonGarage->setStyleSheet("background-color: red");
+            }
         }
         ui->pushButtonGarage->update();
+    }
+
+    if (socket_1 != io->socket_1) {
+        if (io->socket_1 == 0) {
+            ui->pushButtonInternet->setStyleSheet("background-color: green");
+        } else {
+            ui->pushButtonInternet->setStyleSheet("background-color: yellow");
+        }
+    }
+    if (socket_2 != io->socket_2) {
+
+
+    }
+
+    if ((io->egState.sum == 0) &&
+        (io->ogState.sum == 0) &&
+        (io->ugState.sum == 0) &&
+        (io->garageState.sum == 0)) {
+        if (statusLed) statusLed->set_state(statusled::eGreen);
+    } else if (io->garageState.detail.door != 0) {
+        if (statusLed) statusLed->set_state(statusled::eRedBlink);
+    } else {
+        if (statusLed) statusLed->set_state(statusled::eOrange);
     }
 }
 
@@ -310,4 +380,32 @@ void MainWindow::on_pushButtonUG_clicked() {
 
 void MainWindow::on_pushButtonGarage_clicked() {
     uiGarage->show();
+}
+
+int MainWindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
+    size_t i;
+    int len;
+
+    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
+
+    for (i = 0; i < stateLen; i++) {
+        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
+    }
+    return len;
+}
+
+void MainWindow::on_pushButtonInternet_pressed() {
+    char    command[100];
+    uint8_t doState[31];
+
+    memset(doState, 0, sizeof(doState));
+    if (io->socket_1) {
+        doState[27] = 2; // on
+    } else {
+        doState[27] = 3; // off
+    }
+    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
+    ui->pushButtonInternet->setStyleSheet("background-color: grey");
+
+    onSendServiceCmd(command);
 }

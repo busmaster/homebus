@@ -3,8 +3,7 @@
 
 #include <QObject>
 
-class ioState : public QObject
-{
+class ioState : public QObject {
     Q_OBJECT
 public:
     explicit ioState(QObject *parent = 0);
@@ -22,6 +21,7 @@ public:
             int lightKuecheWand : 1;
             int lightArbeit     : 1;
             int lightTerrasse   : 1;
+            int lightWohnLese   : 1;
         } detail;
     } egState;
     union {
@@ -59,8 +59,14 @@ public:
         quint32 sum;
         struct {
             int light           : 1;
+            int door            : 1;
         } detail;
     } garageState;
+
+    /* switchable sockets Technik */
+    bool socket_1;
+    bool socket_2;
+
 };
 
 #endif // IOSTATE_H

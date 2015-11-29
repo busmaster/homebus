@@ -6,29 +6,35 @@
 #include <iostream>
 #include <QTimer>
 #include <QFile>
+#include <QString>
 
 #include "egwindow.h"
 #include "ogwindow.h"
 #include "ugwindow.h"
 #include "garagewindow.h"
 #include "iostate.h"
+#include "moduleservice.h"
+#include "statusled.h"
 
 namespace Ui {
 class MainWindow;
 }
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     bool eventFilter(QObject *obj, QEvent *event);
-    void InitEventMonitor(void);
+
+    statusled *statusLed;
 
 signals:
     void ioChanged(void);
+
+public slots:
+    void onSendServiceCmd(const char *cmd);
 
 private slots:
     void readStdOut();
@@ -40,8 +46,13 @@ private slots:
     void on_pushButtonOG_clicked();
     void on_pushButtonUG_clicked();
     void on_pushButtonGarage_clicked();
+    void on_pushButtonInternet_pressed();
 
 private:
+    void InitEventMonitor(void);
+
+    int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
+
     Ui::MainWindow *ui;
     egwindow *uiEg;
     ogwindow *uiOg;
@@ -61,19 +72,24 @@ private:
 
     QFile *roomTemperature;
     bool roomTemperatureIsAvailable;
+    QString *roomTemperatureStr;
+
     QFile *roomHumidity;
     bool roomHumidityIsAvailable;
+    QString *roomHumidityStr;
 
     ioState *io;
 
     enum {
         eEsWaitForStart,
-        eEsWaitForDo240,
-        eEsWaitForDo241,
-        eEsWaitForSh240,
-        eEsWaitForSh241
+        eEsWaitForDO31_240_Do,
+        eEsWaitForDO31_241_Do,
+        eEsWaitForDO31_240_Sh,
+        eEsWaitForDO31_241_Sh,
+        eEsWaitForSW8_1
     } eventState;
 
+    moduleservice *mservice;
 };
 
 #endif // MAINWINDOW_H
