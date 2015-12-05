@@ -44,20 +44,16 @@ MainWindow::MainWindow(QWidget *parent) :
     // cyclic timer for measurement display
     roomTemperature = new QFile("/sys/class/hwmon/hwmon2/temp1_input");
     if (roomTemperature && roomTemperature->exists()) {
-        roomTemperatureIsAvailable = roomTemperature->open(QIODevice::ReadOnly);
-        if (roomTemperatureIsAvailable) {
-            roomTemperatureStr = new QString();
-        }
+        roomTemperatureIsAvailable = true;
+        roomTemperatureStr = new QString();
     } else {
         roomTemperatureIsAvailable = false;
     }
 
     roomHumidity = new QFile("/sys/class/hwmon/hwmon3/humidity1_input");
     if (roomHumidity && roomHumidity->exists()) {
-        roomHumidityIsAvailable = roomHumidity->open(QIODevice::ReadOnly);
-        if (roomHumidityIsAvailable) {
-            roomHumidityStr = new QString();
-        }
+        roomHumidityIsAvailable = true;
+        roomHumidityStr = new QString();
     } else {
         roomHumidityIsAvailable = false;
     }
@@ -135,20 +131,22 @@ void MainWindow::scrTimerEvent() {
 void MainWindow::cycTimerEvent() {
 
     if (roomTemperatureIsAvailable) {
-        roomTemperature->seek(0);
+        roomTemperature->open(QIODevice::ReadOnly);
         roomTemperatureStr->clear();
         roomTemperatureStr->append(roomTemperature->readLine());
         roomTemperatureStr->insert(roomTemperatureStr->size() - 4, '.');
         roomTemperatureStr->chop(3);
         roomTemperatureStr->append(" °C");
+        roomTemperature->close();
         ui->temperature->setText(*roomTemperatureStr);
     }
     if (roomHumidityIsAvailable) {
-        roomHumidity->seek(0);
+        roomHumidity->open(QIODevice::ReadOnly);
         roomHumidityStr->clear();
         roomHumidityStr->append(roomHumidity->readLine());
         roomHumidityStr->chop(4);
         roomHumidityStr->append(" %rF");
+        roomHumidity->close();
         ui->humidity->setText(*roomHumidityStr);
     }
 }
@@ -359,11 +357,11 @@ void MainWindow::readStdOut() {
 }
 
 void MainWindow::onStarted(){
-    std::cout << "Process started" << std::endl;
+    std::cout << "eventmonitor started" << std::endl;
 }
 
 void MainWindow::onFinished(int sig) {
-    std::cout << "Process finished: " << sig << std::endl;
+    std::cout << "eventmonitor finished: " << sig << std::endl;
 }
 
 void MainWindow::on_pushButtonEG_clicked() {
