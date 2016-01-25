@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
+#include <unistd.h>
 #ifdef WIN32
 #include <conio.h>
 #include <windows.h>
@@ -62,6 +62,7 @@
 #define OP_SET_VALUE_SW16                   11
 #define OP_INFO                             12
 #define OP_EXIT                             13
+#define OP_CLOCK_CALIB                      14
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -91,6 +92,7 @@ static bool ModulWriteEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen
 static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf);
 static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pBuf);
 static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf);
+static bool ModuleClockCalib(uint8_t address, uint8_t calibAddress);
 static int  GetOperation(int argc, char *argv[], int *pArgi);
 
 #ifndef WIN32
@@ -448,6 +450,12 @@ int main(int argc, char *argv[]) {
             } else {
                 printf("ERROR\r\n");
             }
+            break;
+        case OP_CLOCK_CALIB:
+            ret = ModuleClockCalib(moduleAddr, atoi(argv[argi]));
+            if (ret) {
+                printf("OK\r\n");
+            }            
             break;
         case OP_EXIT:
             printf("OK\r\n");
@@ -935,6 +943,105 @@ static bool ModulWriteEeprom(
     }
 }
 
+
+
+/*-----------------------------------------------------------------------------
+*  clock calibration
+*/
+static bool ClockCalib(
+    uint8_t address,
+    uint8_t calibAddress,
+    TClockCalibCommand command,
+    TClockCalibState *pState,
+    uint8_t *pStateAddress
+    ) {
+
+    TBusTelegram    txBusMsg;
+    uint8_t         ret;
+    unsigned long   startTimeMs;
+    unsigned long   actualTimeMs;
+    TBusTelegram    *pBusMsg;
+    bool            responseOk = false;
+    bool            timeOut = false;
+
+    txBusMsg.type = eBusDevReqClockCalib;
+    txBusMsg.senderAddr = MY_ADDR;
+    txBusMsg.msg.devBus.receiverAddr = address;
+    txBusMsg.msg.devBus.x.devReq.clockCalib.address = calibAddress;
+    txBusMsg.msg.devBus.x.devReq.clockCalib.command = command;
+
+    BusSend(&txBusMsg);
+    startTimeMs = GetTickCount();
+    do {
+        actualTimeMs = GetTickCount();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            pBusMsg = BusMsgBufGet();
+            if ((pBusMsg->type == eBusDevRespClockCalib) &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR) &&
+                (pBusMsg->senderAddr == address)) {
+                *pState = pBusMsg->msg.devBus.x.devResp.clockCalib.state;
+                *pStateAddress = pBusMsg->msg.devBus.x.devResp.clockCalib.address;
+                responseOk = true;
+            }
+        } else {
+            if ((actualTimeMs - startTimeMs) > 20000) {
+                timeOut = true;
+            }
+        }
+    } while (!responseOk && !timeOut);
+
+    return responseOk;
+}
+
+static bool ModuleClockCalib(
+    uint8_t moduleAddress,
+    uint8_t calibAddress
+    ) {
+    bool rc = false;
+    TClockCalibState       clockCalibState;
+    uint8_t                stateAddress;
+
+    if (!ClockCalib(moduleAddress, calibAddress, eBusClockCalibCommandGetState, &clockCalibState, &stateAddress)) {
+        return false;
+    }
+
+    if (clockCalibState == eBusClockCalibStateBusy) {
+        printf("calibrating %d\r\n", stateAddress);
+        return true;
+    } else if (clockCalibState != eBusClockCalibStateIdle) {
+        if (!ClockCalib(moduleAddress, calibAddress, eBusClockCalibCommandIdle, &clockCalibState, &stateAddress)) {
+            printf("command idle error\r\n");
+            return false;
+        }
+    }
+    
+    if (!ClockCalib(moduleAddress, calibAddress, eBusClockCalibCommandCalibrate, &clockCalibState, &stateAddress)) {
+        printf("command calibrate error\r\n");
+        return false;
+    }
+
+    do {
+        if (clockCalibState == eBusClockCalibStateBusy) {
+#ifdef WIN32
+            Sleep(300);
+#else
+            usleep(300000); 
+#endif
+        } else {
+            if (clockCalibState == eBusClockCalibStateSuccess) {
+                rc = true;
+            } else {
+                printf("command calibrate result %d\r\n", clockCalibState);
+            }
+            break;
+        }
+    } while (ClockCalib(moduleAddress, calibAddress, eBusClockCalibCommandGetState, &clockCalibState, &stateAddress));
+
+    return rc;
+}
+
+
 #ifndef WIN32
 static unsigned long GetTickCount(void) {
 
@@ -1024,6 +1131,13 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             }
         } else if (strcmp(argv[i], "-info") == 0) {
             operation = OP_INFO;
+        } else if (strcmp(argv[i], "-clockcalib") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_CLOCK_CALIB;
+            } else {
+                break;
+            }
         } else if (strcmp(argv[i], "-exit") == 0) {
             operation = OP_EXIT;
         }
@@ -1049,7 +1163,8 @@ static void PrintUsage(void) {
     printf("                              -setvaldo31_sh sh0 .. sh14     |\r\n");
     printf("                              -setvalsw8 do0 .. do7          |\r\n");
     printf("                              -setvalsw16 led0 .. led7       |\r\n");
-    printf("                              -info                           \r\n");
+    printf("                              -info                          |\r\n");
+    printf("                              -clockcalib addr               |\r\n");
     printf("                              -exit)                          \r\n");
     printf("-c port: com1 com2 ..\r\n");
     printf("-a addr: addr = address of module\r\n");
@@ -1067,5 +1182,6 @@ static void PrintUsage(void) {
     printf("-setvalsw8 do0 .. do7: set value for dig out\r\n");
     printf("-setvalsw16 led0 .. led7: set value for led\r\n");
     printf("-info: read type and version string from modul\r\n");
+    printf("-clockcalib: clock calibration\r\n");
     printf("-exit: nop operation, exit server\r\n");
 }
