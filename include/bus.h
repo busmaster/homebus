@@ -125,25 +125,30 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoWind;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoSw8Cal;
+
 typedef enum {
-   eBusDevTypeDo31 = 0x00,
-   eBusDevTypeSw8  = 0x01,
-   eBusDevTypeLum  = 0x02,
-   eBusDevTypeLed  = 0x03,
-   eBusDevTypeSw16 = 0x04,
-   eBusDevTypeWind = 0x05
+   eBusDevTypeDo31   = 0x00,
+   eBusDevTypeSw8    = 0x01,
+   eBusDevTypeLum    = 0x02,
+   eBusDevTypeLed    = 0x03,
+   eBusDevTypeSw16   = 0x04,
+   eBusDevTypeWind   = 0x05,
+   eBusDevTypeSw8Cal = 0x06
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {
    TBusDevType  devType;
    uint8_t  version[BUS_DEV_INFO_VERSION_LEN];
    union {
-      TBusDevInfoDo31 do31;
-      TBusDevInfoSw8  sw8;
-      TBusDevInfoLum  lum;
-      TBusDevInfoLed  led;
-      TBusDevInfoSw16 sw16;
-      TBusDevInfoWind wind;
+      TBusDevInfoDo31   do31;
+      TBusDevInfoSw8    sw8;
+      TBusDevInfoLum    lum;
+      TBusDevInfoLed    led;
+      TBusDevInfoSw16   sw16;
+      TBusDevInfoWind   wind;
+      TBusDevInfoSw8Cal sw8Cal;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
 
@@ -350,6 +355,49 @@ typedef struct {
    } actualValue; /* same as request */
 } __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
 
+typedef enum {
+   eBusClockCalibCommandCalibrate = 0,
+   eBusClockCalibCommandIdle = 1,
+   eBusClockCalibCommandGetState = 2
+} __attribute__ ((packed)) TClockCalibCommand;
+
+typedef struct {
+    TClockCalibCommand command;
+    uint8_t address; /* address of device to calibrate */
+} __attribute__ ((packed)) TBusDevReqClockCalib;        /* type 0x23 */
+
+typedef enum {
+    eBusClockCalibStateIdle = 0,
+    eBusClockCalibStateSuccess = 1,
+    eBusClockCalibStateBusy = 2,
+    eBusClockCalibStateError = 3,
+    eBusClockCalibStateInternalError = 4,
+    eBusClockCalibStateInvalidCommand = 5
+} __attribute__ ((packed)) TClockCalibState;
+
+typedef struct {
+    TClockCalibState state;
+    uint8_t          address;
+} __attribute__ ((packed)) TBusDevRespClockCalib;       /* type 0x24 */
+
+typedef enum {
+   eBusDoClockCalibInit = 0,
+   eBusDoClockCalibContiune = 1
+} __attribute__ ((packed)) TDoClockCalibCommand;
+
+typedef struct {
+    TDoClockCalibCommand command;
+} __attribute__ ((packed)) TBusDevReqDoClockCalib;        /* type 0x25 */
+
+typedef enum {
+    eBusDoClockCalibStateSuccess = 0,
+    eBusDoClockCalibStateContiune = 1,
+    eBusDoClockCalibStateError = 2
+} __attribute__ ((packed)) TDoClockCalibState;
+
+typedef struct {
+    TDoClockCalibState state;
+} __attribute__ ((packed)) TBusDevRespDoClockCalib;       /* type 0x26 */
 
 typedef union {
    TBusDevReqReboot           reboot;
@@ -368,6 +416,8 @@ typedef union {
    TBusDevReqSetAddr          setAddr;
    TBusDevReqEepromRead       readEeprom;
    TBusDevReqEepromWrite      writeEeprom;
+   TBusDevReqClockCalib       clockCalib;
+   TBusDevReqDoClockCalib     doClockCalib;
 } __attribute__ ((packed)) TUniDevReq;
 
 typedef union {
@@ -386,6 +436,8 @@ typedef union {
    TBusDevRespSetAddr          setAddr;
    TBusDevRespEepromRead       readEeprom;
    TBusDevRespEepromWrite      writeEeprom;
+   TBusDevRespClockCalib       clockCalib;
+   TBusDevRespDoClockCalib     doClockCalib;
 } __attribute__ ((packed)) TUniDevResp;
 
 typedef struct {
@@ -438,6 +490,10 @@ typedef enum {
    eBusDevRespActualValue =              0x20,
    eBusDevReqActualValueEvent =          0x21,
    eBusDevRespActualValueEvent =         0x22,
+   eBusDevReqClockCalib =                0x23,
+   eBusDevRespClockCalib =               0x24,
+   eBusDevReqDoClockCalib =              0x25,
+   eBusDevRespDoClockCalib =             0x26,
    eBusDevStartup =                      0xff
 } __attribute__ ((packed)) TBusMsgType;
 
@@ -456,9 +512,13 @@ typedef struct {
 *  Functions
 */
 void           BusInit(int sioHandle);
+void           BusExit(int sioHandle);
 uint8_t        BusCheck(void);
 TBusTelegram   *BusMsgBufGet(void);
 uint8_t        BusSend(TBusTelegram *pMsg);
+uint8_t        BusSendToBuf(TBusTelegram *pMsg);
+uint8_t        BusSendToBufRaw(uint8_t *pRawData, uint8_t len);
+uint8_t        BusSendBuf(void);
 
 #ifdef __cplusplus
 }

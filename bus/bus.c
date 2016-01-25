@@ -48,7 +48,7 @@
 #define MSG_BASE_SIZE2  MSG_BASE_SIZE1 + member_sizeof(TBusDev, receiverAddr)
 
 // max number of length options of variable length telegrams
-#define MAX_NUM_VAR_LEN  6
+#define MAX_NUM_VAR_LEN  7
 
 
 #define L1_WAIT_FOR_STX      0
@@ -86,7 +86,7 @@ typedef struct {
 */
 /* buffer for bus telegram just receiving/just received */
 static TBusTelegram sRxBuffer;
-static int sSioHandle;
+static int sSioHandle = -1;;
 
 static TVarLenMsg sRespInfoSize = {
    MSG_BASE_SIZE2,
@@ -114,8 +114,11 @@ static TVarLenMsg sRespInfoSize = {
       {eBusDevTypeWind, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
                         member_sizeof(TBusDevRespInfo, version) +
-                        sizeof(TBusDevInfoWind)}
-
+                        sizeof(TBusDevInfoWind)},
+      {eBusDevTypeSw8Cal, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespInfo, devType) +
+                        member_sizeof(TBusDevRespInfo, version) +
+                        sizeof(TBusDevInfoSw8Cal)}
    }
 };
 
@@ -125,6 +128,7 @@ static TVarLenMsg sReqSetStateSize = {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetState, devType) +
                         sizeof(TBusDevSetStateDo31)},
+      {0,               0},
       {0,               0},
       {0,               0},
       {0,               0},
@@ -145,6 +149,7 @@ static TVarLenMsg sRespGetStateSize = {
       {0,               0},
       {0,               0},
       {0,               0},
+      {0,               0},
       {0,               0}
    }
 };
@@ -161,6 +166,7 @@ static TVarLenMsg sReqSetValueSize = {
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetValue, devType) +
                         sizeof(TBusDevSetValueSw16)},
+      {0,               0},
       {0,               0},
       {0,               0},
       {0,               0}
@@ -187,7 +193,8 @@ static TVarLenMsg sRespActualValueSize = {
                         sizeof(TBusDevActualValueSw16)},
       {eBusDevTypeWind, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValue, devType) +
-                        sizeof(TBusDevActualValueWind)}
+                        sizeof(TBusDevActualValueWind)},
+      {0,               0}                        
    }
 };
 
@@ -211,7 +218,8 @@ static TVarLenMsg sReqActualValueEventSize = {
                         sizeof(TBusDevActualValueSw16)},
       {eBusDevTypeWind, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqActualValueEvent, devType) +
-                        sizeof(TBusDevActualValueWind)}
+                        sizeof(TBusDevActualValueWind)},
+      {0,               0}
    }
 };
 
@@ -235,7 +243,8 @@ static TVarLenMsg sRespActualValueEventSize = {
                         sizeof(TBusDevActualValueSw16)},
       {eBusDevTypeWind, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValueEvent, devType) +
-                        sizeof(TBusDevActualValueWind)}
+                        sizeof(TBusDevActualValueWind)},
+      {0,               0}                        
    }
 };
 
@@ -278,6 +287,10 @@ static TTelegramSize sTelegramSize[] = {
    { 0,                                                 &sRespActualValueSize     }, // eBusDevRespActualValue
    { 0,                                                 &sReqActualValueEventSize }, // eBusDevReqActualValueEvent
    { 0,                                                 &sRespActualValueEventSize}, // eBusDevRespActualValueEvent
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqClockCalib),     0                         }, // eBusDevReqClockCalib
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespClockCalib),    0                         }, // eBusDevRespClockCalib
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqDoClockCalib),   0                         }, // eBusDevReqDoClockCalib
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespDoClockCalib),  0                         }, // eBusDevRespDoClockCalib
 };
 
 static struct l2State {
@@ -302,6 +315,14 @@ void BusInit(int sioHandle) {
 
    sSioHandle = sioHandle;
    L2StateInit(L2_WAIT_FOR_SENDER_ADDR);
+}
+
+/*----------------------------------------------------------------------------
+*   exit
+*/
+void BusExit(int sioHandle) {
+
+   sSioHandle = -1;
 }
 
 /*-----------------------------------------------------------------------------
@@ -505,7 +526,7 @@ static uint8_t BusDecode(uint8_t numRxChar) {
                         rc = BUS_MSG_OK;
                     } else {
                         rc = BUS_MSG_ERROR;
-                     }
+                    }
                }
             }
             break;
@@ -529,7 +550,7 @@ static uint8_t BusDecode(uint8_t numRxChar) {
 /*-----------------------------------------------------------------------------
 * send bus telegram
 */
-uint8_t BusSend(TBusTelegram *pMsg) {
+uint8_t BusSendToBuf(TBusTelegram *pMsg) {
 
    uint8_t ch;
    uint8_t checkSum = CHECKSUM_START;
@@ -570,13 +591,35 @@ uint8_t BusSend(TBusTelegram *pMsg) {
       checkSum += ch;
    }
    rc = rc && TransmitCharProt(checkSum);
-   rc = rc && SioSendBuffer(sSioHandle);
-
    if (rc) {
        return BUS_SEND_OK;
    } else {
        return BUS_SEND_TX_ERROR;
    }
+}
+
+uint8_t BusSendToBufRaw(uint8_t *pBuf, uint8_t len) {
+    
+    return SioWriteBuffered(sSioHandle, pBuf, len);
+}
+
+uint8_t BusSendBuf(void) {
+    
+    if (SioSendBuffer(sSioHandle)) {
+        return BUS_SEND_OK;
+    } else {
+        return BUS_SEND_TX_ERROR;
+    }
+}
+
+uint8_t BusSend(TBusTelegram *pMsg) {
+    uint8_t rc;
+
+    rc = BusSendToBuf(pMsg);
+    if (rc == BUS_SEND_OK) {
+        rc = BusSendBuf();
+    }
+    return rc;
 }
 
 /*-----------------------------------------------------------------------------
