@@ -92,17 +92,17 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-static TIdleStateFunc                 sIdleFunc = 0;
+static TIdleStateFunc                 sIdleFunc;
 
 static uint8_t                        sRxBuffer[SIO_RX_BUF_SIZE];
-static uint8_t                        sRxBufWrIdx = 0;
-static uint8_t                        sRxBufRdIdx = SIO_RX_BUF_SIZE - 1; /* last index read */
+static uint8_t                        sRxBufWrIdx;
+static uint8_t                        sRxBufRdIdx;
 static uint8_t                        sTxBuffer[SIO_TX_BUF_SIZE];
-static uint8_t                        sTxBufWrIdx = 0;
-static uint8_t                        sTxBufRdIdx = 0;
+static uint8_t                        sTxBufWrIdx;
+static uint8_t                        sTxBufRdIdx;
 static uint8_t                        sTxBufferBuffered[SIO_TX_BUF_SIZE];
-static uint8_t                        sTxBufBufferedPos = 0;
-static TBusTransceiverPowerDownFunc   sBusTransceiverPowerDownFunc = 0;
+static uint8_t                        sTxBufBufferedPos;
+static TBusTransceiverPowerDownFunc   sBusTransceiverPowerDownFunc;
 static TCommState                     sComm;
 
 static uint16_t sRand;
@@ -112,9 +112,11 @@ static uint16_t sRand;
 */
 static uint8_t GetNumTxFreeChar(int handle);
 static void TimerInit(void);
+static void TimerExit(void);
 static void TimerStart(uint16_t delayTicks);
 static void TimerStop(void);
 static void RxStartDetectionInit(void);
+static void RxStartDetectionExit(void);
 
 /*-----------------------------------------------------------------------------
 *  init sio module
@@ -122,6 +124,11 @@ static void RxStartDetectionInit(void);
 void SioInit(void) {
     TimerInit();
     RxStartDetectionInit();
+}
+
+void SioExit(void) {
+    TimerExit();
+    RxStartDetectionExit();
 }
 
 /*-----------------------------------------------------------------------------
@@ -209,9 +216,13 @@ int SioOpen(const char *pPortName,   /* is ignored */
     /* set baud rate */
     UBRR0H = (unsigned char)(ubrr >> 8);
     UBRR0L = (unsigned char)ubrr;
+
+    UCSR0A = 1 << TXC0;
+    UDR0;
+
     if (doubleBr == true) {
         /* double baud rate */
-        UCSR0A = 1 << U2X0;
+        UCSR0A |= 1 << U2X0;
     }
 
     UCSR0C = ucsrc;
@@ -222,11 +233,33 @@ int SioOpen(const char *pPortName,   /* is ignored */
     sComm.txDelayTicks = 0;
     sComm.txStartup = false;
 
+    sIdleFunc = 0;
+    sBusTransceiverPowerDownFunc = 0;
+    sRxBufWrIdx = 0;
+    sRxBufRdIdx = SIO_RX_BUF_SIZE - 1; /* last index read */
+    sTxBufWrIdx = 0;
+    sTxBufRdIdx = 0;
+    sTxBufBufferedPos = 0;
+
     /* enable the receiver und transmitter */
     ucsrb |= (1 << RXEN0) | (1 << RXCIE0) | (1 << TXEN0);
     ucsrb &= ~(1 << UDRIE0);
     UCSR0B = ucsrb;
 
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------
+*  set sio to reset state
+*/
+int SioClose(int handle) {
+    
+    UCSR0B = 0;
+    UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
+    UCSR0A = 1 << TXC0;
+    UBRR0H = 0;
+    UBRR0L = 0;
+    UDR0;
     return 0;
 }
 
@@ -622,6 +655,22 @@ static void TimerInit(void) {
 }
 
 /*-----------------------------------------------------------------------------
+*  reset Timer1
+*/
+static void TimerExit(void) {
+    /* Timer 1 reset state */
+    TIMSK1 = 0;
+    TCCR1A = 0;
+    TCCR1B = 0;
+    TCCR1C = 0;
+    TCNT1 = 0;
+    OCR1A = 0;
+    OCR1B = 0;
+    ICR1 = 0;
+    TIFR1 = TIFR1;
+}
+
+/*-----------------------------------------------------------------------------
 * after delayTicks the timer ISR is called
 */
 static void TimerStart(uint16_t delayTicks) {
@@ -702,6 +751,14 @@ static void RxStartDetectionInit(void) {
     EIFR = 1 < INTF0;
     EIMSK |= 1 << INT0;
 }
+
+static void RxStartDetectionExit(void) {
+
+    EIMSK &= ~(1 << INT0);
+    EIFR = 1 < INTF0;
+    EICRA &= ~(1 << ISC01);
+}
+
 
 ISR(INT0_vect) {
     if (sComm.state == eIdle) {
