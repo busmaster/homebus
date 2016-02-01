@@ -1,0 +1,8 @@
+1) use sudo su
+2) check device with lsusb: e.g. "Bus 005 Device 015: ID 03eb:204b Atmel Corp. LUFA USB to Serial Adapter Project"
+3) switch to bootloader: use a serial port terminal, configure the port (typically /dev/ttyACM0) to 115200/odd/6 bits
+   the device changes to e.g. "Bus 005 Device 016: ID 03eb:2ff4 Atmel Corp." (use lsusb)
+4) erase the firmware: dfu-programmer atmega32u4 erase
+5) program new firmware: dfu-programmer atmega32u4 flash usbif.hex
+6) start the firmware by usb plug off/on or dfu-programmer atmega32u4 start
+7) check the new firmware version with lsusb, e.g. lsusb -v -s 5:17, Device Descriptor/iProduct: LUFA USB-Homebus Adapter 1.00
