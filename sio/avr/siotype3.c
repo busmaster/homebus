@@ -100,7 +100,8 @@ static uint8_t                        sRxBufRdIdx = SIO_RX_BUF_SIZE - 1; /* last
 static uint8_t                        sTxBuffer[SIO_TX_BUF_SIZE];
 static uint8_t                        sTxBufWrIdx = 0;
 static uint8_t                        sTxBufRdIdx = 0;
-static uint8_t                        sTxBufferBuffered[SIO_TX_BUF_SIZE];
+/* interrupt buffer sTxBuffer can be filled up to (SIO_TX_BUF_SIZE - 1) only */
+static uint8_t                        sTxBufferBuffered[SIO_TX_BUF_SIZE - 1];
 static uint8_t                        sTxBufBufferedPos = 0;
 static TBusTransceiverPowerDownFunc   sBusTransceiverPowerDownFunc = 0;
 static TCommState                     sComm;
@@ -115,6 +116,7 @@ static void TimerInit(void);
 static void TimerStart(uint16_t delayTicks);
 static void TimerStop(void);
 static void RxStartDetectionInit(void);
+static uint8_t Write(int handle, uint8_t *pBuf, uint8_t bufSize);
 
 /*-----------------------------------------------------------------------------
 *  init sio module
@@ -247,7 +249,7 @@ void SioSetTransceiverPowerDownFunc(int handle, TBusTransceiverPowerDownFunc btp
 /*-----------------------------------------------------------------------------
 *  write to sio channel tx buffer
 */
-uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
+static uint8_t Write(int handle, uint8_t *pBuf, uint8_t bufSize) {
     uint8_t *pStart;
     uint8_t i;
     uint8_t txFree;
@@ -323,15 +325,15 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
 *  trigger tx of buffer
 */
 bool SioSendBuffer(int handle) {
-    unsigned long bytesWritten;
-    bool          rc;
-    bool          flag;
+    uint8_t bytesWritten;
+    bool    rc;
+    bool    flag;
 
     flag = DISABLE_INT;
 
     if (sComm.state == eIdle) {
         sComm.txRxComparePos = 0;
-        bytesWritten = SioWrite(handle, sTxBufferBuffered, sTxBufBufferedPos);
+        bytesWritten = Write(handle, sTxBufferBuffered, sTxBufBufferedPos);
         if (bytesWritten == sTxBufBufferedPos) {
             rc = true;
         } else {

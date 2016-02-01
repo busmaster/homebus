@@ -75,7 +75,6 @@ void    SioExit(void);
 void    SioRandSeed(uint8_t seed);
 int     SioOpen(const char *pPortName, TSioBaud baud, TSioDataBits dataBits, TSioParity parity, TSioStopBits stopBits, TSioMode mode);
 int     SioClose(int handle);
-uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize);
 uint8_t SioRead(int handle, uint8_t *pBuf, uint8_t bufSize);
 uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize);
 uint8_t SioGetNumRxChar(int handle);

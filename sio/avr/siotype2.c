@@ -164,11 +164,13 @@ typedef struct {
 */
 static uint8_t sRx0Buffer[SIO_RX0_BUF_SIZE];
 static uint8_t sTx0Buffer[SIO_TX0_BUF_SIZE];
-static uint8_t sTx0BufferBuffered[SIO_TX0_BUF_SIZE];
+/* interrupt buffer sTxBuffer can be filled up to (SIO_TX0_BUF_SIZE - 1) only */
+static uint8_t sTx0BufferBuffered[SIO_TX0_BUF_SIZE - 1];
 
 static uint8_t sRx1Buffer[SIO_RX1_BUF_SIZE];
 static uint8_t sTx1Buffer[SIO_TX1_BUF_SIZE];
-static uint8_t sTx1BufferBuffered[SIO_TX1_BUF_SIZE];
+/* interrupt buffer sTxBuffer can be filled up to (SIO_TX1_BUF_SIZE - 1) only */
+static uint8_t sTx1BufferBuffered[SIO_TX1_BUF_SIZE - 1];
 
 static TChanDesc sChan[NUM_CHANNELS];
 
@@ -185,6 +187,7 @@ static void TimerInit(void);
 static void TimerStart(TChanDesc *pChan, uint16_t delayTicks);
 static void TimerStop(TChanDesc *pChan);
 static void RxStartDetectionInit(void);
+static uint8_t Write(int handle, uint8_t *pBuf, uint8_t bufSize);
 
 /*-----------------------------------------------------------------------------
 *  init sio module
@@ -404,7 +407,7 @@ void SioSetTransceiverPowerDownFunc(int handle, TBusTransceiverPowerDownFunc btp
 /*-----------------------------------------------------------------------------
 *  write to sio channel tx buffer
 */
-uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
+static uint8_t Write(int handle, uint8_t *pBuf, uint8_t bufSize) {
     uint8_t *pStart;
     uint8_t i;
     uint8_t txFree;
@@ -487,10 +490,10 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
 *  trigger tx of buffer
 */
 bool SioSendBuffer(int handle) {
-    unsigned long bytesWritten;
-    bool          rc;
-    TChanDesc     *pChan;
-    bool          flag;
+    uint8_t   bytesWritten;
+    bool      rc;
+    TChanDesc *pChan;
+    bool      flag;
 
     RETURN_0_ON_INVALID_HDL(handle);
     pChan = &sChan[handle];
@@ -499,7 +502,7 @@ bool SioSendBuffer(int handle) {
 
     if (pChan->comm.state == eIdle) {
         pChan->comm.txRxComparePos = 0;
-        bytesWritten = SioWrite(handle, pChan->pTxBufBuffered, pChan->txBufBufferedPos);
+        bytesWritten = Write(handle, pChan->pTxBufBuffered, pChan->txBufBufferedPos);
         if (bytesWritten == pChan->txBufBufferedPos) {
             rc = true;
         } else {
