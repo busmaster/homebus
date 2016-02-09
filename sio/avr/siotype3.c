@@ -96,7 +96,7 @@ static TIdleStateFunc                 sIdleFunc = 0;
 
 static uint8_t                        sRxBuffer[SIO_RX_BUF_SIZE];
 static uint8_t                        sRxBufWrIdx = 0;
-static uint8_t                        sRxBufRdIdx = SIO_RX_BUF_SIZE - 1; /* last index read */
+static uint8_t                        sRxBufRdIdx = 0;
 static uint8_t                        sTxBuffer[SIO_TX_BUF_SIZE];
 static uint8_t                        sTxBufWrIdx = 0;
 static uint8_t                        sTxBufRdIdx = 0;

@@ -239,7 +239,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
     sIdleFunc = 0;
     sBusTransceiverPowerDownFunc = 0;
     sRxBufWrIdx = 0;
-    sRxBufRdIdx = SIO_RX_BUF_SIZE - 1; /* last index read */
+    sRxBufRdIdx = 0;
     sTxBufWrIdx = 0;
     sTxBufRdIdx = 0;
     sTxBufBufferedPos = 0;

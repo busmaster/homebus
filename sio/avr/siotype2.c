@@ -364,7 +364,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
 
     pChan->valid = true;
     pChan->rxBufWrIdx = 0;
-    pChan->rxBufRdIdx = pChan->rxBufSize - 1; /* last index read */
+    pChan->rxBufRdIdx = 0;
     pChan->txBufWrIdx = 0;
     pChan->txBufBufferedPos = 0;
     pChan->txBufRdIdx = 0;
