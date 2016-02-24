@@ -1,24 +1,24 @@
 /*
  * bus.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -31,16 +31,16 @@
 
 /*-----------------------------------------------------------------------------
 *  Macros
-*/                                 
+*/
 /* size of buffer for SIO receiving */
 #define BUS_SIO_RX_BUF_SIZE                    10
-                 
+
 /* state machine states for telegram decoding */
 #define WAIT_FOR_STX                           0
 #define WAIT_FOR_ADDR                          1
-#define WAIT_FOR_TYPE                          2      
-#define WAIT_FOR_CHECKSUM                      3        
-#define WAIT_FOR_RECEIVER_ADDR                 4  
+#define WAIT_FOR_TYPE                          2
+#define WAIT_FOR_CHECKSUM                      3
+#define WAIT_FOR_RECEIVER_ADDR                 4
 #define WAIT_FOR_UPDREQ_ADDR_LO                5
 #define WAIT_FOR_UPDREQ_ADDR_HI                6
 #define WAIT_FOR_UPD_DATA                      7
@@ -49,18 +49,18 @@
 #define WAIT_FOR_UPDRESP_TERM                 10
 
 #define STX 0x02
-#define ESC 0x1B             
+#define ESC 0x1B
 
 /* start value for checksum calculation */
-#define CHECKSUM_START   0x55        
+#define CHECKSUM_START   0x55
 
 /* Port D bit 5 controls bus transceiver power down */
 #define BUS_TRANSCEIVER_POWER_DOWN \
    PORTD |= (1 << 5)
-   
+
 #define BUS_TRANSCEIVER_POWER_UP \
    PORTD &= ~(1 << 5)
- 
+
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -69,10 +69,10 @@ typedef void* (* TProtoFunc)(uint8_t ch);
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/                                
+*/
 /* buffer for bus telegram just receiving/just received */
-static TBusTelegram sRxBuffer; 
-static uint8_t sCheckSum; 
+static TBusTelegram sRxBuffer;
+static uint8_t sCheckSum;
 static uint8_t *spData;
 
 /*-----------------------------------------------------------------------------
@@ -93,7 +93,7 @@ static TProtoFunc ProtoWaitForUpdData(uint8_t ch);
 
 static TProtoFunc ProtoMsgOK(uint8_t ch);
 static TProtoFunc ProtoMsgErr(uint8_t ch);
-   
+
 
 /*-----------------------------------------------------------------------------
 *  check for new received bus telegram
@@ -104,7 +104,7 @@ static TProtoFunc ProtoMsgErr(uint8_t ch);
 *              BUS_MSG_ERROR  errorous telegram received (checksum error)
 */
 uint8_t BusCheck(void) {
-                     
+
    static uint8_t ret = BUS_NO_MSG;
    uint8_t        ch;
    uint8_t        retTmp;
@@ -115,7 +115,7 @@ uint8_t BusCheck(void) {
       ret = BusDecode(ch);
       if ((ret == BUS_MSG_ERROR) ||
           (ret == BUS_MSG_OK)) {
-         retTmp = ret; 
+         retTmp = ret;
          ret = BUS_NO_MSG;
          return retTmp;
       }
@@ -125,7 +125,7 @@ uint8_t BusCheck(void) {
 
 /*-----------------------------------------------------------------------------
 * get buffer for telegram
-* buffer is valid when BUS_MSG_OK is returned by BusCheck til next call 
+* buffer is valid when BUS_MSG_OK is returned by BusCheck til next call
 * of BusCheck
 */
 TBusTelegram *BusMsgBufGet(void) {
@@ -134,11 +134,11 @@ TBusTelegram *BusMsgBufGet(void) {
 
 /*-----------------------------------------------------------------------------
 *  state machine for telegram decoding
-*  return codes: 
+*  return codes:
 *              BUS_MSG_OK     telegram received completely
 *              BUS_MSG_RXING  telegram receiving in progress
 *              BUS_MSG_ERROR  errorous telegram received (checksum error)
-*  
+*
 *  unkown telegram types are ignored
 */
 static uint8_t BusDecode(uint8_t ch) {
@@ -149,7 +149,7 @@ static uint8_t BusDecode(uint8_t ch) {
 
    if (sProtoState != (TProtoFunc)ProtoWaitForStx) {
       if (ch == ESC) {
-         sStuffByte = true; 
+         sStuffByte = true;
          return ret;
       } else if (ch == STX) {
          /* unexpected telegram start detected */
@@ -162,30 +162,30 @@ static uint8_t BusDecode(uint8_t ch) {
          /* invert character */
          ch = ~ch;
          sStuffByte = false;
-      }                  
-   } 
+      }
+   }
    sCheckSum += ch;
    sProtoState = (TProtoFunc)sProtoState(ch);
    if (sProtoState == (TProtoFunc)ProtoMsgOK) {
       ret = BUS_MSG_OK;
    } else if (sProtoState == (TProtoFunc)ProtoMsgErr) {
       ret = BUS_MSG_ERROR;
-   } 
+   }
 
    return ret;
-}           
+}
 
 /*-----------------------------------------------------------------------------
 * send bus telegram
 */
-void BusSend(TBusTelegram *pMsg) {
-  
-   uint8_t ch;            
+uint8_t BusSend(TBusTelegram *pMsg) {
+
+   uint8_t ch;
    uint8_t checkSum = CHECKSUM_START;
-         
-   /* enable bus transmitter */      
+
+   /* enable bus transmitter */
    BUS_TRANSCEIVER_POWER_UP;
-   
+
    ch = STX;
    SioWrite(ch);
    checkSum += ch;
@@ -197,43 +197,45 @@ void BusSend(TBusTelegram *pMsg) {
    ch = pMsg->type;
    TransmitCharProt(ch);
    checkSum += ch;
-  
+
    switch(pMsg->type) {
-      case eBusDevStartup:    
+      case eBusDevStartup:
          break;
-      case eBusDevRespUpdEnter: 
+      case eBusDevRespUpdEnter:
          ch = pMsg->msg.devBus.receiverAddr;
          TransmitCharProt(ch);
          checkSum += ch;
          break;
-      case eBusDevRespUpdData:    
-         ch = pMsg->msg.devBus.receiverAddr;                
+      case eBusDevRespUpdData:
+         ch = pMsg->msg.devBus.receiverAddr;
          TransmitCharProt(ch);
-         checkSum += ch;   
+         checkSum += ch;
          /* first the low byte */
          ch = pMsg->msg.devBus.x.devResp.updData.wordAddr & 0xff;
          TransmitCharProt(ch);
-         checkSum += ch;   
+         checkSum += ch;
          /* the high byte */
          ch = pMsg->msg.devBus.x.devResp.updData.wordAddr >> 8;
          TransmitCharProt(ch);
-         checkSum += ch;   
+         checkSum += ch;
          break;
-      case eBusDevRespUpdTerm:    
-         ch = pMsg->msg.devBus.receiverAddr;                
+      case eBusDevRespUpdTerm:
+         ch = pMsg->msg.devBus.receiverAddr;
          TransmitCharProt(ch);
-         checkSum += ch;   
+         checkSum += ch;
          ch = pMsg->msg.devBus.x.devResp.updTerm.success;
          TransmitCharProt(ch);
-         checkSum += ch;   
+         checkSum += ch;
          break;
-      default: 
-         break;   
+      default:
+         break;
    }
    TransmitCharProt(checkSum);
    SioWriteReady();
    SioReadFlush();
    BUS_TRANSCEIVER_POWER_DOWN;
+   
+   return BUS_SEND_OK;
 }
 
 /*-----------------------------------------------------------------------------
@@ -242,8 +244,8 @@ void BusSend(TBusTelegram *pMsg) {
 *  ESC -> ESC + ~ESC
 */
 static void TransmitCharProt(uint8_t data) {
-      
-   if (data == STX) {  
+
+   if (data == STX) {
       SioWrite(ESC);
       SioWrite(~STX);
    } else if (data == ESC) {
@@ -251,7 +253,7 @@ static void TransmitCharProt(uint8_t data) {
       SioWrite(~ESC);
    } else {
       SioWrite(data);
-   }   
+   }
 }
 
 /*-----------------------------------------------------------------------------
@@ -289,18 +291,18 @@ static TProtoFunc ProtoWaitForType(uint8_t ch) {
       default:
          /* unknown telegram type */
          break;
-   } 
+   }
    return ret;
 }
 
 static TProtoFunc ProtoWaitForChecksum(uint8_t ch) {
-   
+
    TProtoFunc ret = (TProtoFunc)ProtoMsgErr;
 
    sCheckSum -= ch;
    if (ch == sCheckSum) {
       ret = (TProtoFunc)ProtoMsgOK;
-   } 
+   }
    return ret;
 }
 
@@ -319,7 +321,7 @@ static TProtoFunc ProtoWaitForReceiverAddr(uint8_t ch) {
       case eBusDevReqReboot:
       case eBusDevReqUpdEnter:
       case eBusDevReqUpdTerm:
-         /* in this cases just the checksum is missing */                                             
+         /* in this cases just the checksum is missing */
          ret = (TProtoFunc)ProtoWaitForChecksum;
          break;
       default:
@@ -330,13 +332,13 @@ static TProtoFunc ProtoWaitForReceiverAddr(uint8_t ch) {
 }
 
 static TProtoFunc ProtoWaitForReqUpdDataAddrLo(uint8_t ch) {
-   /* save address low byte */ 
+   /* save address low byte */
    sRxBuffer.msg.devBus.x.devReq.updData.wordAddr = ch;
    return (TProtoFunc)ProtoWaitForReqUpdDataAddrHi;
 }
 
 static TProtoFunc ProtoWaitForReqUpdDataAddrHi(uint8_t ch) {
-   /* save address high byte */ 
+   /* save address high byte */
    sRxBuffer.msg.devBus.x.devReq.updData.wordAddr += ch * 256;
    spData = (uint8_t *)sRxBuffer.msg.devBus.x.devReq.updData.data;
    return (TProtoFunc)ProtoWaitForUpdData;
@@ -346,13 +348,13 @@ static TProtoFunc ProtoWaitForUpdData(uint8_t ch) {
 
    TProtoFunc ret = (TProtoFunc)ProtoWaitForUpdData;
 
-   /* save character */ 
+   /* save character */
    *spData = ch;
    spData++;
    if ((spData - (uint8_t *)sRxBuffer.msg.devBus.x.devReq.updData.data) == BUS_FWU_PACKET_SIZE) {
       /* packet complete */
       ret = (TProtoFunc)ProtoWaitForChecksum;
-   } 
+   }
    return ret;
 }
 /*-----------------------------------------------------------------------------
