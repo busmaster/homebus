@@ -132,8 +132,6 @@ static uint8_t       sMyAddr;
 
 static uint8_t   sIdle = 0;
 
-int gDbgSioHdl = -1;
-
 static TClient sClient[BUS_MAX_CLIENT_NUM];
 static uint8_t sNumClients;
 
@@ -184,9 +182,6 @@ int main(void) {
 
    SioInit();
    SioRandSeed(sMyAddr);
-   /* sio for debug traces */
-   gDbgSioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
-                        eSioStopBits1, eSioModeFullDuplex);
 
    /* sio for bus interface */
    sioHdl = SioOpen("USART1", eSioBaud9600, eSioDataBits8, eSioParityNo,
