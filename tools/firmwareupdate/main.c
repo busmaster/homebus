@@ -98,9 +98,14 @@ static unsigned long GetTickCount(void);
 */
 int main(int argc, char *argv[]) {
 
-   int           handle;
-   uint8_t       ret;
-   TBusTelegram  txBusMsg;
+   int            handle;
+   uint8_t        ret;
+   TBusTelegram   txBusMsg;
+   int            len;
+   uint8_t        val8;
+   int            sioFd;
+   fd_set         rfds;
+   struct timeval tv;
 
    if (argc != 4) {
       PrintUsage();
@@ -125,7 +130,9 @@ int main(int argc, char *argv[]) {
       return 0;
    }
 
-
+   while ((len = SioGetNumRxChar(handle)) != 0) {
+      SioRead(handle, &val8, sizeof(val8));
+   }
    BusInit(handle);
    spBusMsg = BusMsgBufGet();
 
@@ -138,20 +145,21 @@ int main(int argc, char *argv[]) {
    sFwuState = WAIT_FOR_STARTUP_MSG;
    sTimeStamp = GetTickCount();
 
-   do {
-      ret = BusCheck();
-      ProcessBus(ret);
-      if (sFileTransferComplete) {
-         /* Update beendet */
-         break;
-      }
-
-//      if (ret != BUS_MSG_RXING) {
-//         Sleep(1);
-//      }
-
-   } while (1);
-
+    sioFd = SioGetFd(handle);
+    FD_ZERO(&rfds);
+    FD_SET(sioFd, &rfds);
+    
+    do {
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+        select(sioFd + 1, &rfds, 0, 0, &tv);
+        ret = BusCheck();
+        ProcessBus(ret);
+        if (sFileTransferComplete) {
+            /* Update beendet */
+            break;
+        }
+    } while (1);
 
    if (handle != -1) {
       SioClose(handle);
