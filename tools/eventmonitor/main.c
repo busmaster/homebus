@@ -239,6 +239,6 @@ static int InitBus(const char *comPort) {
 static void PrintUsage(void) {
 
    printf("\r\nUsage:\r\n");
-   printf("modulservice -c port -a address\n");
+   printf("eventmonitor -c port -a address\n");
 }
 
