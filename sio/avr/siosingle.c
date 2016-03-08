@@ -90,34 +90,6 @@
 #define EVALUATOR2(x,y,z) PASTER2(x,y,z)
 #define N2(x,z)           EVALUATOR2(x,SIO,z)
 
-/* these undefs are required because platform iom128.h defines these as generic
- * bit offsets. But these would be expanded by the N/N2 macros
- */
-#ifdef UCSZ
-    #undef UCSZ
-#endif
-#ifdef USBS
-    #undef USBS
-#endif
-#ifdef TXC
-    #undef TXC
-#endif
-#ifdef RXEN
-    #undef RXEN
-#endif
-#ifdef RXCIE
-    #undef RXCIE
-#endif
-#ifdef TXEN
-    #undef TXEN
-#endif
-#ifdef UDRIE
-    #undef UDRIE
-#endif
-#ifdef TXCIE
-    #undef TXCIE
-#endif
-
 /*-----------------------------------------------------------------------------
 *  typedefs
 */
