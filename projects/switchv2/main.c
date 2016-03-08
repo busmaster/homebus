@@ -144,7 +144,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-char version[] = "Sw88 1.04";
+char version[] = "Sw88 1.05";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
