@@ -39,30 +39,11 @@
 #include "bus.h"
 #include "button.h"
 #include "led.h"
-#include "digout.h"
-#include "shader.h"
 #include "application.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros
 */
-
-/* Bits in TCCR0 */
-#define CS00     0
-#define OCIE0    1
-#define WGM00    6
-#define WGM01    3
-
-/* Bits in WDTCR */
-#define WDCE     4
-#define WDE      3
-#define WDP0     0
-#define WDP1     1
-#define WDP2     2
-
-/* Bits in EECR */
-#define EEWE     1
-
 /* offset addresses in EEPROM */
 #define MODUL_ADDRESS           0  /* 1 byte */
 #define CLIENT_ADDRESS_BASE     1  /* BUS_MAX_CLIENT_NUM from bus.h (16 byte) */
@@ -120,26 +101,18 @@ typedef struct {
 */
 volatile uint8_t  gTimeMs = 0;
 volatile uint16_t gTimeMs16 = 0;
-volatile uint16_t gTime10Ms16 = 0;
 volatile uint32_t gTimeMs32 = 0;
 volatile uint16_t gTimeS = 0;
 
 static TBusTelegram *spBusMsg;
 static TBusTelegram  sTxBusMsg;
 
-static const uint8_t *spNextPtrToEeprom;
 static uint8_t       sMyAddr;
 
 static uint8_t   sIdle = 0;
 
-int gDbgSioHdl = -1;
-
 static TClient sClient[BUS_MAX_CLIENT_NUM];
 static uint8_t sNumClients;
-
-static uint8_t sOldDigOutActVal[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
-static uint8_t sCurDigOutActVal[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
-static uint8_t sCurShaderActVal[BUS_DO31_SHADER_SIZE_ACTUAL_VALUE];
 
 static TClockCalib sClockCalib;
 
@@ -148,11 +121,12 @@ static TClockCalib sClockCalib;
 */
 static void PortInit(void);
 static void TimerInit(void);
+static void TimerStart(void);
 static void CheckButton(void);
 static void ButtonEvent(uint8_t address, uint8_t button);
 static void SwitchEvent(uint8_t address, uint8_t button, bool pressed);
 static void ProcessBus(uint8_t ret);
-static void RestoreDigOut(void);
+static void RestoreOut(void);
 static void Idle(void);
 static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
@@ -160,77 +134,92 @@ static void CheckEvent(void);
 static void GetClientListFromEeprom(void);
 static void ClockCalibTask(void);
 
+
+static void SendStartupMsg(void) {
+
+    uint16_t startCnt;
+    uint16_t cntMs;
+    uint16_t diff;
+ 
+    GET_TIME_MS16(startCnt);
+    do {
+        GET_TIME_MS16(cntMs);
+        diff =  cntMs - startCnt;
+    } while (diff < 100);
+
+    sTxBusMsg.type = eBusDevStartup;
+    sTxBusMsg.senderAddr = MY_ADDR;
+    BusSend(&sTxBusMsg);
+}
+
 /*-----------------------------------------------------------------------------
 *  main
 */
-
-
 int main(void) {
 
-   uint8_t ret;
-   int   sioHdl;
+    uint8_t ret;
+    int   sioHdl;
 
-   /* get module address from EEPROM */
-   sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
-   GetClientListFromEeprom();
+    MCUSR = 0;
+    wdt_disable();
+
+    /* get module address from EEPROM */
+    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+    GetClientListFromEeprom();
     
-   PortInit();
-   LedInit();
-   TimerInit();
-   ButtonInit();
-   DigOutInit();
-   ShaderInit();
-   ApplicationInit();
+    PortInit();
+    LedInit();
+    TimerInit();
+    ButtonInit();
+    ApplicationInit();
 
-   SioInit();
-   SioRandSeed(sMyAddr);
-   /* sio for debug traces */
-   gDbgSioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
-                        eSioStopBits1, eSioModeFullDuplex);
+    SioInit();
+    SioRandSeed(sMyAddr);
 
-   /* sio for bus interface */
-   sioHdl = SioOpen("USART1", eSioBaud9600, eSioDataBits8, eSioParityNo,
-                    eSioStopBits1, eSioModeHalfDuplex);
+    /* sio for bus interface */
+    sioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
+                     eSioStopBits1, eSioModeHalfDuplex);
 
-   SioSetIdleFunc(sioHdl, IdleSio1);
-   SioSetTransceiverPowerDownFunc(sioHdl, BusTransceiverPowerDown);
-   BusTransceiverPowerDown(true);
+    SioSetIdleFunc(sioHdl, IdleSio1);
+    SioSetTransceiverPowerDownFunc(sioHdl, BusTransceiverPowerDown);
+    BusTransceiverPowerDown(true);
 
-   BusInit(sioHdl);
-   spBusMsg = BusMsgBufGet();
+    BusInit(sioHdl);
+    spBusMsg = BusMsgBufGet();
 
-   /* warten bis Betriebsspannung auf 24 V-Seite volle Höhe erreicht hat */
-   while (!POWER_GOOD);
+    /* wait for good power */
+    while (!POWER_GOOD);
 
-   /* für Delay wird timer-Interrupt benötigt (DigOutAll() in RestoreDigOut()) */
-   ENABLE_INT;
+    ENABLE_INT;
 
-   RestoreDigOut();
+    TimerStart();
+    RestoreOut();
 
-   /* ext int for power fail: INT0 low level sensitive */
-   EICRA &= ~((1 << ISC01) | (1 << ISC00));
-   EIMSK |= (1 << INT0);
+    /* ext int for power fail: PCINT22 low level sensitive */
+    PCICR |= (1 << PCIE2);
+    PCMSK2 |= (1 << PCINT22);
 
-   LedSet(eLedGreenFlashSlow);
+    LedSet(eLedGreenFlashSlow);
 
-   ApplicationStart();
+    ApplicationStart();
    
-   sClockCalib.state = eCalibIdle;
+    sClockCalib.state = eCalibIdle;
 
-   /* Hauptschleife */
-   while (1) {
-      Idle();
-      ret = BusCheck();
-      ProcessBus(ret);
-      ClockCalibTask();
-      CheckButton();
-      DigOutStateCheck();
-      ShaderCheck();
-      LedCheck();
-      ApplicationCheck();
-      CheckEvent();
-   }
-   return 0;
+SendStartupMsg();
+
+
+    /* Hauptschleife */
+    while (1) {
+        Idle();
+        ret = BusCheck();
+        ProcessBus(ret);
+        ClockCalibTask();
+        CheckButton();
+        LedCheck();
+        ApplicationCheck();
+        CheckEvent();
+    }
+    return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -299,28 +288,6 @@ static void GetClientListFromEeprom(void) {
     sNumClients = numClients;
 }
 
-static uint8_t GetActualValueShader(uint8_t shader) {
-
-    uint8_t      state;
-    TShaderState shaderState;
-
-    state = 252; /* not configured */
-    if (ShaderGetState(shader, &shaderState)) {
-        switch (shaderState) {
-        case eShaderStopped:
-            ShaderGetPosition(shader, &state);
-            break;
-        case eShaderClosing:
-            state = 253;
-            break;
-        case eShaderOpening:
-            state = 254;
-            break;
-        }
-    }
-    return state;
-}
-
 /*-----------------------------------------------------------------------------
 *   post state changes to registered bus clients
 */
@@ -329,7 +296,6 @@ static void CheckEvent(void) {
     static uint8_t   sActualClient = 0xff; /* actual client's index being processed */
     static uint16_t  sChangeTestTimeStamp;
     TClient          *pClient;
-    uint8_t          i;
     uint16_t         actualTime16;
     bool             actValChanged;
     static bool      sNewClientCycleDelay = false;
@@ -345,18 +311,13 @@ static void CheckEvent(void) {
     /* do the change detection not in each cycle */
     GET_TIME_MS16(actualTime16);
     if (((uint16_t)(actualTime16 - sChangeTestTimeStamp)) >= CHANGE_DETECT_CYCLE_TIME_MS) {
-        DigOutStateAll(sCurDigOutActVal, sizeof(sCurDigOutActVal));
-        if (memcmp(sCurDigOutActVal, sOldDigOutActVal, sizeof(sCurDigOutActVal)) == 0) {
+        if (0) {
             actValChanged = false;
         } else {
             actValChanged = true;
         }
      
         if (actValChanged) {
-            for (i = 0; i < sizeof(sCurShaderActVal); i++) {
-                sCurShaderActVal[i] = GetActualValueShader(i);
-            }
-            memcpy(sOldDigOutActVal, sCurDigOutActVal, sizeof(sOldDigOutActVal));
             sActualClient = 0;
             sNewClientCycleDelay = false;
             InitClientState();
@@ -384,13 +345,8 @@ static void CheckEvent(void) {
         sTxBusMsg.type = eBusDevReqActualValueEvent;
         sTxBusMsg.senderAddr = MY_ADDR;
         sTxBusMsg.msg.devBus.receiverAddr = pClient->address;
-        pActVal->devType = eBusDevTypeDo31;
+        pActVal->devType = eBusDevTypeRs485If;
     
-        memcpy(pActVal->actualValue.do31.digOut, sCurDigOutActVal, 
-               sizeof(pActVal->actualValue.do31.digOut));
-        memcpy(pActVal->actualValue.do31.shader, sCurShaderActVal, 
-               sizeof(pActVal->actualValue.do31.shader));
-        
         if (BusSend(&sTxBusMsg) == BUS_SEND_OK) {
             pClient->state = eEventWaitForConfirmation;
             pClient->requestTimeStamp = actualTime16;
@@ -470,57 +426,11 @@ static void BusTransceiverPowerDown(bool powerDown) {
    }
 }
 
-
 /*-----------------------------------------------------------------------------
 *  Ausgangszustand wiederherstellen
-*  im EEPROM liegen jeweils 4 Byte mit den 31 Ausgangszuständen. Das MSB im
-*  letzten Byte zeigt mit dem Wert 0 die Gültigkeit der Daten an
 */
-static void RestoreDigOut(void) {
+static void RestoreOut(void) {
 
-   uint8_t *ptrToEeprom;
-   uint8_t buf[4];
-   uint8_t flags;
-
-   /* zuletzt gespeicherten Zustand der Ausgänge suchen */
-   for (ptrToEeprom = EEPROM_DO_RESTORE_START + 3; 
-        ptrToEeprom <= EEPROM_DO_RESTORE_END;
-        ptrToEeprom += 4) {
-      if ((eeprom_read_byte(ptrToEeprom) & 0x80) == 0x00) {
-         break;
-      }
-   }
-   if (ptrToEeprom > EEPROM_DO_RESTORE_END) {
-      /* nichts im EEPROM gefunden -> Ausgänge bleiben ausgeschaltet */
-      spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
-      return;
-   }
-
-   /* wieder auf durch vier teilbare Adresse zurückrechnen */
-   ptrToEeprom -= 3;
-   /* Schreibhäufigkeit im EEPROM auf alle Adressen verteilen (wegen Lebensdauer) */
-   spNextPtrToEeprom = (const uint8_t *)((int)ptrToEeprom + 4);
-   if (spNextPtrToEeprom > EEPROM_DO_RESTORE_END) {
-      spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
-    }
-
-   /* Ausgangszustand wiederherstellen */
-   flags = DISABLE_INT;
-   buf[0] = eeprom_read_byte(ptrToEeprom);
-   buf[1] = eeprom_read_byte(ptrToEeprom + 1);
-   buf[2] = eeprom_read_byte(ptrToEeprom + 2);
-   buf[3] = eeprom_read_byte(ptrToEeprom + 3);
-   RESTORE_INT(flags);
-
-   DigOutAll(buf, 4);
-
-   /* alte Ausgangszustand löschen */
-   flags = DISABLE_INT;
-   eeprom_write_byte((uint8_t *)ptrToEeprom, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 1, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 2, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 3, 0xff);
-   RESTORE_INT(flags);
 }
 
 /*-----------------------------------------------------------------------------
@@ -544,10 +454,8 @@ static void ProcessBus(uint8_t ret) {
     TBusMsgType            msgType;
     uint8_t                i;
     bool                   msgForMe = false;
-    TShaderState           shaderState;
     uint8_t                state;
     TBusDevRespInfo        *pInfo;
-    TBusDevRespGetState    *pGetState;
     TBusDevRespActualValue *pActVal;
     TClient                *pClient;
     TClockCalibState       calibState;
@@ -564,8 +472,6 @@ static void ProcessBus(uint8_t ret) {
         switch (msgType) {
         case eBusDevReqReboot:
         case eBusDevReqInfo:
-        case eBusDevReqGetState:
-        case eBusDevReqSetState:
         case eBusDevReqActualValue:
         case eBusDevReqSetValue:
         case eBusDevReqSwitchState:
@@ -623,104 +529,9 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespInfo;
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        pInfo->devType = eBusDevTypeDo31;
+        pInfo->devType = eBusDevTypeRs485If;
         strncpy((char *)(pInfo->version), ApplicationVersion(), sizeof(pInfo->version));
         pInfo->version[sizeof(pInfo->version) - 1] = '\0';
-        for (i = 0; i < BUS_DO31_NUM_SHADER; i++) {
-            ShaderGetConfig(i, &(pInfo->devInfo.do31.onSwitch[i]), &(pInfo->devInfo.do31.dirSwitch[i]));
-        }
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
-        break;
-    case eBusDevReqGetState:
-        /* response packet */
-        pGetState = &sTxMsg.msg.devBus.x.devResp.getState;
-        sTxMsg.type = eBusDevRespGetState;
-        sTxMsg.senderAddr = MY_ADDR;
-        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        pGetState->devType = eBusDevTypeDo31;
-        DigOutStateAll(pGetState->state.do31.digOut, BUS_DO31_DIGOUT_SIZE_GET);
-
-        /* array init */
-        for (i = 0; i < BUS_DO31_SHADER_SIZE_GET; i++) {
-            pGetState->state.do31.shader[i] = 0;
-        }
-
-        for (i = 0; i < eShaderNum; i++) {
-            if (ShaderGetState(i, &shaderState) == true) {
-                switch (shaderState) {
-                case eShaderClosing:
-                    state = 0x02;
-                    break;
-                case eShaderOpening:
-                    state = 0x01;
-                    break;
-                case eShaderStopped:
-                    state = 0x03;
-                    break;
-                default:
-                    state = 0x00;
-                    break;
-                }
-            } else {
-                state = 0x00;
-            }
-            if ((i / 4) >= BUS_DO31_SHADER_SIZE_GET) {
-                /* falls im Bustelegram zuwenig Platz -> abbrechen */
-                /* (sollte nicht auftreten) */
-                break;
-            }
-            pGetState->state.do31.shader[i / 4] |= (state << ((i % 4) * 2));
-        }
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
-        break;
-    case eBusDevReqSetState:
-        if (spBusMsg->msg.devBus.x.devReq.setState.devType != eBusDevTypeDo31) {
-            break;
-        }
-        for (i = 0; i < eDigOutNum; i++) {
-            /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */
-            if (!DigOutGetShaderFunction(i)) {
-                uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.digOut[i / 4] >>
-                                 ((i % 4) * 2)) & 0x03;
-                switch (action) {
-                case 0x00:
-                case 0x01:
-                    break;
-                case 0x02:
-                    DigOutOff(i);
-                    break;
-                case 0x3:
-                    DigOutOn(i);
-                    break;
-                default:
-                    break;
-                }
-            }
-        }
-        for (i = 0; i < eShaderNum; i++) {
-            uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.shader[i / 4] >>
-                             ((i % 4) * 2)) & 0x03;
-            switch (action) {
-            case 0x00:
-                /* no action */
-                break;
-            case 0x01:
-                ShaderSetAction(i, eShaderOpen);
-                break;
-            case 0x02:
-                ShaderSetAction(i, eShaderClose);
-                break;
-            case 0x03:
-                ShaderSetAction(i, eShaderStop);
-                break;
-            default:
-                break;
-            }
-        }
-        /* response packet */
-        sTxMsg.type = eBusDevRespSetState;
-        sTxMsg.senderAddr = MY_ADDR;
-        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqActualValue:
@@ -729,52 +540,12 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespActualValue;
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        pActVal->devType = eBusDevTypeDo31;
-        DigOutStateAll(pActVal->actualValue.do31.digOut, BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE);
-
-        /* array init */
-        for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
-            pActVal->actualValue.do31.shader[i] = 0;
-        }
-        for (i = 0; i < eShaderNum; i++) {
-            pActVal->actualValue.do31.shader[i] = GetActualValueShader(i);
-        }
+        pActVal->devType = eBusDevTypeRs485If;
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetValue:
-        if (spBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypeDo31) {
+        if (spBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypeRs485If) {
             break;
-        }
-        for (i = 0; i < eDigOutNum; i++) {
-            /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */
-            if (!DigOutGetShaderFunction(i)) {
-                uint8_t action = (spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.digOut[i / 4] >>
-                                 ((i % 4) * 2)) & 0x03;
-                switch (action) {
-                case 0x00:
-                    break;
-                case 0x01:
-                    DigOutTrigger(i);
-                    break;
-                case 0x02:
-                    DigOutOff(i);
-                    break;
-                case 0x03:
-                    DigOutOn(i);
-                    break;
-                default:
-                    break;
-                }
-            }
-        }
-        for (i = 0; i < eShaderNum; i++) {
-            uint8_t position = spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i];
-            if (position <= 100) {
-                ShaderSetPosition(i, position);
-            } else if (position == 255) {
-                // stop
-                ShaderSetAction(i, eShaderStop);
-            }
         }
         /* response packet */
         sTxMsg.type = eBusDevRespSetValue;
@@ -829,21 +600,8 @@ static void ProcessBus(uint8_t ret) {
         for (i = 0; i < sNumClients; i++) {
             if ((pClient->address == spBusMsg->senderAddr) &&
                 (pClient->state == eEventWaitForConfirmation)) {
-                TBusDevActualValueDo31 *p;
-                uint8_t j;
-                uint8_t buf[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
-
-                DigOutStateAllStandard(buf, sizeof(buf));
-
-                p = &spBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do31;
-                for (j = 0; 
-                     (j < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE) &&
-                     (p->shader[j] == GetActualValueShader(j));
-                     j++);
-                if ((j == BUS_DO31_SHADER_SIZE_ACTUAL_VALUE) &&
-                    (memcmp(p->digOut, buf, sizeof(buf)) == 0)) {
-                    pClient->state = eEventConfirmationOK;
-                }
+                /* todo: compare with current state */
+                pClient->state = eEventConfirmationOK;
                 break;
             }
             pClient++;
@@ -1016,34 +774,19 @@ static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) {
 
 
 /*-----------------------------------------------------------------------------
-*  Power-Fail Interrupt (Ext. Int 0)
+*  Power-Fail Interrupt (PCINT22)
 */
-ISR(INT0_vect) {
-   uint8_t *ptrToEeprom;
-   uint8_t buf[4];
-   uint8_t i;
+ISR(PCINT2_vect) {
+
+    /* we are interested in PC6 = 0 only */
+    if ((PINC & (1 << PINC6)) != 0) {
+        return;
+    }
 
    LedSet(eLedGreenOff);
    LedSet(eLedRedOff);
 
-   /* Ausgangszustände lesen */
-   DigOutStateAllStandard(buf, sizeof(buf));
-   /* zum Stromsparen alle Ausgänge abschalten */
-   DigOutOffAll();
-
-   /* neue Zustände speichern */
-   ptrToEeprom = (uint8_t *)spNextPtrToEeprom;
-   /* Kennzeichnungsbit löschen */
-   buf[3] &= ~0x80;
-   for (i = 0; i < sizeof(buf); i++) {
-      eeprom_write_byte(ptrToEeprom, buf[i]);
-      ptrToEeprom++;
-   }
-
-   /* Wait for completion of previous write */
-   while (!eeprom_is_ready());
-
-   LedSet(eLedRedOn);
+   /* todo: save to eeprom */
 
    /* auf Powerfail warten */
    /* falls sich die Versorgungsspannung wieder erholt hat und */
@@ -1060,104 +803,108 @@ ISR(INT0_vect) {
 }
 
 /*-----------------------------------------------------------------------------
-*  Timer-Interrupt für Zeitbasis (Timer 0 Compare)
-*/
-ISR(TIMER0_COMP_vect)  {
-   static uint16_t sCounter1 = 0;
-   static uint8_t  sCounter2 = 0;
-
-   /* Interrupt alle 2ms */
-   gTimeMs += 2;
-   gTimeMs16 += 2;
-   gTimeMs32 += 2;
-   sCounter1++;
-   if (sCounter1 >= 500) {
-      sCounter1 = 0;
-      /* Sekundenzähler */
-      gTimeS++;
-   }
-   sCounter2++;
-   if (sCounter2 >= 5) {
-      sCounter2 = 0;
-      /* 10 ms counter */
-      gTime10Ms16++;
-   } 
-}
-
-/*-----------------------------------------------------------------------------
 *  Timerinitialisierung
 */
 static void TimerInit(void) {
 
-   /* Verwendung des Compare-Match Interrupt von Timer0 */
-   /* Vorteiler bei 1 MHz: 8  */
-   /* Vorteiler bei 3.6864 MHz: 64  */
-   /* Vorteiler bei 16 MHz: 256  */
-   /* Compare-Match Portpin (OC0) wird nicht verwendet: COM01:0 = 0 */
-   /* Compare-Register:  */
-   /* 1 MHz: 250 -> 2 ms Zyklus */
-   /* 3.6864 MHz: 115 -> 1,9965 ms Zyklus */
-   /* 16 MHz: 125 -> 2 ms Zyklus */
-   /* Timer-Mode: CTC: WGM01:0=2 */
-#if (F_CPU == 1000000UL)
-   /* 1 MHz */
-   TCCR0 = (0b010 << CS00) | (0 << WGM00) | (1 << WGM01);
-   OCR0 = 250 - 1;
-#elif (F_CPU == 1600000UL)
-   /* 16 MHz */
-   TCCR0 = (0b110 << CS00) | (0 << WGM00) | (1 << WGM01);
-   OCR0 = 125 - 1;
-#elif (F_CPU == 3686400UL)
-   /* 3.6864 MHz */
-   TCCR0 = (0b100 << CS00) | (0 << WGM00) | (1 << WGM01);
-   OCR0 = 115 - 1;
+   /* use timer 3/output compare A */
+   /* timer3 compare B is used for sio timing - do not change the timer mode WGM 
+    * and change sio timer settings when changing the prescaler!
+    */
+   
+   /* prescaler @ 3.6864 MHz:  1024  */
+   /*           @ 18.432 MHz:  1024  */
+   /* compare match pin not used: COM3A[1:0] = 00 */
+   /* compare register OCR3A:  */
+   /* 3.6864 MHz: 18 -> 5 ms */
+   /* 18.432 MHz: 90 -> 5 ms */
+   /* timer mode 0: normal: WGM3[3:0]= 0000 */
+
+   TCCR3A = (0 << COM3A1) | (0 << COM3A0) | (0 << COM3B1) | (0 << COM3B0) | (0 << WGM31) | (0 << WGM30);
+   TCCR3B = (0 << ICNC3) | (0 << ICES3) |
+            (0 << WGM33) | (0 << WGM32) | 
+            (1 << CS32)  | (0 << CS31)  | (1 << CS30); 
+
+#if (F_CPU == 3686400UL)
+   #define TIMER_TCNT_INC    18
+   #define TIMER_INC_MS      5
+#elif (F_CPU == 18432000UL)
+   #define TIMER_TCNT_INC    90
+   #define TIMER_INC_MS      5
 #else
 #error adjust timer settings for your CPU clock frequency
 #endif
-   /* Timer Compare Match Interrupt enable */
-   TIMSK |= 1 << OCIE0;
 }
 
+static void TimerStart(void) {
+
+   OCR3A = TCNT3 + TIMER_TCNT_INC;
+   TIFR3 = 1 << OCF3A;
+   TIMSK3 |= 1 << OCIE3A;
+}
+
+
+/*-----------------------------------------------------------------------------
+*  time interrupt for time counter
+*/
+ISR(TIMER3_COMPA_vect)  {
+
+    static uint16_t sCounter = 0;
+
+    OCR3A = OCR3A + TIMER_TCNT_INC;
+
+    /* ms */
+    gTimeMs += TIMER_INC_MS;
+    gTimeMs16 += TIMER_INC_MS;
+    gTimeMs32 += TIMER_INC_MS;
+    sCounter++;
+    if (sCounter >= (1000 / TIMER_INC_MS)) {
+        sCounter = 0;
+        /* s */
+        gTimeS++;
+    }
+}
 /*-----------------------------------------------------------------------------
 *  Einstellung der Portpins
 */
 static void PortInit(void) {
 
-   /* PortA: DO0 .. DO7 */
-   PORTA = 0b00000000;   /* alle PortA-Leitung auf low */
-   DDRA  = 0b11111111;   /* alle PortA-Leitungen auf Ausgang */
+   /* PA.6, PA.7: LED1, LED2: output low */
+   /* PA.5: unused: output low */
+   /* PA.4: input: high z */
+   /* PA.3 .. PA.0: input pull up */
+   PORTA = 0b00001111;
+   DDRA  = 0b11100000;
 
-   /* PortC: DO8 .. DO15 */
-   PORTC = 0b00000000;   /* alle PortC-Leitung auf low */
-   DDRC  = 0b11111111;   /* alle PortC-Leitungen auf Ausgang */
+   /* PB.7: SCK: input pull up */
+   /* PB.6, MISO: output high */
+   /* PB.5: MOSI: input, pull up */
+   /* PB.4 .. PB.3: input, high z */
+   /* PB.2: input, high z */
+   /* PB.1: unused, output low */
+   /* PB.0: transceiver power, output high */
+   PORTB = 0b11100001;
+   DDRB  = 0b01000011;
 
-   /* PortB.4 .. PortB7: DO16 .. DO19: Ausgang low */
-   /* PortB.0, PortB.2, PortB.3: nicht benutzt, Ausgang, low*/
-   /* PortB.1: SCK-Eingang: Eingang, PullUp */
-   PORTB = 0b00000010;
-   DDRB  = 0b11111101;
+   /* PC.7: unused: output low */
+   /* PC.6: power fail input high z */
+   /* PC.5: unused: output low */
+   /* PC.4: unused: output low */
+   /* PC.3: RS485 TXEN: output low */
+   /* PC.2: RS485 nRXEN: output high */
+   /* PC.1: unused: output low */
+   /* PC.0: unused: output low */
+   PORTC = 0b00000100;
+   DDRC  = 0b10111111;
 
-   /* PortD.0: Interrupteingang für PowerFail: Eingang, kein PullUp*/
-   /* PortD.1: unbenutzt oder mit RXD1 verbunden, Eingang, PullUp */
-   /* PortD.2: UART RX, Eingang, PullUp */
-   /* PortD.3: UART TX, Ausgang, high */
-   /* PortD.4 .. PortD7: DO20 .. DO23 */
-   PORTD = 0b00001110;
-   DDRD  = 0b11111000;
-
-   /* PortE.0: RX/MOSI: Eingang, PullUp*/
-   /* PortE.1: TX/MISO, Ausgang high */
-   /* PortE.2 .. PortE.6: unbenutzt, Ausgang, low */
-   /* PortE.7: unbenutzt oder Transceiversteuerung, Ausgang, high*/
-   PORTE = 0b10000011;
-   DDRE  = 0b11111110;
-
-   /* PortF: DO24 .. DO30/31 */
-   PORTF = 0b00000000;    /* alle PortF-Leitung auf low */
-   DDRF  = 0b11111111;    /* alle PortF-Leitungen auf Ausgang */
-
-   /* PortG.0 .. PortG.2 unbenutzt, Ausgang, low*/
-   /* PortG.3, PortG.4 LED, Ausgang, high*/
-   PORTG = 0b00011000;
-   DDRG  = 0b00011111;
+   /* PD.7: input high z */
+   /* PD.6: input high z */
+   /* PD.5: unused: output low */
+   /* PD.4: digout: output low */
+   /* PD.3: TX1: output high */
+   /* PD.2: RX1: input high z */
+   /* PD.1: TX0: output high */
+   /* PD.0: RX0: input high z */
+   PORTD = 0b00001010;
+   DDRD  = 0b00111010;
 }
