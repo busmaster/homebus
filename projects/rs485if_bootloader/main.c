@@ -143,6 +143,10 @@ int main(void) {
    uint16_t  sum;
    int       sioHdl;
 
+   cli();
+   MCUSR = 0;
+   wdt_disable();
+   
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
 
    PortInit();
@@ -173,7 +177,7 @@ int main(void) {
    LedSet(eLedGreenOff);
 
    /* wait for full supply voltage */
-//   while (!POWER_GOOD);
+   while (!POWER_GOOD);
 
    LedSet(eLedRedOff);
 
