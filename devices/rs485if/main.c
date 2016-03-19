@@ -41,6 +41,8 @@
 #include "led.h"
 #include "application.h"
 
+#include "rs485.h"
+
 /*-----------------------------------------------------------------------------
 *  Macros
 */
@@ -116,6 +118,8 @@ static uint8_t sNumClients;
 
 static TClockCalib sClockCalib;
 
+static uint8_t buf[] = {0, 1 /* adress */, 50, 50, 50, 50, 50, 50, 50, 50 ,50};
+
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -134,24 +138,6 @@ static void CheckEvent(void);
 static void GetClientListFromEeprom(void);
 static void ClockCalibTask(void);
 
-
-static void SendStartupMsg(void) {
-
-    uint16_t startCnt;
-    uint16_t cntMs;
-    uint16_t diff;
- 
-    GET_TIME_MS16(startCnt);
-    do {
-        GET_TIME_MS16(cntMs);
-        diff =  cntMs - startCnt;
-    } while (diff < 100);
-
-    sTxBusMsg.type = eBusDevStartup;
-    sTxBusMsg.senderAddr = MY_ADDR;
-    BusSend(&sTxBusMsg);
-}
-
 /*-----------------------------------------------------------------------------
 *  main
 */
@@ -159,6 +145,8 @@ int main(void) {
 
     uint8_t ret;
     int   sioHdl;
+    uint16_t t_curr;
+    uint16_t t_last;
 
     MCUSR = 0;
     wdt_disable();
@@ -187,6 +175,8 @@ int main(void) {
     BusInit(sioHdl);
     spBusMsg = BusMsgBufGet();
 
+    Rs485Init();
+
     /* wait for good power */
     while (!POWER_GOOD);
 
@@ -205,8 +195,8 @@ int main(void) {
    
     sClockCalib.state = eCalibIdle;
 
-SendStartupMsg();
-
+    GET_TIME_MS16(t_curr);
+    t_last = t_curr;
 
     /* Hauptschleife */
     while (1) {
@@ -218,6 +208,13 @@ SendStartupMsg();
         LedCheck();
         ApplicationCheck();
         CheckEvent();
+        
+        GET_TIME_MS16(t_curr);
+        if (((uint16_t)(t_curr - t_last)) >= 500) {
+            t_last = t_curr;
+            Rs485Write(buf, sizeof(buf));
+        }
+        
     }
     return 0;
 }

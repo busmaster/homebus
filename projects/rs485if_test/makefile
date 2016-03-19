@@ -40,7 +40,7 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 INCLUDES = -I . -I ../../include -I ../../include/avr -I ../../include/devices/rs485if -I ../../include/devices/common
 
 ## Objects that must be built in order to link
-OBJECTS = application.o bus.o main.o button.o digout.o led.o siosingle.o 
+OBJECTS = application.o bus.o main.o button.o digout.o led.o siosingle.o rs485.o
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
@@ -68,6 +68,9 @@ led.o: ../../devices/rs485if/led.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 siosingle.o: ../../sio/avr/siosingle.c
+	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
+
+rs485.o: rs485.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
