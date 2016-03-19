@@ -47,7 +47,7 @@
 #define POWER_GOOD   ((PINC & 0b01000000) != 0)
 
 #define BUS_TRANSCEIVER_POWER_DOWN   (PORTB |= 0b00000001)
-#define BUS_TRANSCEIVER_POWER_UP     (PORTB &= ~0b10000001)
+#define BUS_TRANSCEIVER_POWER_UP     (PORTB &= ~0b00000001)
                        
 /* number of outputs */
 #define NUM_DIGOUT   1
