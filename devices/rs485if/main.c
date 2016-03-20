@@ -58,7 +58,7 @@
 /* our bus address */
 #define MY_ADDR    sMyAddr
 
-#define IDLE_SIO1  0x01
+#define IDLE_SIO0  0x01
 
 /* acual value event */
 #define RESPONSE_TIMEOUT_MS         100  /* time in ms */
@@ -109,16 +109,16 @@ volatile uint16_t gTimeS = 0;
 static TBusTelegram *spBusMsg;
 static TBusTelegram  sTxBusMsg;
 
-static uint8_t       sMyAddr;
+static uint8_t sMyAddr;
 
-static uint8_t   sIdle = 0;
+static uint8_t sIdle = 0;
 
 static TClient sClient[BUS_MAX_CLIENT_NUM];
 static uint8_t sNumClients;
 
 static TClockCalib sClockCalib;
 
-static uint8_t buf[] = {0, 1 /* adress */, 50, 50, 50, 50, 50, 50, 50, 50 ,50};
+static uint8_t buf[] = {0, 1 /* address */, 50, 50, 50, 50, 50, 50, 50, 50 ,50};
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -132,7 +132,7 @@ static void SwitchEvent(uint8_t address, uint8_t button, bool pressed);
 static void ProcessBus(uint8_t ret);
 static void RestoreOut(void);
 static void Idle(void);
-static void IdleSio1(bool setIdle);
+static void IdleSio0(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
 static void CheckEvent(void);
 static void GetClientListFromEeprom(void);
@@ -143,11 +143,12 @@ static void ClockCalibTask(void);
 */
 int main(void) {
 
-    uint8_t ret;
-    int   sioHdl;
+    uint8_t  ret;
+    int      sioHdl;
     uint16_t t_curr;
     uint16_t t_last;
 
+    cli();
     MCUSR = 0;
     wdt_disable();
 
@@ -168,7 +169,7 @@ int main(void) {
     sioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
                      eSioStopBits1, eSioModeHalfDuplex);
 
-    SioSetIdleFunc(sioHdl, IdleSio1);
+    SioSetIdleFunc(sioHdl, IdleSio0);
     SioSetTransceiverPowerDownFunc(sioHdl, BusTransceiverPowerDown);
     BusTransceiverPowerDown(true);
 
@@ -400,12 +401,12 @@ static void Idle(void) {
 /*-----------------------------------------------------------------------------
 *  sio idle enable
 */
-static void IdleSio1(bool setIdle) {
+static void IdleSio0(bool setIdle) {
 
    if (setIdle == true) {
-      sIdle &= ~IDLE_SIO1;
+      sIdle &= ~IDLE_SIO0;
    } else {
-      sIdle |= IDLE_SIO1;
+      sIdle |= IDLE_SIO0;
    }
 }
 
@@ -873,16 +874,16 @@ static void PortInit(void) {
    PORTA = 0b00001111;
    DDRA  = 0b11100000;
 
-   /* PB.7: SCK: input pull up */
-   /* PB.6, MISO: output high */
-   /* PB.5: MOSI: input, pull up */
+   /* PB.7: SCK: output low */
+   /* PB.6, MISO: output low */
+   /* PB.5: MOSI: output low */
    /* PB.4 .. PB.3: input, high z */
    /* PB.2: input, high z */
    /* PB.1: unused, output low */
    /* PB.0: transceiver power, output high */
-   PORTB = 0b11100001;
-   DDRB  = 0b01000011;
-
+   PORTB = 0b00000001;
+   DDRB  = 0b11100011;
+   
    /* PC.7: unused: output low */
    /* PC.6: power fail input high z */
    /* PC.5: unused: output low */
@@ -899,9 +900,9 @@ static void PortInit(void) {
    /* PD.5: unused: output low */
    /* PD.4: digout: output low */
    /* PD.3: TX1: output high */
-   /* PD.2: RX1: input high z */
+   /* PD.2: RX1: input pull up */
    /* PD.1: TX0: output high */
-   /* PD.0: RX0: input high z */
-   PORTD = 0b00001010;
+   /* PD.0: RX0: input pull up */
+   PORTD = 0b00001111;
    DDRD  = 0b00111010;
 }
