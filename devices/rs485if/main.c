@@ -118,7 +118,7 @@ static uint8_t sNumClients;
 
 static TClockCalib sClockCalib;
 
-static uint8_t buf[] = {0, 1 /* address */, 50, 50, 50, 50, 50, 50, 50, 50 ,50};
+static uint8_t buf[] = {0, 0, 50, 50, 50, 50, 50, 50, 50, 50 ,50};
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -211,8 +211,11 @@ int main(void) {
         CheckEvent();
         
         GET_TIME_MS16(t_curr);
-        if (((uint16_t)(t_curr - t_last)) >= 500) {
+        if (((uint16_t)(t_curr - t_last)) >= 50) {
             t_last = t_curr;
+            buf[2]++;
+            buf[3]++;
+            buf[4]++;
             Rs485Write(buf, sizeof(buf));
         }
         
