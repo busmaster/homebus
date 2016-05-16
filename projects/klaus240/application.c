@@ -537,15 +537,18 @@ void ApplicationPressed22_0(void) {
    } else {
       DigOutDelayedOff(eDigOut7, 600000 /* 10 min */);
    }
-
 }
 void ApplicationReleased22_0(void) {}
 void ApplicationPressed22_1(void) {}
 void ApplicationReleased22_1(void) {}
 
 void ApplicationPressed23_0(void) {
-   /* Bad Spiegel */
-   DigOutToggle(eDigOut10);
+    /* Bad Spiegel */
+    if (DigOutState(eDigOut10)) {
+        DigOutOff(eDigOut10);
+    } else {
+        DigOutDelayedOff(eDigOut10, 60UL * 1000UL * 120UL /* 120 min */);
+    } 
 }
 void ApplicationReleased23_0(void) {}
 void ApplicationPressed23_1(void) {
@@ -655,16 +658,24 @@ void ApplicationPressed33_1(void) {
 void ApplicationReleased33_1(void) {}
 
 void ApplicationPressed34_0(void) {
-   /* Garage */
-   DigOutToggle(eDigOut9);
+    /* Garage */
+    if (DigOutState(eDigOut9)) {
+        DigOutOff(eDigOut9);
+    } else {
+        DigOutDelayedOff(eDigOut9, 60UL * 1000UL * 30UL /* 30 min */);
+    }
 }
 void ApplicationReleased34_0(void) {}
 void ApplicationPressed34_1(void) {}
 void ApplicationReleased34_1(void) {}
 
 void ApplicationPressed35_0(void) {
-   /* Garage */
-   DigOutToggle(eDigOut9);
+    /* Garage */
+    if (DigOutState(eDigOut9)) {
+        DigOutOff(eDigOut9);
+    } else {
+        DigOutDelayedOff(eDigOut9, 60UL * 1000UL * 30UL /* 30 min */);
+    }
 }
 void ApplicationReleased35_0(void) {}
 void ApplicationPressed35_1(void) {}
