@@ -128,14 +128,18 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoSw8Cal;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoRs485If;
+
 typedef enum {
-   eBusDevTypeDo31   = 0x00,
-   eBusDevTypeSw8    = 0x01,
-   eBusDevTypeLum    = 0x02,
-   eBusDevTypeLed    = 0x03,
-   eBusDevTypeSw16   = 0x04,
-   eBusDevTypeWind   = 0x05,
-   eBusDevTypeSw8Cal = 0x06
+   eBusDevTypeDo31    = 0x00,
+   eBusDevTypeSw8     = 0x01,
+   eBusDevTypeLum     = 0x02,
+   eBusDevTypeLed     = 0x03,
+   eBusDevTypeSw16    = 0x04,
+   eBusDevTypeWind    = 0x05,
+   eBusDevTypeSw8Cal  = 0x06,
+   eBusDevTypeRs485If = 0x07
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {

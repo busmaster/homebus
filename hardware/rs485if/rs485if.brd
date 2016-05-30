@@ -3173,7 +3173,7 @@ design rules under a new name.</description>
 <element name="U$1" library="mylib" package="ATMEL_ISP" value="ATMEL_ISP" x="54.2496" y="29.7032"/>
 <element name="C1" library="resistor" package="C0603" value="100n" x="64.1604" y="13.8684"/>
 <element name="C2" library="rcl" package="A/3216-18W" value="10µ/10V" x="65.3288" y="16.0528" rot="R180"/>
-<element name="Q1" library="crystal" package="SM49" value="3M6864" x="40.5614" y="37.9094">
+<element name="Q1" library="crystal" package="SM49" value="18M432" x="40.5614" y="37.9094">
 <attribute name="OC_NEWARK" value="unknown" x="76.1214" y="-9.0806" size="1.778" layer="27" display="off"/>
 <attribute name="MPN" value="" x="76.1214" y="-9.0806" size="1.778" layer="27" display="off"/>
 <attribute name="MF" value="" x="76.1214" y="-9.0806" size="1.778" layer="27" display="off"/>
@@ -3194,9 +3194,9 @@ design rules under a new name.</description>
 <element name="L1" library="mylib" package="L1806" value="Ferrit" x="58.928" y="18.3388" rot="R90"/>
 <element name="R17" library="resistor" package="R0603" value="10k" x="39.6748" y="42.2148"/>
 <element name="L4" library="EagleLibrary_Wuerth_Elektronik_eiSos_V6_20140807" package="WE-SLM" value="WE744242510" x="68.5292" y="2.5908"/>
-<element name="D7" library="diode" package="SOD80C" value="" x="55.2704" y="21.9964" rot="R270"/>
-<element name="R5" library="resistor" package="R0603" value="" x="52.7304" y="16.9164" rot="MR270"/>
-<element name="C14" library="resistor" package="C0603" value="" x="48.5648" y="18.2372"/>
+<element name="D7" library="diode" package="SOD80C" value="1N4148" x="55.2704" y="21.9964" rot="R270"/>
+<element name="R5" library="resistor" package="R0603" value="4k7" x="52.7304" y="16.9164" rot="MR270"/>
+<element name="C14" library="resistor" package="C0603" value="10n" x="48.5648" y="18.2372"/>
 <element name="IC5" library="maxim" package="SO08" value="MAX481CSA" x="23.0632" y="17.526" rot="R180">
 <attribute name="OC_NEWARK" value="90C3817" x="23.0632" y="17.526" size="1.778" layer="27" rot="R180" display="off"/>
 <attribute name="MPN" value="MAX481CSA" x="23.0632" y="17.526" size="1.778" layer="27" rot="R180" display="off"/>
@@ -3211,7 +3211,7 @@ design rules under a new name.</description>
 <element name="C8" library="resistor" package="C0603" value="100n" x="21.5392" y="9.5504" rot="R180"/>
 <element name="C12" library="rcl" package="A/3216-18W" value="10µ/10V" x="20.4724" y="5.1308" rot="R180"/>
 <element name="R3" library="resistor" package="R0603" value="10k" x="31.8008" y="18.8468" rot="R270"/>
-<element name="U$3" library="mylib" package="TQFP44" value="" x="38.6588" y="25.4" rot="R270"/>
+<element name="U$3" library="mylib" package="TQFP44" value="Atmega1284" x="38.6588" y="25.4" rot="R270"/>
 <element name="IC1" library="mylib" package="SOT223" value="BSP75" x="28.3464" y="38.2016"/>
 <element name="R6" library="resistor" package="R0603" value="4k7" x="57.15" y="35.2552" rot="R90"/>
 <element name="R7" library="resistor" package="R0603" value="1k" x="53.3908" y="35.1028" rot="R180"/>
@@ -3227,7 +3227,7 @@ design rules under a new name.</description>
 <element name="JP2" library="pinhead" package="1X02" value="LED" x="45.8216" y="45.4152"/>
 <element name="R19" library="resistor" package="R0603" value="2k2" x="50.1396" y="41.8084" rot="R270"/>
 <element name="R20" library="resistor" package="R0603" value="2k2" x="45.4152" y="42.2148"/>
-<element name="D6" library="diode" package="SOD80C" value="7V5" x="47.0916" y="16.0528"/>
+<element name="D6" library="diode" package="SOD80C" value="6V2" x="47.0916" y="16.0528"/>
 <element name="JP3" library="pinhead" package="1X02" value="RESET" x="39.2684" y="45.2628"/>
 <element name="U$4" library="mylib" package="GEHÄUSE_PHOENIX_BC_17.8" value="" x="41.656" y="-0.5588"/>
 <element name="R21" library="resistor" package="R0603" value="4k7" x="23.5204" y="39.0652" rot="R90"/>
@@ -3246,8 +3246,8 @@ design rules under a new name.</description>
 <element name="C19" library="resistor" package="C0603" value="100n" x="43.688" y="24.7396" rot="MR270"/>
 <element name="C20" library="resistor" package="C0603" value="100n" x="38.2016" y="17.6276" rot="R180"/>
 <element name="SJ1" library="jumper" package="SJ" value="" x="26.924" y="17.9324" rot="MR90"/>
-<element name="R4" library="resistor" package="R0603" value="" x="52.324" y="18.2372"/>
-<element name="D14" library="diode" package="SOD80C" value="" x="52.6288" y="16.2052" rot="R180"/>
+<element name="R4" library="resistor" package="R0603" value="100k" x="52.324" y="18.2372"/>
+<element name="D14" library="diode" package="SOD80C" value="1N4148" x="52.6288" y="16.2052" rot="R180"/>
 <element name="C21" library="resistor" package="C0603" value="100n" x="38.8112" y="31.1404" rot="MR180"/>
 <element name="R11" library="resistor" package="R0603" value="4k7" x="35.7124" y="42.7736" rot="R90"/>
 <element name="R14" library="resistor" package="R0603" value="1k" x="32.8168" y="43.2816" rot="R180"/>

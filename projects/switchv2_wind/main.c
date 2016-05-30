@@ -110,7 +110,6 @@ static uint8_t   sIdle = 0;
 static uint8_t   sWindSwitchOld;
 static uint8_t   sWindSwitch;
 static uint8_t   sWind;
-static uint8_t   sMaxWind;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -444,7 +443,7 @@ static void ProcessBus(void) {
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeWind;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.state = sWindSwitch;
-        sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.wind = sMaxWind; //sWind;
+        sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.wind = sWind;
         BusSend(&sTxBusMsg);           
         break;
     case eBusDevReqSetClientAddr:
@@ -590,8 +589,5 @@ ISR(TIMER0_OVF_vect) {
         gTimeS++;
         sWind = windCnt;
         windCnt = 0;
-        if (sWind > sMaxWind) {
-            sMaxWind = sWind;
-        }
     }
 }

@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "moduleservice.h"
+#include "eventmonitor.h"
 #include "statusled.h"
 
 #include <QProcess>
@@ -69,7 +70,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
     io = new ioState;
 
-    InitEventMonitor();
+    meventmon = new eventmonitor;
+    connect(meventmon, SIGNAL(busEvent(struct eventmonitor::event *)), this, SLOT(onBusEvent(struct eventmonitor::event *)));
 
     mservice = new moduleservice;
 
@@ -81,9 +83,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow() {
 
-    eventMonitor->kill();
-    eventMonitor->waitForFinished();
-    delete eventMonitor;
+    meventmon->command("-exit\n");
+    meventmon->waitForFinished();
+    delete meventmon;
 
     mservice->command("-exit\n");
     mservice->waitForFinished();
@@ -173,38 +175,13 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
   return false;
 }
 
-
-void MainWindow::InitEventMonitor(void) {
-
-    eventMonitor = new QProcess;
-
-    connect(eventMonitor, SIGNAL(readyRead()), this, SLOT(readStdOut()));
-    connect(eventMonitor, SIGNAL(started()), this, SLOT(onStarted()));
-    connect(eventMonitor, SIGNAL(finished(int)), this, SLOT(onFinished(int)));
-
-#ifdef AP420
-    QString program = "/root/git/homebus/tools/eventmonitor/bin/eventmonitor";
-#else
-    QString program = "/home/germana/Oeffentlich/git/homebus/tools/eventmonitor/bin/eventmonitor";
-#endif
-    QStringList arguments;
-    arguments << "-c" << "/dev/hausbus0" << "-a" << "250";
-
-    eventState = eEsWaitForStart;
-    eventMonitor->start(program, arguments);
-}
-
 void MainWindow::onSendServiceCmd(const char *pCmd) {
 
     mservice->command(pCmd);
 }
 
-void MainWindow::readStdOut() {
-  //  std::cout << QString(eventMonitor->readAllStandardOutput()).toUtf8().constData() << std::endl;
+void MainWindow::onBusEvent(eventmonitor::event *ev) {
 
-    int i;
-    QByteArray ev = eventMonitor->readAllStandardOutput();
-    QList<QByteArray> ev_lines = ev.split('\n');
     quint32 egSum = io->egState.sum;
     quint32 ogSum = io->ogState.sum;
     quint32 ugSum = io->ugState.sum;
@@ -212,77 +189,45 @@ void MainWindow::readStdOut() {
     bool    socket_1 = io->socket_1;
     bool    socket_2 = io->socket_1;
 
-    for (i = 0; i < ev_lines.size(); i++) {
-        if (qstrcmp(ev_lines[i], "event address 240 device type DO31") == 0) {
-            eventState = eEsWaitForDO31_240_Do;
-            continue;
-        } else if (qstrcmp(ev_lines[i], "event address 241 device type DO31") == 0) {
-            eventState = eEsWaitForDO31_241_Do;
-            continue;
-        } else if (qstrcmp(ev_lines[i], "event address 36 device type SW8") == 0) {
-            eventState = eEsWaitForSW8_1;
-            continue;
-        }
-        switch (eventState) {
-        case eEsWaitForStart:
-            break;
-        case eEsWaitForDO31_240_Do:
-//            std::cout << "do 240: " << ev_lines[i].constData() << std::endl;
-            (ev_lines[i].at(0) == '0')  ? io->ogState.detail.lightStiegePwr = 0  : io->ogState.detail.lightStiegePwr = 1;
-            (ev_lines[i].at(1) == '0')  ? io->ogState.detail.lightStiege1 = 0    : io->ogState.detail.lightStiege1 = 1;
-            (ev_lines[i].at(2) == '0')  ? io->ogState.detail.lightStiege2 = 0    : io->ogState.detail.lightStiege2 = 1;
-            (ev_lines[i].at(3) == '0')  ? io->ogState.detail.lightStiege3 = 0    : io->ogState.detail.lightStiege3 = 1;
-            (ev_lines[i].at(4) == '0')  ? io->ogState.detail.lightStiege4 = 0    : io->ogState.detail.lightStiege4 = 1;
-            (ev_lines[i].at(5) == '0')  ? io->ogState.detail.lightStiege5 = 0    : io->ogState.detail.lightStiege5 = 1;
-            (ev_lines[i].at(6) == '0')  ? io->ogState.detail.lightStiege6 = 0    : io->ogState.detail.lightStiege6 = 1;
-            (ev_lines[i].at(7) == '0')  ? io->ogState.detail.lightSchrank = 0    : io->ogState.detail.lightSchrank = 1;
-            (ev_lines[i].at(8) == '0')  ? io->ogState.detail.lightSchlaf = 0     : io->ogState.detail.lightSchlaf = 1;
-            (ev_lines[i].at(9) == '0')  ? io->garageState.detail.light = 0       : io->garageState.detail.light = 1;
-            (ev_lines[i].at(10) == '0') ? io->ogState.detail.lightBadSpiegel = 0 : io->ogState.detail.lightBadSpiegel = 1;
-            (ev_lines[i].at(11) == '0') ? io->ogState.detail.lightVorraum = 0    : io->ogState.detail.lightVorraum = 1;
-            (ev_lines[i].at(12) == '0') ? io->ogState.detail.lightBad = 0        : io->ogState.detail.lightBad = 1;
-            (ev_lines[i].at(13) == '0') ? io->egState.detail.lightWohn = 0       : io->egState.detail.lightWohn = 1;
-            (ev_lines[i].at(14) == '0') ? io->egState.detail.lightWohnLese = 0   : io->egState.detail.lightWohnLese = 1;
-            (ev_lines[i].at(15) == '0') ? io->egState.detail.lightEss = 0        : io->egState.detail.lightEss = 1;
-            (ev_lines[i].at(16) == '0') ? io->egState.detail.lightVorraum = 0    : io->egState.detail.lightVorraum = 1;
-            (ev_lines[i].at(17) == '0') ? io->egState.detail.lightWC = 0         : io->egState.detail.lightWC = 1;
-            (ev_lines[i].at(19) == '0') ? io->egState.detail.lightKueche = 0     : io->egState.detail.lightKueche = 1;
-            (ev_lines[i].at(20) == '0') ? io->egState.detail.lightTerrasse = 0   : io->egState.detail.lightTerrasse = 1;
-            (ev_lines[i].at(21) == '0') ? io->ugState.detail.lightLager = 0      : io->ugState.detail.lightLager  = 1;
-            (ev_lines[i].at(22) == '0') ? io->ugState.detail.lightStiege = 0     : io->ugState.detail.lightStiege  = 1;
-            (ev_lines[i].at(23) == '0') ? io->ugState.detail.lightArbeit = 0     : io->ugState.detail.lightArbeit  = 1;
-            (ev_lines[i].at(24) == '0') ? io->ugState.detail.lightFitness = 0    : io->ugState.detail.lightFitness = 1;
-            (ev_lines[i].at(25) == '0') ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum  = 1;
-            (ev_lines[i].at(26) == '0') ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
-            (ev_lines[i].at(27) == '0') ? io->socket_1 = false                   : io->socket_1 = true;
-            (ev_lines[i].at(28) == '0') ? io->socket_2 = false                   : io->socket_2 = true;
-            eventState = eEsWaitForDO31_240_Sh;
-            break;
-        case eEsWaitForDO31_241_Do:
-//            std::cout << "do 241: " << ev_lines[i].constData() << std::endl;
-            (ev_lines[i].at(24) == '0') ? io->egState.detail.lightSpeis = 0      : io->egState.detail.lightSpeis = 1;
-            (ev_lines[i].at(25) == '0') ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
-            (ev_lines[i].at(26) == '0') ? io->egState.detail.lightArbeit = 0     : io->egState.detail.lightArbeit = 1;
-            (ev_lines[i].at(27) == '0') ? io->ogState.detail.lightAnna = 0       : io->ogState.detail.lightAnna = 1;
-            (ev_lines[i].at(28) == '0') ? io->ogState.detail.lightSeverin = 0    : io->ogState.detail.lightSeverin = 1;
-            (ev_lines[i].at(29) == '0') ? io->ogState.detail.lightWC = 0         : io->ogState.detail.lightWC = 1;
-            (ev_lines[i].at(30) == '0') ? io->egState.detail.lightKuecheWand = 0 : io->egState.detail.lightKuecheWand = 1;
-            eventState = eEsWaitForDO31_241_Sh;
-            break;
-        case eEsWaitForDO31_240_Sh:
-//            std::cout << "sh 240: " << ev_lines[i].constData() << std::endl;
-            eventState = eEsWaitForStart;
-            break;
-        case eEsWaitForDO31_241_Sh:
-//            std::cout << "sh 241: " << ev_lines[i].constData() << std::endl;
-            eventState = eEsWaitForStart;
-            break;
-        case eEsWaitForSW8_1:
-//            std::cout << "sw8 1: " << ev_lines[i].constData() << std::endl;
-            (ev_lines[i].at(0) == '0') ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
-            eventState = eEsWaitForStart;
-            break;
-        }
+    if ((ev->srcAddr == 240) && (ev->type == eventmonitor::eDevDo31)) {
+        ((ev->data.do31.digOut & 0x00000001) == 0) ? io->ogState.detail.lightStiegePwr = 0  : io->ogState.detail.lightStiegePwr = 1;
+        ((ev->data.do31.digOut & 0x00000002) == 0) ? io->ogState.detail.lightStiege1 = 0    : io->ogState.detail.lightStiege1 = 1;
+        ((ev->data.do31.digOut & 0x00000004) == 0) ? io->ogState.detail.lightStiege2 = 0    : io->ogState.detail.lightStiege2 = 1;
+        ((ev->data.do31.digOut & 0x00000008) == 0) ? io->ogState.detail.lightStiege3 = 0    : io->ogState.detail.lightStiege3 = 1;
+        ((ev->data.do31.digOut & 0x00000010) == 0) ? io->ogState.detail.lightStiege4 = 0    : io->ogState.detail.lightStiege4 = 1;
+        ((ev->data.do31.digOut & 0x00000020) == 0) ? io->ogState.detail.lightStiege5 = 0    : io->ogState.detail.lightStiege5 = 1;
+        ((ev->data.do31.digOut & 0x00000040) == 0) ? io->ogState.detail.lightStiege6 = 0    : io->ogState.detail.lightStiege6 = 1;
+        ((ev->data.do31.digOut & 0x00000080) == 0) ? io->ogState.detail.lightSchrank = 0    : io->ogState.detail.lightSchrank = 1;
+        ((ev->data.do31.digOut & 0x00000100) == 0) ? io->ogState.detail.lightSchlaf = 0     : io->ogState.detail.lightSchlaf = 1;
+        ((ev->data.do31.digOut & 0x00000200) == 0) ? io->garageState.detail.light = 0       : io->garageState.detail.light = 1;
+        ((ev->data.do31.digOut & 0x00000400) == 0) ? io->ogState.detail.lightBadSpiegel = 0 : io->ogState.detail.lightBadSpiegel = 1;
+        ((ev->data.do31.digOut & 0x00000800) == 0) ? io->ogState.detail.lightVorraum = 0    : io->ogState.detail.lightVorraum = 1;
+        ((ev->data.do31.digOut & 0x00001000) == 0) ? io->ogState.detail.lightBad = 0        : io->ogState.detail.lightBad = 1;
+        ((ev->data.do31.digOut & 0x00002000) == 0) ? io->egState.detail.lightWohn = 0       : io->egState.detail.lightWohn = 1;
+        ((ev->data.do31.digOut & 0x00004000) == 0) ? io->egState.detail.lightWohnLese = 0   : io->egState.detail.lightWohnLese = 1;
+        ((ev->data.do31.digOut & 0x00008000) == 0) ? io->egState.detail.lightEss = 0        : io->egState.detail.lightEss = 1;
+        ((ev->data.do31.digOut & 0x00010000) == 0) ? io->egState.detail.lightVorraum = 0    : io->egState.detail.lightVorraum = 1;
+        ((ev->data.do31.digOut & 0x00020000) == 0) ? io->egState.detail.lightWC = 0         : io->egState.detail.lightWC = 1;
+        ((ev->data.do31.digOut & 0x00080000) == 0) ? io->egState.detail.lightKueche = 0     : io->egState.detail.lightKueche = 1;
+        ((ev->data.do31.digOut & 0x00100000) == 0) ? io->egState.detail.lightTerrasse = 0   : io->egState.detail.lightTerrasse = 1;
+        ((ev->data.do31.digOut & 0x00200000) == 0) ? io->ugState.detail.lightLager = 0      : io->ugState.detail.lightLager  = 1;
+        ((ev->data.do31.digOut & 0x00400000) == 0) ? io->ugState.detail.lightStiege = 0     : io->ugState.detail.lightStiege  = 1;
+        ((ev->data.do31.digOut & 0x00800000) == 0) ? io->ugState.detail.lightArbeit = 0     : io->ugState.detail.lightArbeit  = 1;
+        ((ev->data.do31.digOut & 0x01000000) == 0) ? io->ugState.detail.lightFitness = 0    : io->ugState.detail.lightFitness = 1;
+        ((ev->data.do31.digOut & 0x02000000) == 0) ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum  = 1;
+        ((ev->data.do31.digOut & 0x04000000) == 0) ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
+        ((ev->data.do31.digOut & 0x08000000) == 0) ? io->socket_1 = false                   : io->socket_1 = true;
+        ((ev->data.do31.digOut & 0x10000000) == 0) ? io->socket_2 = false                   : io->socket_2 = true;
+    } else if ((ev->srcAddr == 241) && (ev->type == eventmonitor::eDevDo31)) {
+        ((ev->data.do31.digOut & 0x01000000) == 0) ? io->egState.detail.lightSpeis = 0      : io->egState.detail.lightSpeis = 1;
+        ((ev->data.do31.digOut & 0x02000000) == 0) ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
+        ((ev->data.do31.digOut & 0x04000000) == 0) ? io->egState.detail.lightArbeit = 0     : io->egState.detail.lightArbeit = 1;
+        ((ev->data.do31.digOut & 0x08000000) == 0) ? io->ogState.detail.lightAnna = 0       : io->ogState.detail.lightAnna = 1;
+        ((ev->data.do31.digOut & 0x10000000) == 0) ? io->ogState.detail.lightSeverin = 0    : io->ogState.detail.lightSeverin = 1;
+        ((ev->data.do31.digOut & 0x20000000) == 0) ? io->ogState.detail.lightWC = 0         : io->ogState.detail.lightWC = 1;
+        ((ev->data.do31.digOut & 0x40000000) == 0) ? io->egState.detail.lightKuecheWand = 0 : io->egState.detail.lightKuecheWand = 1;
+    } else if ((ev->srcAddr == 36) && (ev->type == eventmonitor::eDevSw8)) {
+        ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
     }
 
     if ((egSum != io->egState.sum) ||
@@ -354,14 +299,7 @@ void MainWindow::readStdOut() {
     } else {
         if (statusLed) statusLed->set_state(statusled::eOrange);
     }
-}
 
-void MainWindow::onStarted(){
-    std::cout << "eventmonitor started" << std::endl;
-}
-
-void MainWindow::onFinished(int sig) {
-    std::cout << "eventmonitor finished: " << sig << std::endl;
 }
 
 void MainWindow::on_pushButtonEG_clicked() {

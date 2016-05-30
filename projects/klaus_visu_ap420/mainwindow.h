@@ -14,6 +14,7 @@
 #include "garagewindow.h"
 #include "iostate.h"
 #include "moduleservice.h"
+#include "eventmonitor.h"
 #include "statusled.h"
 
 namespace Ui {
@@ -37,9 +38,6 @@ public slots:
     void onSendServiceCmd(const char *cmd);
 
 private slots:
-    void readStdOut();
-    void onStarted();
-    void onFinished(int);
     void scrTimerEvent();
     void cycTimerEvent();
     void on_pushButtonEG_clicked();
@@ -47,9 +45,9 @@ private slots:
     void on_pushButtonUG_clicked();
     void on_pushButtonGarage_clicked();
     void on_pushButtonInternet_pressed();
+    void onBusEvent(struct eventmonitor::event *);
 
 private:
-    void InitEventMonitor(void);
 
     int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
 
@@ -59,7 +57,6 @@ private:
     ugwindow *uiUg;
     garagewindow *uiGarage;
 
-    QProcess *eventMonitor;
     QTimer *scrTimer;
     QTimer *cycTimer;
     bool screensaverOn;
@@ -80,16 +77,8 @@ private:
 
     ioState *io;
 
-    enum {
-        eEsWaitForStart,
-        eEsWaitForDO31_240_Do,
-        eEsWaitForDO31_241_Do,
-        eEsWaitForDO31_240_Sh,
-        eEsWaitForDO31_241_Sh,
-        eEsWaitForSW8_1
-    } eventState;
-
     moduleservice *mservice;
+    eventmonitor *meventmon;
 };
 
 #endif // MAINWINDOW_H

@@ -19193,7 +19193,7 @@ diameter 3 mm, horizontal, grid 12.7 mm</description>
 <part name="C1" library="resistor" deviceset="C-EU" device="C0603" value="100n"/>
 <part name="C2" library="rcl" deviceset="CPOL-EU" device="A/3216-18W" value="10µ/10V"/>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
-<part name="Q1" library="crystal" deviceset="CRYSTAL" device="SM49" value="3M6864"/>
+<part name="Q1" library="crystal" deviceset="CRYSTAL" device="SM49" value="18M432"/>
 <part name="GND6" library="supply1" deviceset="GND" device=""/>
 <part name="C4" library="resistor" deviceset="C-EU" device="C0603" value="16p"/>
 <part name="C5" library="resistor" deviceset="C-EU" device="C0603" value="16p"/>
@@ -19223,9 +19223,9 @@ diameter 3 mm, horizontal, grid 12.7 mm</description>
 <part name="GND9" library="supply1" deviceset="GND" device=""/>
 <part name="GND10" library="supply1" deviceset="GND" device=""/>
 <part name="GND5" library="supply1" deviceset="GND" device=""/>
-<part name="D7" library="diode" deviceset="DIODE-" device="SOD80C"/>
-<part name="R5" library="resistor" deviceset="R-EU_" device="R0603"/>
-<part name="C14" library="resistor" deviceset="C-EU" device="C0603"/>
+<part name="D7" library="diode" deviceset="DIODE-" device="SOD80C" value="1N4148"/>
+<part name="R5" library="resistor" deviceset="R-EU_" device="R0603" value="4k7"/>
+<part name="C14" library="resistor" deviceset="C-EU" device="C0603" value="10n"/>
 <part name="GND16" library="supply1" deviceset="GND" device=""/>
 <part name="GND17" library="supply1" deviceset="GND" device=""/>
 <part name="P+8" library="supply1" deviceset="VCC" device=""/>
@@ -19249,7 +19249,7 @@ diameter 3 mm, horizontal, grid 12.7 mm</description>
 <part name="P+7" library="supply1" deviceset="VCC" device=""/>
 <part name="R3" library="resistor" deviceset="R-EU_" device="R0603" value="10k"/>
 <part name="GND20" library="supply1" deviceset="GND" device=""/>
-<part name="U$3" library="mylib" deviceset="ATMEGA644" device=""/>
+<part name="U$3" library="mylib" deviceset="ATMEGA644" device="" value="Atmega1284"/>
 <part name="IC1" library="mylib" deviceset="BSP75" device=""/>
 <part name="GND21" library="supply1" deviceset="GND" device=""/>
 <part name="R6" library="resistor" deviceset="R-EU_" device="R0603" value="4k7"/>
@@ -19271,7 +19271,7 @@ diameter 3 mm, horizontal, grid 12.7 mm</description>
 <part name="GND30" library="supply1" deviceset="GND" device=""/>
 <part name="R19" library="resistor" deviceset="R-EU_" device="R0603" value="2k2"/>
 <part name="R20" library="resistor" deviceset="R-EU_" device="R0603" value="2k2"/>
-<part name="D6" library="diode" deviceset="ZENER-DIODE" device="SOD80C" value="7V5"/>
+<part name="D6" library="diode" deviceset="ZENER-DIODE" device="SOD80C" value="6V2"/>
 <part name="JP3" library="pinhead" deviceset="PINHD-1X2" device="" value="RESET"/>
 <part name="GND31" library="supply1" deviceset="GND" device=""/>
 <part name="R21" library="resistor" deviceset="R-EU_" device="R0603" value="4k7"/>
@@ -19298,8 +19298,8 @@ diameter 3 mm, horizontal, grid 12.7 mm</description>
 <part name="C20" library="resistor" deviceset="C-EU" device="C0603" value="100n"/>
 <part name="GND33" library="supply1" deviceset="GND" device=""/>
 <part name="SJ1" library="jumper" deviceset="SJ" device=""/>
-<part name="R4" library="resistor" deviceset="R-EU_" device="R0603"/>
-<part name="D14" library="diode" deviceset="DIODE-" device="SOD80C"/>
+<part name="R4" library="resistor" deviceset="R-EU_" device="R0603" value="100k"/>
+<part name="D14" library="diode" deviceset="DIODE-" device="SOD80C" value="1N4148"/>
 <part name="P+3" library="supply1" deviceset="VCC" device=""/>
 <part name="C21" library="resistor" deviceset="C-EU" device="C0603" value="100n"/>
 <part name="GND34" library="supply1" deviceset="GND" device=""/>
@@ -19319,6 +19319,7 @@ diameter 3 mm, horizontal, grid 12.7 mm</description>
 <sheet>
 <plain>
 <text x="71.12" y="20.32" size="1.778" layer="97" rot="R180">Power fail interrupt</text>
+<text x="238.76" y="134.62" size="2.54" layer="97">Housing: Phoenix Contact BC 17,8</text>
 </plain>
 <instances>
 <instance part="IC2" gate="G$1" x="208.28" y="63.5"/>
