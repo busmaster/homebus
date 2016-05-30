@@ -38,6 +38,7 @@
 *  Macros
 */
 #define SIZE_COMPORT   100
+#define SIZE_CMD_BUF   20
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -67,6 +68,8 @@ int main(int argc, char *argv[]) {
     fd_set        rfds;
     int           ret;
     uint8_t       val8;
+    char          buffer[SIZE_CMD_BUF];
+    char          *p;
 
     signal(SIGPIPE, sighandler);
 
@@ -110,6 +113,7 @@ int main(int argc, char *argv[]) {
 
     FD_ZERO(&rfds);
     FD_SET(sioFd, &rfds);
+    FD_SET(STDIN_FILENO, &rfds);
 
     for (;;) {
         ret = select(sioFd + 1, &rfds, 0, 0, 0);
@@ -180,10 +184,22 @@ int main(int argc, char *argv[]) {
                 break;
             }
         }
+        if ((ret > 0) && FD_ISSET(STDIN_FILENO, &rfds)) {
+            p = fgets(buffer, sizeof(buffer), stdin);
+            if (p == 0) {
+                printf("error/EOF on reading from stdin. exiting\n");
+                ret = -1;
+                break;
+            }
+            if (strcmp("-exit\n", p) == 0) {
+                Print("OK\n");
+                break;
+            }
+        }
     }
 
     SioClose(sioHandle);
-    return 0;
+    return ret;
 }
 
 /*-----------------------------------------------------------------------------
