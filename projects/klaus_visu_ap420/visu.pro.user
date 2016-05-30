@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.5.1, 2015-12-05T11:37:09. -->
+<!-- Written by QtCreator 3.5.1, 2016-05-30T10:48:15. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -147,9 +147,9 @@
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">RemoteLinux.DirectUploadStep</value>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedFiles">
-       <value type="QString">/home/germana/Oeffentlich/git/homebus/projects/klaus_visu_ap420/build_ap420/visu</value>
        <value type="QString">/home/germana/Oeffentlich/Hausbus-git_working/projects/klaus_visu_ap420/build_ap420_release/visu</value>
        <value type="QString">/home/germana/Oeffentlich/Hausbus-git_working/projects/build-visu-ap420-Debug/visu</value>
+       <value type="QString">/home/germana/Oeffentlich/git/homebus/projects/klaus_visu_ap420/build_ap420/visu</value>
       </valuelist>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedHosts">
        <value type="QString">ap420</value>
@@ -167,9 +167,9 @@
        <value type="QString">/mnt/ap420-rootfs</value>
       </valuelist>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedTimes">
-       <value type="QDateTime">2015-12-05T09:34:13</value>
        <value type="QDateTime">2015-11-30T11:00:40</value>
        <value type="QDateTime">2015-09-22T14:01:45</value>
+       <value type="QDateTime">2016-05-30T10:41:10</value>
       </valuelist>
       <value type="bool" key="RemoteLinux.GenericDirectUploadStep.IgnoreMissingFiles">false</value>
       <value type="bool" key="RemoteLinux.GenericDirectUploadStep.Incremental">true</value>
