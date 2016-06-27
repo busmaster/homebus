@@ -195,7 +195,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_0.05";
+   return "Klaus2_0.06";
 }
 
 /*-----------------------------------------------------------------------------
@@ -278,6 +278,7 @@ eDigOut25  Vorraum UG
 eDigOut26  Technik
 eDigOut27  Steckdose Netzwerkverteiler
 eDigOut28  Steckdose Netzwerkverteiler 
+eDigOut29  Küche Unterbauleuchten/Dunstabzugleuchte
 */
 
 void ApplicationPressed1_0(void) {}
@@ -752,8 +753,12 @@ void ApplicationReleased45_0(void) {}
 void ApplicationPressed45_1(void) {}
 void ApplicationReleased45_1(void) {}
 
-void ApplicationPressed46_0(void) {}
-void ApplicationReleased46_0(void) {}
+void ApplicationPressed46_0(void) {
+    DigOutOn(eDigOut29); /* Küche Unterbau */
+}
+void ApplicationReleased46_0(void) {
+    DigOutOff(eDigOut29); /* Küche Unterbau */
+}
 void ApplicationPressed46_1(void) {}
 void ApplicationReleased46_1(void) {}
 
