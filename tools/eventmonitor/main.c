@@ -111,11 +111,11 @@ int main(int argc, char *argv[]) {
     }
     sioFd = SioGetFd(sioHandle);
 
-    FD_ZERO(&rfds);
-    FD_SET(sioFd, &rfds);
-    FD_SET(STDIN_FILENO, &rfds);
 
     for (;;) {
+        FD_ZERO(&rfds);
+        FD_SET(sioFd, &rfds);
+        FD_SET(STDIN_FILENO, &rfds);
         ret = select(sioFd + 1, &rfds, 0, 0, 0);
         if ((ret > 0) && FD_ISSET(sioFd, &rfds)) {
             busRet = BusCheck();
