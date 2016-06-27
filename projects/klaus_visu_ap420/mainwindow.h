@@ -11,6 +11,7 @@
 #include "egwindow.h"
 #include "ogwindow.h"
 #include "ugwindow.h"
+#include "kuechewindow.h"
 #include "garagewindow.h"
 #include "iostate.h"
 #include "moduleservice.h"
@@ -43,6 +44,7 @@ private slots:
     void on_pushButtonEG_clicked();
     void on_pushButtonOG_clicked();
     void on_pushButtonUG_clicked();
+    void on_pushButtonKueche_clicked();
     void on_pushButtonGarage_clicked();
     void on_pushButtonInternet_pressed();
     void onBusEvent(struct eventmonitor::event *);
@@ -55,6 +57,7 @@ private:
     egwindow *uiEg;
     ogwindow *uiOg;
     ugwindow *uiUg;
+    kuechewindow *uiKueche;
     garagewindow *uiGarage;
 
     QTimer *scrTimer;

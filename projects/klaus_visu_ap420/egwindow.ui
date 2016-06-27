@@ -88,64 +88,6 @@
     <string>Wohn</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButtonLightKueche">
-   <property name="geometry">
-    <rect>
-     <x>123</x>
-     <y>168</y>
-     <width>115</width>
-     <height>78</height>
-    </rect>
-   </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="text">
-    <string>Küche</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pushButtonLightKuecheWand">
-   <property name="geometry">
-    <rect>
-     <x>4</x>
-     <y>168</y>
-     <width>115</width>
-     <height>78</height>
-    </rect>
-   </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="text">
-    <string>Küche
-Wand</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pushButtonLightSpeis">
-   <property name="geometry">
-    <rect>
-     <x>361</x>
-     <y>86</y>
-     <width>115</width>
-     <height>78</height>
-    </rect>
-   </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="text">
-    <string>Speis</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="pushButtonLightArbeit">
    <property name="geometry">
     <rect>
@@ -228,7 +170,7 @@ Wand</string>
   <widget class="QPushButton" name="pushButtonLightTerrasse">
    <property name="geometry">
     <rect>
-     <x>242</x>
+     <x>4</x>
      <y>168</y>
      <width>115</width>
      <height>78</height>
@@ -263,18 +205,6 @@ Wand</string>
     <string>Lesen</string>
    </property>
   </widget>
-  <zorder>pushButtonLightGang</zorder>
-  <zorder>pushButtonLightEss</zorder>
-  <zorder>pushButtonLightWohn</zorder>
-  <zorder>pushButtonLightKueche</zorder>
-  <zorder>pushButtonLightSpeis</zorder>
-  <zorder>pushButtonLightArbeit</zorder>
-  <zorder>pushButtonBack</zorder>
-  <zorder>pushButtonLightVorraum</zorder>
-  <zorder>pushButtonLightWC</zorder>
-  <zorder>pushButtonLightTerrasse</zorder>
-  <zorder>pushButtonLightKuecheWand</zorder>
-  <zorder>pushButtonLightWohnLese</zorder>
  </widget>
  <resources/>
  <connections>

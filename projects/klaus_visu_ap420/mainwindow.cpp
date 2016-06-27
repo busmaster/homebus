@@ -78,6 +78,7 @@ MainWindow::MainWindow(QWidget *parent) :
     uiEg = new egwindow(this, io);
     uiOg = new ogwindow(this, io);
     uiUg = new ugwindow(this, io);
+    uiKueche = new kuechewindow(this, io);
     uiGarage = new garagewindow(this, io);
 }
 
@@ -185,6 +186,7 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     quint32 egSum = io->egState.sum;
     quint32 ogSum = io->ogState.sum;
     quint32 ugSum = io->ugState.sum;
+    quint32 kuecheSum = io->kuecheState.sum;
     quint32 garageSum = io->garageState.sum;
     bool    socket_1 = io->socket_1;
     bool    socket_2 = io->socket_1;
@@ -208,7 +210,7 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ((ev->data.do31.digOut & 0x00008000) == 0) ? io->egState.detail.lightEss = 0        : io->egState.detail.lightEss = 1;
         ((ev->data.do31.digOut & 0x00010000) == 0) ? io->egState.detail.lightVorraum = 0    : io->egState.detail.lightVorraum = 1;
         ((ev->data.do31.digOut & 0x00020000) == 0) ? io->egState.detail.lightWC = 0         : io->egState.detail.lightWC = 1;
-        ((ev->data.do31.digOut & 0x00080000) == 0) ? io->egState.detail.lightKueche = 0     : io->egState.detail.lightKueche = 1;
+        ((ev->data.do31.digOut & 0x00080000) == 0) ? io->kuecheState.detail.light = 0       : io->kuecheState.detail.light = 1;
         ((ev->data.do31.digOut & 0x00100000) == 0) ? io->egState.detail.lightTerrasse = 0   : io->egState.detail.lightTerrasse = 1;
         ((ev->data.do31.digOut & 0x00200000) == 0) ? io->ugState.detail.lightLager = 0      : io->ugState.detail.lightLager  = 1;
         ((ev->data.do31.digOut & 0x00400000) == 0) ? io->ugState.detail.lightStiege = 0     : io->ugState.detail.lightStiege  = 1;
@@ -218,14 +220,15 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ((ev->data.do31.digOut & 0x04000000) == 0) ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
         ((ev->data.do31.digOut & 0x08000000) == 0) ? io->socket_1 = false                   : io->socket_1 = true;
         ((ev->data.do31.digOut & 0x10000000) == 0) ? io->socket_2 = false                   : io->socket_2 = true;
+        ((ev->data.do31.digOut & 0x20000000) == 0) ? io->kuecheState.detail.lightAbwasch = 0: io->kuecheState.detail.lightAbwasch = 1;
     } else if ((ev->srcAddr == 241) && (ev->type == eventmonitor::eDevDo31)) {
-        ((ev->data.do31.digOut & 0x01000000) == 0) ? io->egState.detail.lightSpeis = 0      : io->egState.detail.lightSpeis = 1;
+        ((ev->data.do31.digOut & 0x01000000) == 0) ? io->kuecheState.detail.lightSpeis = 0  : io->kuecheState.detail.lightSpeis = 1;
         ((ev->data.do31.digOut & 0x02000000) == 0) ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
         ((ev->data.do31.digOut & 0x04000000) == 0) ? io->egState.detail.lightArbeit = 0     : io->egState.detail.lightArbeit = 1;
         ((ev->data.do31.digOut & 0x08000000) == 0) ? io->ogState.detail.lightAnna = 0       : io->ogState.detail.lightAnna = 1;
         ((ev->data.do31.digOut & 0x10000000) == 0) ? io->ogState.detail.lightSeverin = 0    : io->ogState.detail.lightSeverin = 1;
         ((ev->data.do31.digOut & 0x20000000) == 0) ? io->ogState.detail.lightWC = 0         : io->ogState.detail.lightWC = 1;
-        ((ev->data.do31.digOut & 0x40000000) == 0) ? io->egState.detail.lightKuecheWand = 0 : io->egState.detail.lightKuecheWand = 1;
+        ((ev->data.do31.digOut & 0x40000000) == 0) ? io->kuecheState.detail.lightWand = 0   : io->kuecheState.detail.lightWand = 1;
     } else if ((ev->srcAddr == 36) && (ev->type == eventmonitor::eDevSw8)) {
         ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
     }
@@ -233,6 +236,7 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     if ((egSum != io->egState.sum) ||
         (ogSum != io->ogState.sum) ||
         (ugSum != io->ugState.sum) ||
+        (kuecheSum != io->kuecheState.sum) ||
         (garageSum != io->garageState.sum)) {
         emit ioChanged();
     }
@@ -277,6 +281,15 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ui->pushButtonGarage->update();
     }
 
+    if (kuecheSum != io->kuecheState.sum) {
+        if (io->kuecheState.sum == 0) {
+            ui->pushButtonKueche->setStyleSheet("background-color: green");
+        } else {
+            ui->pushButtonKueche->setStyleSheet("background-color: yellow");
+        }
+        ui->pushButtonKueche->update();
+    }
+
     if (socket_1 != io->socket_1) {
         if (io->socket_1 == 0) {
             ui->pushButtonInternet->setStyleSheet("background-color: green");
@@ -292,6 +305,7 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     if ((io->egState.sum == 0) &&
         (io->ogState.sum == 0) &&
         (io->ugState.sum == 0) &&
+        (io->kuecheState.sum == 0) &&
         (io->garageState.sum == 0)) {
         if (statusLed) statusLed->set_state(statusled::eGreen);
     } else if (io->garageState.detail.door != 0) {
@@ -312,6 +326,10 @@ void MainWindow::on_pushButtonOG_clicked() {
 
 void MainWindow::on_pushButtonUG_clicked() {
     uiUg->show();
+}
+
+void MainWindow::on_pushButtonKueche_clicked() {
+    uiKueche->show();
 }
 
 void MainWindow::on_pushButtonGarage_clicked() {

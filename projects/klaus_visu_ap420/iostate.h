@@ -16,9 +16,6 @@ public:
             int lightGang       : 1;
             int lightWC         : 1;
             int lightVorraum    : 1;
-            int lightKueche     : 1;
-            int lightSpeis      : 1;
-            int lightKuecheWand : 1;
             int lightArbeit     : 1;
             int lightTerrasse   : 1;
             int lightWohnLese   : 1;
@@ -62,6 +59,16 @@ public:
             int door            : 1;
         } detail;
     } garageState;
+
+    union {
+        quint32 sum;
+        struct {
+            int light           : 1;
+            int lightWand       : 1;
+            int lightAbwasch    : 1;
+            int lightSpeis      : 1;
+        } detail;
+    } kuecheState;
 
     /* switchable sockets Technik */
     bool socket_1;

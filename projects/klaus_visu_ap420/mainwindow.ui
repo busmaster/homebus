@@ -217,7 +217,7 @@ font: 11pt &quot;Sans&quot;;</string>
    <property name="geometry">
     <rect>
      <x>4</x>
-     <y>86</y>
+     <y>168</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -248,6 +248,19 @@ font: 11pt &quot;Sans&quot;;</string>
    </property>
    <property name="flat">
     <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonKueche">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>86</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Küche</string>
    </property>
   </widget>
  </widget>
