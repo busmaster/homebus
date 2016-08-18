@@ -1151,7 +1151,7 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
 static void PrintUsage(void) {
 
     printf("\r\nUsage:\r\n");
-    printf("modulservice -c port -a addr [-o ownaddr] [-d]                \r\n");  
+    printf("modulservice -c port -a addr [-o ownaddr] [-s]                \r\n");  
     printf("                             (-na addr                       |\r\n");
     printf("                              -setcl addr1 .. addr16         |\r\n");
     printf("                              -getcl                         |\r\n");
@@ -1169,7 +1169,7 @@ static void PrintUsage(void) {
     printf("-c port: com1 com2 ..\r\n");
     printf("-a addr: addr = address of module\r\n");
     printf("-o addr: addr = our address\r\n");
-    printf("-s: server mode, accept command from stdin\r\n");
+    printf("-s server mode, accept command from stdin\r\n");
     printf("-na addr: set new address, addr = new address\r\n");
     printf("-setcl addr1 .. addr16 : set client address list, addr1 = 1st client's address\r\n");
     printf("-getcl: show client address list\r\n");
