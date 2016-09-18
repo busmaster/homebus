@@ -1,30 +1,30 @@
 /*
  * main.c
- * 
+ *
  * Copyright 2015 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
-#include <stdint.h> 
-#include <stdbool.h> 
+#include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
-#include <string.h> 
+#include <string.h>
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -39,8 +39,8 @@
 #include "bus.h"
 
 /*-----------------------------------------------------------------------------
-*  Macros  
-*/         
+*  Macros
+*/
 /* offset addresses in EEPROM */
 #define MODUL_ADDRESS           0
 #define OSCCAL_CORR             1
@@ -53,18 +53,18 @@
 #define STARTUP_DELAY  10 /* delay in seconds */
 
 /* our bus address */
-#define MY_ADDR    sMyAddr   
+#define MY_ADDR    sMyAddr
 
 #define IDLE_SIO  0x01
 
 /* Port D bit 5 controls bus transceiver power down */
 #define BUS_TRANSCEIVER_POWER_DOWN \
    PORTD |= (1 << 5)
-   
+
 #define BUS_TRANSCEIVER_POWER_UP \
    PORTD &= ~(1 << 5)
 
-#define INPUT_SENSOR           (PINC & 0b00000001) 
+#define INPUT_SENSOR           (PINC & 0b00000001)
 
 /* acual value event */
 #define RESPONSE_TIMEOUT_MS         100  /* time in ms */
@@ -75,7 +75,7 @@
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
-*/  
+*/
 typedef enum {
    eInit,
    eWaitForConfirmation,
@@ -90,8 +90,8 @@ typedef struct {
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/  
-char version[] = "Sw88_wind 0.02";
+*/
+char version[] = "Sw88_wind 0.03";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -109,7 +109,8 @@ static uint8_t   sIdle = 0;
 
 static uint8_t   sWindSwitchOld;
 static uint8_t   sWindSwitch;
-static uint8_t   sWind;
+
+static volatile uint8_t sWind;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -128,7 +129,7 @@ static void BusTransceiverPowerDown(bool powerDown);
 /*-----------------------------------------------------------------------------
 *  program start
 */
-int main(void) {                      
+int main(void) {
 
     int     sioHandle;
     uint8_t windThreshold1;
@@ -146,39 +147,39 @@ int main(void) {
     PortInit();
     TimerInit();
     SioInit();
-    sioHandle = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo, 
+    sioHandle = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
                         eSioStopBits1, eSioModeHalfDuplex);
     SioSetIdleFunc(sioHandle, IdleSio);
     SioSetTransceiverPowerDownFunc(sioHandle, BusTransceiverPowerDown);
 
     BusTransceiverPowerDown(true);
-   
+
     BusInit(sioHandle);
     spRxBusMsg = BusMsgBufGet();
 
     /* enable global interrupts */
-    ENABLE_INT;  
+    ENABLE_INT;
 
     SendStartupMsg();
 
     /* wait for controller startup delay for sending first state telegram */
     DELAY_S(STARTUP_DELAY);
 
-    while (1) { 
+    while (1) {
         Idle();
         ProcessSwitch();
         ProcessBus();
-      
+
         if (sWind >= windThreshold1) {
             sWindSwitch |= 0x01;
         } else {
-            sWindSwitch &= ~0x01;    
+            sWindSwitch &= ~0x01;
         }
         if (sWind >= windThreshold2) {
             sWindSwitch |= 0x02;
         } else {
-            sWindSwitch &= ~0x02;    
-        }    
+            sWindSwitch &= ~0x02;
+        }
     }
     return 0;  /* never reached */
 }
@@ -187,7 +188,7 @@ int main(void) {
 *  switch to Idle mode
 */
 static void Idle(void) {
-  
+
    cli();
    if (sIdle == 0) {
       set_sleep_mode(SLEEP_MODE_IDLE);
@@ -204,7 +205,7 @@ static void Idle(void) {
 *  sio idle enable
 */
 static void IdleSio(bool setIdle) {
-  
+
    if (setIdle == true) {
       sIdle &= ~IDLE_SIO;
    } else {
@@ -218,7 +219,7 @@ static void IdleSio(bool setIdle) {
 *  is not required here
 */
 static void BusTransceiverPowerDown(bool powerDown) {
-   
+
    if (powerDown) {
       BUS_TRANSCEIVER_POWER_DOWN;
    } else {
@@ -239,7 +240,7 @@ static uint8_t GetUnconfirmedClient(uint8_t actualClient) {
     if (actualClient >= sNumClients) {
         return 0xff;
     }
-   
+
     for (i = 0; i < sNumClients; i++) {
         nextClient = actualClient + i +1;
         nextClient %= sNumClients;
@@ -300,17 +301,17 @@ static void ProcessSwitch(void) {
     bool             getNextClient;
     uint8_t          nextClient;
     bool             switchStateChanged;
-   
+
     if (sNumClients == 0) {
         return;
     }
-    
+
     if ((sWindSwitch ^ sWindSwitchOld) != 0) {
         switchStateChanged = true;
     } else {
         switchStateChanged = false;
     }
-    
+
     /* do the change detection not in each cycle */
     GET_TIME_MS16(actualTime16);
     if (switchStateChanged) {
@@ -361,7 +362,7 @@ static void ProcessSwitch(void) {
     default:
         break;
     }
-    
+
     if (getNextClient) {
         nextClient = GetUnconfirmedClient(sActualClient);
         if (nextClient <= sActualClient) {
@@ -372,7 +373,7 @@ static void ProcessSwitch(void) {
     }
 
     if (((uint16_t)(actualTime16 - sChangeTimeStamp)) > RETRY_TIMEOUT_MS) {
-        sActualClient = 0xff; // stop 
+        sActualClient = 0xff; // stop
     }
 }
 
@@ -387,12 +388,12 @@ static void ProcessBus(void) {
     uint8_t       i;
     uint8_t       *p;
     bool          msgForMe = false;
-   
+
     ret = BusCheck();
 
     if (ret == BUS_MSG_OK) {
-        msgType = spRxBusMsg->type; 
-        switch (msgType) {  
+        msgType = spRxBusMsg->type;
+        switch (msgType) {
         case eBusDevReqReboot:
         case eBusDevRespSwitchState:
         case eBusDevReqActualValue:
@@ -417,13 +418,13 @@ static void ProcessBus(void) {
 
     switch (msgType) {
     case eBusDevReqReboot:
-        /* reset controller with watchdog */    
-        /* set watchdog timeout to shortest value (14 ms) */                     
+        /* reset controller with watchdog */
+        /* set watchdog timeout to shortest value (14 ms) */
         cli();
         wdt_enable(WDTO_15MS);
         /* wait for reset */
         while (1);
-        break;   
+        break;
     case eBusDevRespSwitchState:
         pClient = sClient;
         for (i = 0; i < sNumClients; i++) {
@@ -438,17 +439,17 @@ static void ProcessBus(void) {
         }
         break;
     case eBusDevReqActualValue:
-        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.senderAddr = MY_ADDR;
         sTxBusMsg.type = eBusDevRespActualValue;
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeWind;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.state = sWindSwitch;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.wind = sWind;
-        BusSend(&sTxBusMsg);           
+        BusSend(&sTxBusMsg);
         break;
     case eBusDevReqSetClientAddr:
-        sTxBusMsg.senderAddr = MY_ADDR; 
-        sTxBusMsg.type = eBusDevRespSetClientAddr;  
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.type = eBusDevRespSetClientAddr;
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
             p = &(spRxBusMsg->msg.devBus.x.devReq.setClientAddr.clientAddr[i]);
@@ -458,52 +459,52 @@ static void ProcessBus(void) {
         GetClientListFromEeprom();
         break;
     case eBusDevReqGetClientAddr:
-        sTxBusMsg.senderAddr = MY_ADDR; 
-        sTxBusMsg.type = eBusDevRespGetClientAddr;  
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.type = eBusDevRespGetClientAddr;
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
             p = &(sTxBusMsg.msg.devBus.x.devResp.getClientAddr.clientAddr[i]);
             *p = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
         }
-        BusSend(&sTxBusMsg);  
+        BusSend(&sTxBusMsg);
         break;
     case eBusDevReqInfo:
-        sTxBusMsg.type = eBusDevRespInfo;  
-        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.type = eBusDevRespInfo;
+        sTxBusMsg.senderAddr = MY_ADDR;
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         sTxBusMsg.msg.devBus.x.devResp.info.devType = eBusDevTypeWind;
         strncpy((char *)(sTxBusMsg.msg.devBus.x.devResp.info.version),
-                version, BUS_DEV_INFO_VERSION_LEN); 
+                version, BUS_DEV_INFO_VERSION_LEN);
         sTxBusMsg.msg.devBus.x.devResp.info.version[BUS_DEV_INFO_VERSION_LEN - 1] = '\0';
-        BusSend(&sTxBusMsg);  
+        BusSend(&sTxBusMsg);
         break;
     case eBusDevReqSetAddr:
-        sTxBusMsg.senderAddr = MY_ADDR; 
-        sTxBusMsg.type = eBusDevRespSetAddr;  
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.type = eBusDevRespSetAddr;
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         p = &(spRxBusMsg->msg.devBus.x.devReq.setAddr.addr);
         eeprom_write_byte((uint8_t *)MODUL_ADDRESS, *p);
-        BusSend(&sTxBusMsg);  
+        BusSend(&sTxBusMsg);
         break;
     case eBusDevReqEepromRead:
-        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.senderAddr = MY_ADDR;
         sTxBusMsg.type = eBusDevRespEepromRead;
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
-        sTxBusMsg.msg.devBus.x.devResp.readEeprom.data = 
+        sTxBusMsg.msg.devBus.x.devResp.readEeprom.data =
         eeprom_read_byte((const uint8_t *)spRxBusMsg->msg.devBus.x.devReq.readEeprom.addr);
-        BusSend(&sTxBusMsg);  
+        BusSend(&sTxBusMsg);
         break;
     case eBusDevReqEepromWrite:
-        sTxBusMsg.senderAddr = MY_ADDR; 
+        sTxBusMsg.senderAddr = MY_ADDR;
         sTxBusMsg.type = eBusDevRespEepromWrite;
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         p = &(spRxBusMsg->msg.devBus.x.devReq.writeEeprom.data);
         eeprom_write_byte((uint8_t *)spRxBusMsg->msg.devBus.x.devReq.readEeprom.addr, *p);
-        BusSend(&sTxBusMsg);  
+        BusSend(&sTxBusMsg);
         break;
     default:
         break;
-    }   
+    }
 }
 
 /*-----------------------------------------------------------------------------
@@ -514,13 +515,13 @@ static void PortInit(void) {
     /* configure port b pins to output low (unused pins) */
     PORTB = 0b00000000;
     DDRB =  0b11111111;
-    
-    /* port c: */ 
+
+    /* port c: */
     /* unused pins: output low */
     /* pc.0: input pin hi-z */
     /* pc.1: output pin hi */
     PORTC = 0b00000010;
-    DDRC =  0b11111110;            
+    DDRC =  0b11111110;
 
     /* port d: */
     /* pd0: input, no pull up (RXD) */
@@ -538,7 +539,7 @@ static void PortInit(void) {
 static void TimerInit(void) {
     /* configure Timer 0 */
     /* prescaler clk/64 -> Interrupt period 256/1000000 * 64 = 16.384 ms */
-    TCCR0B = 3 << CS00; 
+    TCCR0B = 3 << CS00;
     TIMSK0 = 1 << TOIE0;
 }
 
@@ -581,7 +582,7 @@ ISR(TIMER0_OVF_vect) {
         windCnt++;
     }
     /* ms counter */
-    gTimeMs16 += 16;  
+    gTimeMs16 += 16;
     gTimeMs += 16;
     intCnt++;
     if (intCnt >= 61) { /* 16.384 ms * 61 = 1 s*/
