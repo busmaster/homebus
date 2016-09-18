@@ -218,8 +218,8 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ((ev->data.do31.digOut & 0x01000000) == 0) ? io->ugState.detail.lightFitness = 0    : io->ugState.detail.lightFitness = 1;
         ((ev->data.do31.digOut & 0x02000000) == 0) ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum  = 1;
         ((ev->data.do31.digOut & 0x04000000) == 0) ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
-        ((ev->data.do31.digOut & 0x08000000) == 0) ? io->socket_1 = false                   : io->socket_1 = true;
-        ((ev->data.do31.digOut & 0x10000000) == 0) ? io->socket_2 = false                   : io->socket_2 = true;
+        ((ev->data.do31.digOut & 0x08000000) == 0) ? io->socket_1 = true                    : io->socket_1 = false; // inverted connection NC
+        ((ev->data.do31.digOut & 0x10000000) == 0) ? io->socket_2 = true                    : io->socket_2 = false; // inverted connection NC
         ((ev->data.do31.digOut & 0x20000000) == 0) ? io->kuecheState.detail.lightAbwasch = 0: io->kuecheState.detail.lightAbwasch = 1;
     } else if ((ev->srcAddr == 241) && (ev->type == eventmonitor::eDevDo31)) {
         ((ev->data.do31.digOut & 0x01000000) == 0) ? io->kuecheState.detail.lightSpeis = 0  : io->kuecheState.detail.lightSpeis = 1;
@@ -291,10 +291,10 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     }
 
     if (socket_1 != io->socket_1) {
-        if (io->socket_1 == 0) {
-            ui->pushButtonInternet->setStyleSheet("background-color: green");
-        } else {
+        if (io->socket_1) {
             ui->pushButtonInternet->setStyleSheet("background-color: yellow");
+        } else {
+            ui->pushButtonInternet->setStyleSheet("background-color: green");
         }
     }
     if (socket_2 != io->socket_2) {
@@ -313,7 +313,6 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     } else {
         if (statusLed) statusLed->set_state(statusled::eOrange);
     }
-
 }
 
 void MainWindow::on_pushButtonEG_clicked() {
@@ -354,9 +353,9 @@ void MainWindow::on_pushButtonInternet_pressed() {
 
     memset(doState, 0, sizeof(doState));
     if (io->socket_1) {
-        doState[27] = 2; // on
+        doState[27] = 3; // on
     } else {
-        doState[27] = 3; // off
+        doState[27] = 2; // off
     }
     do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonInternet->setStyleSheet("background-color: grey");
