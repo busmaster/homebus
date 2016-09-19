@@ -63,6 +63,7 @@
 #define OP_INFO                             12
 #define OP_EXIT                             13
 #define OP_CLOCK_CALIB                      14
+#define OP_SWITCH_STATE                     15
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -93,6 +94,7 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf);
 static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pBuf);
 static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf);
 static bool ModuleClockCalib(uint8_t address, uint8_t calibAddress);
+static bool SwitchEvent(uint8_t clientAddr, uint8_t state);
 static int  GetOperation(int argc, char *argv[], int *pArgi);
 
 #ifndef WIN32
@@ -453,6 +455,12 @@ int main(int argc, char *argv[]) {
             break;
         case OP_CLOCK_CALIB:
             ret = ModuleClockCalib(moduleAddr, atoi(argv[argi]));
+            if (ret) {
+                printf("OK\r\n");
+            }            
+            break;
+        case OP_SWITCH_STATE:
+            ret = SwitchEvent(moduleAddr, atoi(argv[argi]));
             if (ret) {
                 printf("OK\r\n");
             }            
@@ -1041,6 +1049,49 @@ static bool ModuleClockCalib(
     return rc;
 }
 
+/*-----------------------------------------------------------------------------
+*  set new bus module address
+*/
+static bool SwitchEvent(uint8_t clientAddr, uint8_t state) {
+
+    TBusTelegram    txBusMsg;
+    uint8_t         ret;
+    unsigned long   startTimeMs;
+    unsigned long   actualTimeMs;
+    TBusTelegram    *pBusMsg;
+    bool            responseOk = false;
+    bool            timeOut = false;
+
+    txBusMsg.type = eBusDevReqSwitchState;
+    txBusMsg.senderAddr = MY_ADDR;
+    txBusMsg.msg.devBus.receiverAddr = clientAddr;
+    txBusMsg.msg.devBus.x.devReq.switchState.switchState = state;
+    BusSend(&txBusMsg);
+    startTimeMs = GetTickCount();
+    do {
+        actualTimeMs = GetTickCount();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            pBusMsg = BusMsgBufGet();
+            if ((pBusMsg->type == eBusDevRespSwitchState)                      &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR)                  &&
+                (pBusMsg->senderAddr == clientAddr)                            &&
+                (pBusMsg->msg.devBus.x.devResp.switchState.switchState == state)) {
+                responseOk = true;
+            }
+        } else {
+            if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+                timeOut = true;
+            }
+        }
+    } while (!responseOk && !timeOut);
+
+    if (responseOk) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 #ifndef WIN32
 static unsigned long GetTickCount(void) {
@@ -1138,10 +1189,18 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             } else {
                 break;
             }
+        } else if (strcmp(argv[i], "-switchstate") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SWITCH_STATE;
+            } else {
+                break;
+            }
         } else if (strcmp(argv[i], "-exit") == 0) {
             operation = OP_EXIT;
         }
     }
+
     return operation;
 }
 
@@ -1165,10 +1224,11 @@ static void PrintUsage(void) {
     printf("                              -setvalsw16 led0 .. led7       |\r\n");
     printf("                              -info                          |\r\n");
     printf("                              -clockcalib addr               |\r\n");
+    printf("                              -switchstate data              |\r\n");
     printf("                              -exit)                          \r\n");
     printf("-c port: com1 com2 ..\r\n");
     printf("-a addr: addr = address of module\r\n");
-    printf("-o addr: addr = our address\r\n");
+    printf("-o addr: addr = our address, default:0\r\n");
     printf("-s server mode, accept command from stdin\r\n");
     printf("-na addr: set new address, addr = new address\r\n");
     printf("-setcl addr1 .. addr16 : set client address list, addr1 = 1st client's address\r\n");
@@ -1183,5 +1243,6 @@ static void PrintUsage(void) {
     printf("-setvalsw16 led0 .. led7: set value for led\r\n");
     printf("-info: read type and version string from modul\r\n");
     printf("-clockcalib: clock calibration\r\n");
+    printf("-switchstate: generate a switch pressed or released event (ReqSwitchState, -a addr is the client)\r\n");
     printf("-exit: nop operation, exit server\r\n");
 }
