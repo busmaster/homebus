@@ -1,24 +1,24 @@
 /*
  * application.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -33,12 +33,12 @@
 #include "shader.h"
 
 /*-----------------------------------------------------------------------------
-*  Macros  
-*/ 
+*  Macros
+*/
 
 /*-----------------------------------------------------------------------------
 *  typedefs
-*/   
+*/
 
 typedef void (* TFuncPressed0)(void);
 typedef void (* TFuncPressed1)(void);
@@ -54,7 +54,7 @@ typedef struct {
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/      
+*/
 static const TUserFunc sApplicationFuncs[] PROGMEM = {
    {ApplicationPressed1_0,   ApplicationPressed1_1,   ApplicationReleased1_0,   ApplicationReleased1_1},
    {ApplicationPressed2_0,   ApplicationPressed2_1,   ApplicationReleased2_0,   ApplicationReleased2_1},
@@ -191,30 +191,30 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 */
 
 
-/*----------------------------------------------------------------------------- 
+/*-----------------------------------------------------------------------------
 * Rueckgabe der Versioninfo (max. Laenge 15 Zeichen)
 */
 const char *ApplicationVersion(void) {
    return "Klaus1_0.06";
 }
 
-/*----------------------------------------------------------------------------- 
+/*-----------------------------------------------------------------------------
 * Benachrichtungung der Application ueber Tastenereignis
 */
 void ApplicationEventButton(TButtonEvent *pButtonEvent) {
-                                                   
-   uint8_t        index;    
+
+   uint8_t        index;
    TFuncPressed0  fPressed0;
    TFuncPressed1  fPressed1;
    TFuncReleased0 fReleased0;
    TFuncReleased1 fReleased1;
 
    index = pButtonEvent->address - 1;
-   
+
    if (index >= (sizeof(sApplicationFuncs) / sizeof(TUserFunc))) {
       return;
    }
- 
+
    if (pButtonEvent->pressed == true) {
       if (pButtonEvent->buttonNr == 1) {
           fPressed0 = (TFuncPressed0)pgm_read_word(&sApplicationFuncs[index].fPressed0);
@@ -232,7 +232,7 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
           fReleased1();
       }
    }
-} 
+}
 
 void ApplicationInit(void) {
 
@@ -245,37 +245,37 @@ void ApplicationInit(void) {
    /* Markise */
    ShaderSetConfig(eShader2,  eDigOut4,  eDigOut5, 44000, 41000);
 
-   /* Fenster Ess  */ 
+   /* Fenster Ess  */
    ShaderSetConfig(eShader3,  eDigOut6,  eDigOut7, 18800, 18400);
 
    /* Rollladen Kinderzimmer gross */
    ShaderSetConfig(eShader4,  eDigOut8,  eDigOut9, 19200, 18300);
-   
-   /* Rollladen Kinderzimmer klein ost */ 
+
+   /* Rollladen Kinderzimmer klein ost */
    ShaderSetConfig(eShader5,  eDigOut10, eDigOut11, 19000, 18700);
 
-   /* Rollladen Kinderzimmer klein nord */ 
+   /* Rollladen Kinderzimmer klein nord */
    ShaderSetConfig(eShader6,  eDigOut12, eDigOut13, 19200, 17700);
 
-   /* Rollladen Schrankraum */ 
+   /* Rollladen Schrankraum */
    ShaderSetConfig(eShader7,  eDigOut14, eDigOut15, 19200, 18500);
 
-   /* Rollladen Schlafzimmer */ 
+   /* Rollladen Schlafzimmer */
    ShaderSetConfig(eShader8,  eDigOut16, eDigOut17, 28200, 26700);
 
-   /* Rollladen Fenster Kueche */ 
+   /* Rollladen Fenster Kueche */
    ShaderSetConfig(eShader9,  eDigOut18, eDigOut19, 19200, 18700);
 
-   /* Rollladen Terrassentuer Ess */ 
+   /* Rollladen Terrassentuer Ess */
    ShaderSetConfig(eShader10, eDigOut20, eDigOut21, 29800, 28000);
 
-   /* Rollladen Arbeitszimmer */ 
+   /* Rollladen Arbeitszimmer */
    ShaderSetConfig(eShader11, eDigOut22, eDigOut23, 19000, 18200);
 }
 
 
 void ApplicationStart(void) {
-    
+
 }
 
 static bool      sButton13_1Pressed = false;
