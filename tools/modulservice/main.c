@@ -185,6 +185,8 @@ int main(int argc, char *argv[]) {
                 argc++;
             }
 
+            myAddr = 0; /* default 0 */
+
             for (i = 0; i < argc; i++) {
                 if ((strcmp(argv[i], "-a") == 0) &&
                     (argc > i)) {
