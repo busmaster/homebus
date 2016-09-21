@@ -129,6 +129,7 @@ int main(int argc, char *argv[]) {
     char                   buffer[CMD_SIZE];
     char                   *p;
     uint8_t                val8;
+    uint8_t                defaultMyAddr = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-c") == 0) {
@@ -144,6 +145,7 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "-o") == 0) {
             if (argc > i) {
                 myAddr = atoi(argv[i + 1]);
+                defaultMyAddr = myAddr;
             }
         } else if (strcmp(argv[i], "-s") == 0) {
             server_run = true;
@@ -185,7 +187,7 @@ int main(int argc, char *argv[]) {
                 argc++;
             }
 
-            myAddr = 0; /* default 0 */
+            myAddr = defaultMyAddr;
 
             for (i = 0; i < argc; i++) {
                 if ((strcmp(argv[i], "-a") == 0) &&
