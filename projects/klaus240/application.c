@@ -186,6 +186,8 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
    {ApplicationPressed128_0, ApplicationPressed128_1, ApplicationReleased128_0, ApplicationReleased128_1}
 };
 
+static bool sDoorbellOn = true;
+
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -195,7 +197,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_0.06";
+   return "Klaus2_0.07";
 }
 
 /*-----------------------------------------------------------------------------
@@ -613,16 +615,19 @@ void ApplicationPressed29_1(void) {}
 void ApplicationReleased29_1(void) {}
 
 void ApplicationPressed30_0(void) {
-   /* Glocke */
-   if (!DigOutIsDelayed(eDigOut18)) {
-      DigOutDelayedOff(eDigOut18, 250);
-   }
+    /* Glocke */
+    if (!sDoorbellOn) {
+        return;
+    }
+    if (!DigOutIsDelayed(eDigOut18)) {
+        DigOutDelayedOff(eDigOut18, 250);
+    }
 
-   /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
-   DigOutToggle(eDigOut13);
-   DigOutToggle(eDigOut15);
-   DigOutToggle(eDigOut23);
-   DigOutToggle(eDigOut24);
+    /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
+    DigOutToggle(eDigOut13);
+    DigOutToggle(eDigOut15);
+    DigOutToggle(eDigOut23);
+    DigOutToggle(eDigOut24);
 }
 void ApplicationReleased30_0(void) {
    /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
@@ -1027,8 +1032,12 @@ void ApplicationReleased99_0(void) {}
 void ApplicationPressed99_1(void) {}
 void ApplicationReleased99_1(void) {}
 
-void ApplicationPressed100_0(void) {}
-void ApplicationReleased100_0(void) {}
+void ApplicationPressed100_0(void) {
+    sDoorbellOn = true;
+}
+void ApplicationReleased100_0(void) {
+    sDoorbellOn = false;
+}
 void ApplicationPressed100_1(void) {}
 void ApplicationReleased100_1(void) {}
 

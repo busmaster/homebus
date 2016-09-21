@@ -80,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent) :
     uiUg = new ugwindow(this, io);
     uiKueche = new kuechewindow(this, io);
     uiGarage = new garagewindow(this, io);
+    uiSetup = new setupwindow(this, io);
 }
 
 MainWindow::~MainWindow() {
@@ -347,7 +348,7 @@ int MainWindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *
     return len;
 }
 
-void MainWindow::on_pushButtonInternet_pressed() {
+void MainWindow::on_pushButtonInternet_clicked() {
     char    command[100];
     uint8_t doState[31];
 
@@ -361,4 +362,8 @@ void MainWindow::on_pushButtonInternet_pressed() {
     ui->pushButtonInternet->setStyleSheet("background-color: grey");
 
     onSendServiceCmd(command);
+}
+
+void MainWindow::on_pushButtonSetup_clicked() {
+    uiSetup->show();
 }

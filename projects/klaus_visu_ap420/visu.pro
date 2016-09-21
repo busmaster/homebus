@@ -22,7 +22,8 @@ SOURCES += main.cpp\
     moduleservice.cpp \
     statusled.cpp \
     eventmonitor.cpp \
-    kuechewindow.cpp
+    kuechewindow.cpp \
+    setupwindow.cpp
 
 HEADERS  += mainwindow.h \
     egwindow.h \
@@ -33,7 +34,8 @@ HEADERS  += mainwindow.h \
     moduleservice.h \
     statusled.h \
     eventmonitor.h \
-    kuechewindow.h
+    kuechewindow.h \
+    setupwindow.h
 
 FORMS    += \
     mainwindow.ui \
@@ -41,7 +43,8 @@ FORMS    += \
     ogwindow.ui \
     ugwindow.ui \
     garagewindow.ui \
-    kuechewindow.ui
+    kuechewindow.ui \
+    setupwindow.ui
 
 target.path += /root
 INSTALLS += target

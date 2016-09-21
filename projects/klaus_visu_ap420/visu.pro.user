@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.5.1, 2016-09-18T10:36:40. -->
+<!-- Written by QtCreator 3.5.1, 2016-09-21T12:17:36. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -167,7 +167,7 @@
        <value type="QString">/mnt/ap420-rootfs</value>
       </valuelist>
       <valuelist type="QVariantList" key="Qt4ProjectManager.MaemoRunConfiguration.LastDeployedTimes">
-       <value type="QDateTime">2016-09-18T10:33:16</value>
+       <value type="QDateTime">2016-09-21T12:12:08</value>
        <value type="QDateTime">2015-09-22T14:01:45</value>
        <value type="QDateTime">2015-11-30T11:00:40</value>
       </valuelist>
