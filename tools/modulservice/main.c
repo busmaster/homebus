@@ -189,6 +189,9 @@ int main(int argc, char *argv[]) {
                 if ((strcmp(argv[i], "-a") == 0) &&
                     (argc > i)) {
                     moduleAddr = atoi(argv[i + 1]);
+                } else  if ((strcmp(argv[i], "-o") == 0) &&
+                    (argc > i)) {
+                    myAddr = atoi(argv[i + 1]);
                 }
             }
         }
