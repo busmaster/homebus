@@ -21968,7 +21968,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <part name="C1" library="resistor" deviceset="C-EU" device="C0603" value="100n"/>
 <part name="C2" library="rcl" deviceset="CPOL-EU" device="A/3216-18W" value="10µ/10V"/>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
-<part name="Q1" library="crystal" deviceset="CRYSTAL" device="SM49" value="18M432"/>
+<part name="Q1" library="crystal" deviceset="CRYSTAL" device="SM49" value="14M7456"/>
 <part name="GND6" library="supply1" deviceset="GND" device=""/>
 <part name="C4" library="resistor" deviceset="C-EU" device="C0603" value="16p"/>
 <part name="C5" library="resistor" deviceset="C-EU" device="C0603" value="16p"/>
