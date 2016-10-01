@@ -78,7 +78,7 @@ FlashFillPagePuffer:
 1:
    ld  r0, x+
    ld  r1, x+
-   ldi r18, 0x01 ; (1 << SELFPRGEN)
+   ldi r18, 0x01 ; (1 << SPMEN)
    rcall Do_spm
    adiw r30, 2
    subi r20, 1 ;use subi for PAGESIZEB <= 256
@@ -100,11 +100,11 @@ FlashProgramPagePuffer:
    rol r31
 
    ; execute page write
-   ldi r18, 0x05      ; (1 << PGWRT) | (1 << SELFPRGEN)
+   ldi r18, 0x05      ; (1 << PGWRT) | (1 << SPMEN)
    rcall Do_spm
 
    ; re-enable the RWW section
-   ldi r18, 0x11      ; (1 << RWWSRE) | (1 << SELFPRGEN)
+   ldi r18, 0x11      ; (1 << RWWSRE) | (1 << SPMEN)
    rcall Do_spm
 
    ret
@@ -123,11 +123,11 @@ FlashPageErase:
    rol r30
    rol r31
 
-   ldi r18, 0x03        ; (1 << PGERS) | (1 << SELFPRGEN)
+   ldi r18, 0x03        ; (1 << PGERS) | (1 << SPMEN)
    rcall Do_spm               
     
    ; re-enable the RWW section
-   ldi r18, 0x11      ; (1 << RWWSRE) | (1 << SELFPRGEN)
+   ldi r18, 0x11      ; (1 << RWWSRE) | (1 << SPMEN)
    rcall Do_spm
 
    ret
@@ -139,7 +139,7 @@ Do_spm:
    ; check for previous SPM complete
 1:
    lds r23, 0x57  ; SPMCSR
-   sbrc r23, 0    ; SELFPRGEN
+   sbrc r23, 0    ; SPMEN
    rjmp 1b
    ; SPM timed sequence
    sts 0x57, r18   ; SPMCSR

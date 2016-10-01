@@ -263,8 +263,8 @@ static void ProcessBus(uint8_t ret) {
 static void TimerInit(void) {
 
     /* configure Timer 0 */
-    /* prescaler clk/1024 -> Interrupt period 1024/14745600 * 256 = 17.778 ms */
-    TCCR0B = (1 << CS02) | (1 << CS00); 
+    /* prescaler clk/256 -> Interrupt period 256/(14745600/8) * 256 = 35.556 ms */
+    TCCR0B = (1 << CS02); 
 }
 
 static void TimerStart(void) {
@@ -283,14 +283,14 @@ static void TimerExit(void) {
 
 /*-----------------------------------------------------------------------------
 *  Timer 0 overflow ISR
-*  period:  17.778 ms
+*  period:  35.556 ms
 */
 ISR(TIMER0_OVF_vect) {
 
   static uint8_t intCnt = 0;
 
   intCnt++;
-  if (intCnt >= 56) { /* 17.778 ms * 56 = 1 s*/
+  if (intCnt >= 28) { /* 35.556 ms * 28 = 1 s*/
      intCnt = 0;
      gTimeS8++;
   }

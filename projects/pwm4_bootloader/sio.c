@@ -103,6 +103,7 @@ void SioWriteReady(void) {
 
     /* Wait for transmit complete */
     while ((UCSR1A & (1 << TXC1)) == 0);
+    UCSR1A |= (1 << TXC1);
 }
 
 /*-----------------------------------------------------------------------------
