@@ -163,7 +163,7 @@ typedef struct {
       TBusDevInfoSw16    sw16;
       TBusDevInfoWind    wind;
       TBusDevInfoSw8Cal  sw8Cal;
-      TBusDevInfoRs485If rs452if;
+      TBusDevInfoRs485If rs485if;
       TBusDevInfoPwm4    pwm4;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */

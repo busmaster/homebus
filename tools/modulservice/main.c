@@ -60,10 +60,12 @@
 #define OP_SET_VALUE_DO31_SH                9
 #define OP_SET_VALUE_SW8                    10
 #define OP_SET_VALUE_SW16                   11
-#define OP_INFO                             12
-#define OP_EXIT                             13
-#define OP_CLOCK_CALIB                      14
-#define OP_SWITCH_STATE                     15
+#define OP_SET_VALUE_RS485IF                13
+#define OP_SET_VALUE_PWM4                   14
+#define OP_INFO                             15
+#define OP_EXIT                             16
+#define OP_CLOCK_CALIB                      17
+#define OP_SWITCH_STATE                     18
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -418,10 +420,32 @@ int main(int argc, char *argv[]) {
             break;
         case OP_SET_VALUE_SW16:
             setVal.devType = eBusDevTypeSw16;
-            operation = OP_SET_VALUE_SW16;
             memset(setVal.setValue.sw16.led_state, 0, sizeof(setVal.setValue.sw16.led_state));
             for (j = argi, k = 0; (j < argc) && (k < (int)(sizeof(setVal.setValue.sw16.led_state) * 2)); j++, k++) {
                 setVal.setValue.sw16.led_state[k / 2] |= ((uint8_t)atoi(argv[j]) & 0x0F) << ((k % 2) * 4);
+            }
+            ret = ModulSetValue(moduleAddr, &setVal);
+            if (ret) {
+                printf("OK\r\n");
+            }
+            break;
+        case OP_SET_VALUE_RS485IF:
+            setVal.devType = eBusDevTypeRs485If;
+            memset(setVal.setValue.rs485if.state, 0, sizeof(setVal.setValue.rs485if.state));
+            for (j = argi, k = 0; (j < argc) && (k < (int)sizeof(setVal.setValue.rs485if.state)); j++, k++) {
+                setVal.setValue.rs485if.state[k] = (uint8_t)atoi(argv[j]);
+            }
+            ret = ModulSetValue(moduleAddr, &setVal);
+            if (ret) {
+                printf("OK\r\n");
+            }
+            break;
+        case OP_SET_VALUE_PWM4:
+            setVal.devType = eBusDevTypePwm4;
+            memset(setVal.setValue.pwm4.pwm, 0, sizeof(setVal.setValue.pwm4.pwm));
+            setVal.setValue.pwm4.mask = (uint8_t)atoi(argv[argi]);
+            for (j = argi + 1, k = 0; (j < argc) && (k < (int)sizeof(setVal.setValue.pwm4.pwm)); j++, k++) {
+                setVal.setValue.pwm4.pwm[k] = (uint16_t)atoi(argv[j]);
             }
             ret = ModulSetValue(moduleAddr, &setVal);
             if (ret) {
@@ -1187,6 +1211,20 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             } else {
                 break;
             }
+        } else if (strcmp(argv[i], "-setvalrs485if") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SET_VALUE_RS485IF;
+            } else {
+                break;
+            }
+        } else if (strcmp(argv[i], "-setvalpwm4") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SET_VALUE_PWM4;
+            } else {
+                break;
+            }
         } else if (strcmp(argv[i], "-info") == 0) {
             operation = OP_INFO;
         } else if (strcmp(argv[i], "-clockcalib") == 0) {
@@ -1229,6 +1267,8 @@ static void PrintUsage(void) {
     printf("                              -setvaldo31_sh sh0 .. sh14     |\r\n");
     printf("                              -setvalsw8 do0 .. do7          |\r\n");
     printf("                              -setvalsw16 led0 .. led7       |\r\n");
+    printf("                              -setvalrs485if data0 .. data31 |\r\n");
+    printf("                              -setvalpwm4 mask pwm0 .. pwm3  |\r\n");
     printf("                              -info                          |\r\n");
     printf("                              -clockcalib addr               |\r\n");
     printf("                              -switchstate data              |\r\n");
@@ -1248,6 +1288,8 @@ static void PrintUsage(void) {
     printf("-setvaldo31_sh sh0 .. sh14: set value for shader\r\n");
     printf("-setvalsw8 do0 .. do7: set value for dig out\r\n");
     printf("-setvalsw16 led0 .. led7: set value for led\r\n");
+    printf("-setvalrs485if data0 .. data31: set byte value for rs485if\r\n");
+    printf("-setvalpwm4 mask pwm0 .. pwm3: mask = bit mask for channel, pwmX = 16 bit value\r\n");
     printf("-info: read type and version string from modul\r\n");
     printf("-clockcalib: clock calibration\r\n");
     printf("-switchstate: generate a switch pressed or released event (ReqSwitchState, -a addr is the client)\r\n");
