@@ -384,14 +384,14 @@ typedef struct {
 typedef struct {
    TBusDevType devType;
    union {
-      TBusDevActualValueDo31 do31;
-      TBusDevActualValueSw8  sw8;
-      TBusDevActualValueLum  lum;
-      TBusDevActualValueLed  led;
-      TBusDevActualValueSw16 sw16;
-      TBusDevActualValueWind wind;
-      TBusDevActualValueWind rs485if;
-      TBusDevActualValuePwm4 pwm4;
+      TBusDevActualValueDo31    do31;
+      TBusDevActualValueSw8     sw8;
+      TBusDevActualValueLum     lum;
+      TBusDevActualValueLed     led;
+      TBusDevActualValueSw16    sw16;
+      TBusDevActualValueWind    wind;
+      TBusDevActualValueRs485if rs485if;
+      TBusDevActualValuePwm4    pwm4;
    } actualValue; /* same as request */
 } __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
 
