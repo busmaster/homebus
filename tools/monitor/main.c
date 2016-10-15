@@ -74,6 +74,8 @@ int main(int argc, char *argv[]) {
     char comPort[SIZE_COMPORT] = "";
     char logFile[MAX_NAME_LEN] = "";
     bool raw = false;
+    uint8_t len;
+    uint8_t val8;
 
     /* COM-Port ermitteln */
     for (i = 1; i < argc; i++) {
@@ -132,6 +134,10 @@ int main(int argc, char *argv[]) {
             fclose(pLogFile);
         }
         return 0;
+    }
+
+    while ((len = SioGetNumRxChar(handle)) != 0) {
+        SioRead(handle, &val8, sizeof(val8));
     }
 
     if (raw) {
