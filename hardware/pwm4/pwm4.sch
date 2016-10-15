@@ -22041,10 +22041,10 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <part name="D13" library="diode" deviceset="SCHOTTKY-DIODE" device="SMD" value="SS24"/>
 <part name="D15" library="diode" deviceset="SCHOTTKY-DIODE" device="SMD" value="SS24"/>
 <part name="U$4" library="mylib" deviceset="TCMT4100" device=""/>
-<part name="R1" library="resistor" deviceset="R-EU_" device="R0603" value="680"/>
-<part name="R2" library="resistor" deviceset="R-EU_" device="R0603" value="680"/>
-<part name="R3" library="resistor" deviceset="R-EU_" device="R0603" value="680"/>
-<part name="R6" library="resistor" deviceset="R-EU_" device="R0603" value="680"/>
+<part name="R1" library="resistor" deviceset="R-EU_" device="R0603" value="1k2"/>
+<part name="R2" library="resistor" deviceset="R-EU_" device="R0603" value="1k2"/>
+<part name="R3" library="resistor" deviceset="R-EU_" device="R0603" value="1k2"/>
+<part name="R6" library="resistor" deviceset="R-EU_" device="R0603" value="1k2"/>
 <part name="GND14" library="supply1" deviceset="GND" device=""/>
 <part name="GND15" library="supply1" deviceset="GND" device=""/>
 <part name="GND18" library="supply1" deviceset="GND" device=""/>
@@ -22054,29 +22054,29 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <part name="VCC3" library="supply1" deviceset="VCCIO" device=""/>
 <part name="VCC4" library="supply1" deviceset="VCCIO" device=""/>
 <part name="VCC5" library="supply1" deviceset="VCCIO" device=""/>
-<part name="R7" library="resistor" deviceset="R-EU_" device="R0603" value="1k"/>
-<part name="R9" library="resistor" deviceset="R-EU_" device="R0603" value="1k"/>
-<part name="R10" library="resistor" deviceset="R-EU_" device="R0603" value="1k"/>
-<part name="R11" library="resistor" deviceset="R-EU_" device="R0603" value="1k"/>
+<part name="R7" library="resistor" deviceset="R-EU_" device="R0603" value="2k2"/>
+<part name="R9" library="resistor" deviceset="R-EU_" device="R0603" value="2k2"/>
+<part name="R10" library="resistor" deviceset="R-EU_" device="R0603" value="2k2"/>
+<part name="R11" library="resistor" deviceset="R-EU_" device="R0603" value="2k2"/>
 <part name="GND20" library="supply1" deviceset="GNDIO" device=""/>
 <part name="GND21" library="supply1" deviceset="GNDIO" device=""/>
 <part name="GND28" library="supply1" deviceset="GNDIO" device=""/>
 <part name="GND29" library="supply1" deviceset="GNDIO" device=""/>
-<part name="U$5" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
-<part name="U$6" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
-<part name="U$7" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
-<part name="U$8" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
-<part name="U$9" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
-<part name="U$10" library="mylib" deviceset="TBG-3.5-PW-4P" device=""/>
+<part name="PWM0" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
+<part name="PWM1" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
+<part name="PWM2" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
+<part name="PWM3" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
+<part name="24V" library="mylib" deviceset="TBG-3.5-PW-2P" device=""/>
+<part name="BUS" library="mylib" deviceset="TBG-3.5-PW-4P" device=""/>
 <part name="D11" library="diode" deviceset="SCHOTTKY-DIODE" device="SMC" value="SMCJ30A"/>
 <part name="U$2" library="mega32U4" deviceset="ATMEGA32U4-AU" device=""/>
-<part name="C6" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
+<part name="C6" library="resistor" deviceset="C-EU" device="025-040X050" value="n.b."/>
 <part name="C7" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
-<part name="C8" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
+<part name="C8" library="resistor" deviceset="C-EU" device="025-040X050" value="n.b."/>
 <part name="C17" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
-<part name="C22" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
+<part name="C22" library="resistor" deviceset="C-EU" device="025-040X050" value="n.b."/>
 <part name="C24" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
-<part name="C26" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
+<part name="C26" library="resistor" deviceset="C-EU" device="025-040X050" value="n.b."/>
 <part name="C27" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
 <part name="C28" library="resistor" deviceset="C-EU" device="025-040X050" value="2n2"/>
 <part name="GND30" library="supply1" deviceset="GNDIO" device=""/>
@@ -22223,12 +22223,12 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <instance part="GND21" gate="G$1" x="195.58" y="-10.16"/>
 <instance part="GND28" gate="G$1" x="195.58" y="15.24"/>
 <instance part="GND29" gate="G$1" x="195.58" y="40.64"/>
-<instance part="U$5" gate="G$1" x="259.08" y="53.34" rot="R90"/>
-<instance part="U$6" gate="G$1" x="259.08" y="27.94" rot="R90"/>
-<instance part="U$7" gate="G$1" x="259.08" y="2.54" rot="R90"/>
-<instance part="U$8" gate="G$1" x="259.08" y="-22.86" rot="R90"/>
-<instance part="U$9" gate="G$1" x="248.92" y="-55.88" rot="R90"/>
-<instance part="U$10" gate="G$1" x="251.46" y="66.04" rot="R90"/>
+<instance part="PWM0" gate="G$1" x="259.08" y="53.34" rot="R90"/>
+<instance part="PWM1" gate="G$1" x="259.08" y="27.94" rot="R90"/>
+<instance part="PWM2" gate="G$1" x="259.08" y="2.54" rot="R90"/>
+<instance part="PWM3" gate="G$1" x="259.08" y="-22.86" rot="R90"/>
+<instance part="24V" gate="G$1" x="248.92" y="-55.88" rot="R90"/>
+<instance part="BUS" gate="G$1" x="251.46" y="66.04" rot="R90"/>
 <instance part="D11" gate="G$1" x="215.9" y="-50.8" rot="R90"/>
 <instance part="U$2" gate="G$1" x="53.34" y="78.74"/>
 <instance part="C6" gate="G$1" x="243.84" y="50.8" smashed="yes" rot="R180">
@@ -22287,7 +22287,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <busses>
 </busses>
 <nets>
-<net name="N$5" class="0">
+<net name="MOSI" class="0">
 <segment>
 <pinref part="U$1" gate="G$1" pin="MOSI"/>
 <wire x1="101.6" y1="124.46" x2="101.6" y2="109.22" width="0.1524" layer="91"/>
@@ -22295,7 +22295,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <pinref part="U$2" gate="G$1" pin="(PDI/PCINT2/MOSI)PB2"/>
 </segment>
 </net>
-<net name="N$6" class="0">
+<net name="MISO" class="0">
 <segment>
 <pinref part="U$1" gate="G$1" pin="MISO"/>
 <wire x1="99.06" y1="124.46" x2="99.06" y2="106.68" width="0.1524" layer="91"/>
@@ -22303,7 +22303,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <pinref part="U$2" gate="G$1" pin="(PDO/PCINT3/MISO)PB3"/>
 </segment>
 </net>
-<net name="N$7" class="0">
+<net name="SCK" class="0">
 <segment>
 <pinref part="U$1" gate="G$1" pin="SCK"/>
 <wire x1="96.52" y1="124.46" x2="96.52" y2="111.76" width="0.1524" layer="91"/>
@@ -22415,7 +22415,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <segment>
 <pinref part="GND5" gate="1" pin="GND"/>
 <wire x1="231.14" y1="71.12" x2="251.46" y2="71.12" width="0.1524" layer="91"/>
-<pinref part="U$10" gate="G$1" pin="2"/>
+<pinref part="BUS" gate="G$1" pin="2"/>
 </segment>
 <segment>
 <pinref part="GND33" gate="1" pin="GND"/>
@@ -22615,7 +22615,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <junction x="190.5" y="81.28"/>
 <pinref part="L4" gate="G$1" pin="4"/>
 <wire x1="238.76" y1="76.2" x2="251.46" y2="76.2" width="0.1524" layer="91"/>
-<pinref part="U$10" gate="G$1" pin="3"/>
+<pinref part="BUS" gate="G$1" pin="3"/>
 </segment>
 </net>
 <net name="B-" class="0">
@@ -22628,7 +22628,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <junction x="205.74" y="76.2"/>
 <pinref part="L4" gate="G$1" pin="3"/>
 <wire x1="238.76" y1="81.28" x2="251.46" y2="81.28" width="0.1524" layer="91"/>
-<pinref part="U$10" gate="G$1" pin="4"/>
+<pinref part="BUS" gate="G$1" pin="4"/>
 </segment>
 </net>
 <net name="N$3" class="0">
@@ -22697,7 +22697,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <junction x="215.9" y="129.54"/>
 </segment>
 </net>
-<net name="N$8" class="0">
+<net name="PWM3" class="0">
 <segment>
 <wire x1="144.78" y1="50.8" x2="96.52" y2="50.8" width="0.1524" layer="91"/>
 <wire x1="144.78" y1="50.8" x2="144.78" y2="-17.78" width="0.1524" layer="91"/>
@@ -22708,7 +22708,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <wire x1="96.52" y1="101.6" x2="83.82" y2="101.6" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$33" class="0">
+<net name="PWM1" class="0">
 <segment>
 <wire x1="101.6" y1="55.88" x2="149.86" y2="55.88" width="0.1524" layer="91"/>
 <pinref part="R2" gate="G$1" pin="2"/>
@@ -22718,7 +22718,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <wire x1="83.82" y1="88.9" x2="101.6" y2="88.9" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$34" class="0">
+<net name="PWM2" class="0">
 <segment>
 <pinref part="R3" gate="G$1" pin="2"/>
 <wire x1="104.14" y1="99.06" x2="104.14" y2="53.34" width="0.1524" layer="91"/>
@@ -22729,7 +22729,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <wire x1="104.14" y1="99.06" x2="83.82" y2="99.06" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$35" class="0">
+<net name="PWM0" class="0">
 <segment>
 <wire x1="99.06" y1="58.42" x2="149.86" y2="58.42" width="0.1524" layer="91"/>
 <pinref part="U$2" gate="G$1" pin="(PCINT7/OC0A/OC1C/!RTS!)PB7"/>
@@ -22782,7 +22782,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <wire x1="243.84" y1="55.88" x2="256.54" y2="55.88" width="0.1524" layer="91"/>
 <wire x1="228.6" y1="53.34" x2="228.6" y2="55.88" width="0.1524" layer="91"/>
 <junction x="228.6" y="55.88"/>
-<pinref part="U$5" gate="G$1" pin="2"/>
+<pinref part="PWM0" gate="G$1" pin="2"/>
 <pinref part="C6" gate="G$1" pin="2"/>
 <junction x="243.84" y="55.88"/>
 </segment>
@@ -22797,7 +22797,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <wire x1="243.84" y1="30.48" x2="256.54" y2="30.48" width="0.1524" layer="91"/>
 <wire x1="228.6" y1="27.94" x2="228.6" y2="30.48" width="0.1524" layer="91"/>
 <junction x="228.6" y="30.48"/>
-<pinref part="U$6" gate="G$1" pin="2"/>
+<pinref part="PWM1" gate="G$1" pin="2"/>
 <pinref part="C7" gate="G$1" pin="2"/>
 <junction x="236.22" y="30.48"/>
 <pinref part="C8" gate="G$1" pin="2"/>
@@ -22814,7 +22814,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <wire x1="243.84" y1="5.08" x2="256.54" y2="5.08" width="0.1524" layer="91"/>
 <wire x1="228.6" y1="2.54" x2="228.6" y2="5.08" width="0.1524" layer="91"/>
 <junction x="228.6" y="5.08"/>
-<pinref part="U$7" gate="G$1" pin="2"/>
+<pinref part="PWM2" gate="G$1" pin="2"/>
 <pinref part="C17" gate="G$1" pin="2"/>
 <junction x="236.22" y="5.08"/>
 <pinref part="C22" gate="G$1" pin="2"/>
@@ -22831,7 +22831,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <wire x1="243.84" y1="-20.32" x2="256.54" y2="-20.32" width="0.1524" layer="91"/>
 <wire x1="228.6" y1="-22.86" x2="228.6" y2="-20.32" width="0.1524" layer="91"/>
 <junction x="228.6" y="-20.32"/>
-<pinref part="U$8" gate="G$1" pin="2"/>
+<pinref part="PWM3" gate="G$1" pin="2"/>
 <pinref part="C24" gate="G$1" pin="2"/>
 <junction x="236.22" y="-20.32"/>
 <pinref part="C26" gate="G$1" pin="2"/>
@@ -22880,10 +22880,10 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <junction x="223.52" y="-40.64"/>
 <wire x1="215.9" y1="-48.26" x2="215.9" y2="-40.64" width="0.1524" layer="91"/>
 <junction x="215.9" y="-40.64"/>
-<pinref part="U$5" gate="G$1" pin="1"/>
-<pinref part="U$6" gate="G$1" pin="1"/>
-<pinref part="U$7" gate="G$1" pin="1"/>
-<pinref part="U$8" gate="G$1" pin="1"/>
+<pinref part="PWM0" gate="G$1" pin="1"/>
+<pinref part="PWM1" gate="G$1" pin="1"/>
+<pinref part="PWM2" gate="G$1" pin="1"/>
+<pinref part="PWM3" gate="G$1" pin="1"/>
 <junction x="231.14" y="-40.64"/>
 <pinref part="D11" gate="G$1" pin="C"/>
 <pinref part="C27" gate="G$1" pin="2"/>
@@ -22958,7 +22958,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <segment>
 <wire x1="246.38" y1="-58.42" x2="233.68" y2="-58.42" width="0.1524" layer="91"/>
 <pinref part="GND26" gate="G$1" pin="GNDIO"/>
-<pinref part="U$9" gate="G$1" pin="1"/>
+<pinref part="24V" gate="G$1" pin="1"/>
 </segment>
 <segment>
 <pinref part="C13" gate="G$1" pin="1"/>
@@ -23020,7 +23020,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <segment>
 <pinref part="F1" gate="G$1" pin="2A"/>
 <wire x1="243.84" y1="-53.34" x2="246.38" y2="-53.34" width="0.1524" layer="91"/>
-<pinref part="U$9" gate="G$1" pin="2"/>
+<pinref part="24V" gate="G$1" pin="2"/>
 </segment>
 </net>
 <net name="N$23" class="0">
@@ -23144,7 +23144,7 @@ Library by: &lt;a href="http://projects.weber-itam.de"&gt;http://projects.weber-
 <wire x1="246.38" y1="129.54" x2="233.68" y2="129.54" width="0.1524" layer="91"/>
 <wire x1="233.68" y1="129.54" x2="228.6" y2="129.54" width="0.1524" layer="91"/>
 <wire x1="246.38" y1="129.54" x2="246.38" y2="66.04" width="0.1524" layer="91"/>
-<pinref part="U$10" gate="G$1" pin="1"/>
+<pinref part="BUS" gate="G$1" pin="1"/>
 <wire x1="246.38" y1="66.04" x2="251.46" y2="66.04" width="0.1524" layer="91"/>
 <pinref part="D4" gate="G$1" pin="C"/>
 <wire x1="233.68" y1="121.92" x2="233.68" y2="129.54" width="0.1524" layer="91"/>
