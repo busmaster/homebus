@@ -377,6 +377,20 @@ int main(int argc, char *argv[]) {
                     }
                     printf("\r\nWIND:  0x%02x\r\n", actVal.actualValue.wind.wind);
                     break;
+                case eBusDevTypeRs485If:
+                    printf("\r\nstate: ");
+                    for (i = 0; i < sizeof(actVal.actualValue.rs485if.state); i++) {
+                        printf("%02x ", actVal.actualValue.rs485if.state[i]);
+                    }
+                    printf("\r\n");
+                    break;
+                case eBusDevTypePwm4:
+                    printf("\r\npwm: ");
+                    for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
+                        printf("%04x ", actVal.actualValue.pwm4.pwm[i]);
+                    }
+                    printf("\r\n");
+                    break;
                 default:
                     break;
                 }
@@ -475,6 +489,12 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeWind:
                     printf("WIND");
                     break;
+                case eBusDevTypeRs485If:
+                    printf("RS485IF");
+                    break;
+                case eBusDevTypePwm4:
+                    printf("PWM4");
+                    break;
                 default:
                     break;
                 }
@@ -488,13 +508,13 @@ int main(int argc, char *argv[]) {
             ret = ModuleClockCalib(moduleAddr, atoi(argv[argi]));
             if (ret) {
                 printf("OK\r\n");
-            }            
+            }
             break;
         case OP_SWITCH_STATE:
             ret = SwitchEvent(moduleAddr, atoi(argv[argi]));
             if (ret) {
                 printf("OK\r\n");
-            }            
+            }
             break;
         case OP_EXIT:
             printf("OK\r\n");
@@ -675,6 +695,16 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
         case eBusDevTypeWind:
             pBuf->actualValue.wind.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.state;
             pBuf->actualValue.wind.wind = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.wind;
+            break;
+        case eBusDevTypeRs485If:
+            memcpy(pBuf->actualValue.rs485if.state,
+                   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.rs485if.state,
+                   sizeof(pBuf->actualValue.rs485if.state));
+            break;
+        case eBusDevTypePwm4:
+            memcpy(pBuf->actualValue.pwm4.pwm,
+                   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.pwm4.pwm,
+                   sizeof(pBuf->actualValue.pwm4.pwm));
             break;
         default:
             break;
