@@ -81,12 +81,12 @@ typedef enum {
 /*-----------------------------------------------------------------------------
 *  Functions
 */
-void PwmInit(void);
-void PwmExit(void);
-bool PwmGet(TPwmNumber channel, uint16_t *pValue);
-bool PwmGetAll(uint16_t *buf, uint8_t buf_size);
-bool PwmSet(TPwmNumber channel, uint16_t value);
-void PwmCheck(void);
+void    PwmInit(void);
+void    PwmExit(void);
+bool    PwmGet(TPwmNumber channel, uint16_t *pValue);
+bool    PwmGetAll(uint16_t *buf, uint8_t buf_size);
+bool    PwmSet(TPwmNumber channel, uint16_t value);
+void    PwmCheck(void);
 
 #ifdef __cplusplus
 }
