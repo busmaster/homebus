@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include <avr/pgmspace.h>
 
 #include "sysdef.h"
@@ -31,6 +32,7 @@
 #include "application.h"
 #include "application_l.h"
 #include "pwm.h"
+#include "bus.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros
@@ -39,7 +41,6 @@
 /*-----------------------------------------------------------------------------
 *  typedefs
 */
-
 typedef void (* TFuncPressed0)(void);
 typedef void (* TFuncPressed1)(void);
 typedef void (* TFuncReleased0)(void);
@@ -122,6 +123,9 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
    {ApplicationPressed64_0,  ApplicationPressed64_1,  ApplicationReleased64_0,  ApplicationReleased64_1}
 };
 
+static TBusTelegram sTxBusMsg;
+static bool         sTxRetry = false;
+
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -180,6 +184,9 @@ void ApplicationStart(void) {
 
 void ApplicationCheck(void) {
 
+    if (sTxRetry) {
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
+    }
 }
 
 
@@ -408,8 +415,44 @@ static void ApplicationReleased45_0(void) {}
 static void ApplicationPressed45_1(void) {}
 static void ApplicationReleased45_1(void) {}
 
-static void ApplicationPressed46_0(void) {}
-static void ApplicationReleased46_0(void) {}
+void ApplicationPressed46_0(void) {
+
+    PwmSet(0, 65535);
+
+    /* digout29/do31 240 on */
+    sTxBusMsg.type = eBusDevReqSetValue;
+    sTxBusMsg.senderAddr = 239;
+    sTxBusMsg.msg.devBus.receiverAddr = 240;
+    sTxBusMsg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
+
+    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, 
+           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut)); // default: no change
+    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, 
+           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader)); // default: no change
+
+    sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x3 << ((29 % 4) * 2);
+
+    sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
+}
+void ApplicationReleased46_0(void) {
+
+    PwmSet(0, 0);
+
+    /* digout29/do31 240 off */
+    sTxBusMsg.type = eBusDevReqSetValue;
+    sTxBusMsg.senderAddr = 239;
+    sTxBusMsg.msg.devBus.receiverAddr = 240;
+    sTxBusMsg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
+
+    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, 
+           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut)); // default: no change
+    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, 
+           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader)); // default: no change
+
+    sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x2 << ((29 % 4) * 2);
+    
+    sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
+}
 static void ApplicationPressed46_1(void) {}
 static void ApplicationReleased46_1(void) {}
 
