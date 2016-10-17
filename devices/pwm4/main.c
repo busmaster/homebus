@@ -98,7 +98,7 @@ volatile uint16_t gTimeS = 0;
 static TBusTelegram *spBusMsg;
 static TBusTelegram  sTxBusMsg;
 
-static const uint8_t *spNextPtrToEeprom;
+static uint8_t       *spNextPtrToEeprom;
 static uint8_t       sMyAddr;
 
 static uint8_t       sIdle = 0;
@@ -399,51 +399,47 @@ static void BusTransceiverPowerDown(bool powerDown) {
 */
 static void RestorePwm(void) {
 
-#if 0
-   uint8_t *ptrToEeprom;
-   uint8_t buf[8];
-   uint8_t flags;
+    uint8_t     *ptrToEeprom;
+    uint8_t     flags;
+    uint8_t     sizeRestore = NUM_PWM_CHANNEL * sizeof(uint16_t) + 1;
+    uint8_t     pwmLow;
+    uint8_t     pwmHigh;
+    uint8_t     i;
 
-   /* find the newest state */
-   for (ptrToEeprom = EEPROM_PWM_RESTORE_START + 3; 
-        ptrToEeprom <= EEPROM_PWM_RESTORE_END;
-        ptrToEeprom += 4) {
-      if ((eeprom_read_byte(ptrToEeprom) & 0x80) == 0x00) {
-         break;
-      }
-   }
-   if (ptrToEeprom > EEPROM_DO_RESTORE_END) {
-      /* nichts im EEPROM gefunden -> Ausgänge bleiben ausgeschaltet */
-      spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
-      return;
-   }
-
-   /* wieder auf durch vier teilbare Adresse zurückrechnen */
-   ptrToEeprom -= 3;
-   /* Schreibhäufigkeit im EEPROM auf alle Adressen verteilen (wegen Lebensdauer) */
-   spNextPtrToEeprom = (const uint8_t *)((int)ptrToEeprom + 4);
-   if (spNextPtrToEeprom > EEPROM_DO_RESTORE_END) {
-      spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
+    /* find the newest state */
+    for (ptrToEeprom = EEPROM_PWM_RESTORE_START; 
+         ptrToEeprom < (EEPROM_PWM_RESTORE_END - sizeRestore);
+         ptrToEeprom += sizeRestore) {
+        if (eeprom_read_byte(ptrToEeprom) == 0x00) {
+            break;
+        }
+    }
+    if (ptrToEeprom > (EEPROM_PWM_RESTORE_END - sizeRestore)) {
+        /* not found -> no restore */
+        spNextPtrToEeprom = EEPROM_PWM_RESTORE_START;
+        return;
     }
 
-   /* Ausgangszustand wiederherstellen */
-   flags = DISABLE_INT;
-   buf[0] = eeprom_read_byte(ptrToEeprom);
-   buf[1] = eeprom_read_byte(ptrToEeprom + 1);
-   buf[2] = eeprom_read_byte(ptrToEeprom + 2);
-   buf[3] = eeprom_read_byte(ptrToEeprom + 3);
-   RESTORE_INT(flags);
+//    spNextPtrToEeprom = (const uint8_t *)((int)ptrToEeprom + sizeRestore);
+    spNextPtrToEeprom = ptrToEeprom + sizeRestore;
+    if (spNextPtrToEeprom > (EEPROM_PWM_RESTORE_END - sizeRestore)) {
+        spNextPtrToEeprom = EEPROM_PWM_RESTORE_START;
+    }
 
-   DigOutAll(buf, 4);
-
-   /* alte Ausgangszustand löschen */
-   flags = DISABLE_INT;
-   eeprom_write_byte((uint8_t *)ptrToEeprom, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 1, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 2, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 3, 0xff);
-   RESTORE_INT(flags);
-#endif   
+    /* restore pwm output */
+    flags = DISABLE_INT;
+    for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        pwmLow  = eeprom_read_byte(ptrToEeprom + 1 + i * sizeof(uint16_t));
+        pwmHigh = eeprom_read_byte(ptrToEeprom + 1 + i * sizeof(uint16_t) + 1);
+        PwmSet(i, pwmLow + 256 * pwmHigh);
+    }
+    /* delete  */
+    eeprom_write_byte((uint8_t *)ptrToEeprom, 0xff);
+    for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        eeprom_write_byte(ptrToEeprom + 1 + i * 2, 0xff);
+        eeprom_write_byte(ptrToEeprom + 1 + i * 2 + 1, 0xff);
+    }
+    RESTORE_INT(flags);
 }
 
 /*-----------------------------------------------------------------------------
@@ -687,24 +683,26 @@ static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) {
 *  Power-Fail Interrupt (Ext. Int 0)
 */
 ISR(INT0_vect) {
-   uint8_t  *ptrToEeprom;
-   uint16_t pwm[NUM_PWM_CHANNEL];
-   uint8_t  i;
+    uint8_t  *ptrToEeprom;
+    uint16_t pwm[NUM_PWM_CHANNEL];
+    uint8_t  i;
 
-   PwmGetAll(pwm, sizeof(pwm));
-   /* switch off all outputs */
-   PwmExit();
+    PwmGetAll(pwm, sizeof(pwm));
+    /* switch off all outputs */
+    PwmExit();
 
-   /* save pwm state to eeprom */
-   ptrToEeprom = (uint8_t *)spNextPtrToEeprom;
-   /* Kennzeichnungsbit löschen */
-#if 0
-   buf[3] &= ~0x80;
-   for (i = 0; i < sizeof(buf); i++) {
-      eeprom_write_byte(ptrToEeprom, buf[i]);
-      ptrToEeprom++;
-   }
-#endif
+    /* save pwm state to eeprom */
+    ptrToEeprom = spNextPtrToEeprom;
+
+    eeprom_write_byte(ptrToEeprom, 0);
+    ptrToEeprom++;
+    for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        eeprom_write_byte(ptrToEeprom, pwm[i] & 0xff);
+        ptrToEeprom++;
+        eeprom_write_byte(ptrToEeprom, pwm[i] >> 8);
+        ptrToEeprom++;
+    }
+
    /* Wait for completion of previous write */
    while (!eeprom_is_ready());
 
@@ -806,7 +804,7 @@ static void PortInit(void) {
     /* PD.3: TX1: output high */
     /* PD.2: RX1: input pull up */
     /* PD.1: input high z */
-    /* PD.0: input high z */
+    /* PD.0: input high z, power fail */
     PORTD = 0b00101100;
     DDRD  = 0b11111000;
     
