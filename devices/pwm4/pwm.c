@@ -76,13 +76,17 @@ void PwmInit(void) {
      */
     TCCR4A = (1 << COM4A1) | (1 << PWM4A);
     TCCR4B = (1 << CS42);
+    
+    PwmSet(0, 0);
+    PwmSet(1, 0);
+    PwmSet(2, 0);
+    PwmSet(3, 0);
 }
 
 /*-----------------------------------------------------------------------------
 *  exit - switch off all outputs
 */
 void PwmExit(void) {
-    
     TCCR1A = 0;
     TCCR4A = 0;
     memset(sState, 0, sizeof(sState));
@@ -146,31 +150,50 @@ bool PwmSet(TPwmNumber channel, uint16_t value) {
     
     bool rc = true;
     
-    /* todo: use compare match interrupt to update oc register */
-    
     switch (channel) {
     case ePwm0:
-        OCR1C = value;
         sState[0].pwm = value;
+        value >>= 6;
+        /* if OCR1X is set to 0 a narrow spike will be generated 
+         * workaround: set port pin ddr to input
+         */
+        if (value == 0) {
+            DDRB &= ~(1 << PB7);
+        } else {
+            DDRB |= (1 << PB7);
+        }
+        OCR1C = value;
         break;
     case ePwm1:
+        sState[1].pwm = value;
+        value >>= 6;
         TC4H = (value & 0x3ff) >> 8;
         OCR4A = value;
-        sState[1].pwm = value;
         break;
     case ePwm2:
-        OCR1B = value;
         sState[2].pwm = value;
+        value >>= 6;
+        if (value == 0) {
+            DDRB &= ~(1 << PB6);
+        } else {
+            DDRB |= (1 << PB6);
+        }
+        OCR1B = value;
         break;
     case ePwm3:
-        OCR1A = value;
         sState[3].pwm = value;
+        value >>= 6;
+        if (value == 0) {
+            DDRB &= ~(1 << PB5);
+        } else {
+            DDRB |= (1 << PB5);
+        }
+        OCR1A = value;
         break;
     default:
         rc = false;
         break;
     }
-    
     return rc;
 }
 
