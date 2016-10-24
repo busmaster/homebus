@@ -1,24 +1,24 @@
 /*
  * main.c
- * 
+ *
  * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -37,7 +37,7 @@
 
 /*-----------------------------------------------------------------------------
 *  ATMega168 fuse bit settings (internal RC oscillator @ 8 MHz)
-*   
+*
 *  CKSEL0    = 0
 *  CKSEL1    = 1
 *  CKSEL2    = 0
@@ -56,34 +56,34 @@
 *  BOOTRST   = 0
 *  BOOTSZ0   = 0
 *  BOOTSZ1   = 0
-*/ 
-        
+*/
+
 /*-----------------------------------------------------------------------------
-*  Macros  
-*/                    
+*  Macros
+*/
 /* eigene Adresse am Bus */
-#define MY_ADDR    sMyAddr   
+#define MY_ADDR    sMyAddr
 
 #define MODUL_ADDRESS       0
 #define OSCCAL_CORR         1
-                               
+
 /* statemachine für Flashupdate */
-#define WAIT_FOR_UPD_ENTER          0  
-#define WAIT_FOR_UPD_ENTER_TIMEOUT  1  
-#define WAIT_FOR_UPD_DATA           2            
+#define WAIT_FOR_UPD_ENTER          0
+#define WAIT_FOR_UPD_ENTER_TIMEOUT  1
+#define WAIT_FOR_UPD_DATA           2
 
 /* max. Größe der Firmware */
-#define MAX_FIRMWARE_SIZE    (14UL * 1024UL)   
+#define MAX_FIRMWARE_SIZE    (14UL * 1024UL)
 #define FLASH_CHECKSUM       0x1234  /* Summe, die bei Checksum herauskommen muss */
 #define CHECKSUM_BLOCK_SIZE  256 /* words */
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
-*/  
+*/
 
 /*-----------------------------------------------------------------------------
 *  Variables
-*/  
+*/
 volatile uint8_t gTimeS8 = 0;
 
 static TBusTelegram  *spRxBusMsg;
@@ -96,7 +96,7 @@ static uint8_t sMyAddr;
 */
 extern void ApplicationEntry(void);
 
-static void ProcessBus(uint8_t ret);      
+static void ProcessBus(uint8_t ret);
 static void SetMsg(TBusMsgType type, uint8_t receiver);
 
 /*-----------------------------------------------------------------------------
@@ -104,8 +104,8 @@ static void SetMsg(TBusMsgType type, uint8_t receiver);
 */
 int main(void) {
 
-   uint8_t   ret;  
-   uint16_t  flashWordAddr;    
+   uint8_t   ret;
+   uint16_t  flashWordAddr;
    uint16_t  sum;
 
    cli();
@@ -138,7 +138,7 @@ int main(void) {
 
    /* configure Timer 0 */
    /* prescaler clk/64 -> Interrupt period 256/8000000 * 256 = 8.192 ms */
-   TCCR0B = 4 << CS00; 
+   TCCR0B = 4 << CS00;
    TIMSK0 = 1 << TOIE0;
 
    SioInit();
@@ -157,18 +157,17 @@ int main(void) {
 
    if (sum != FLASH_CHECKSUM) {
       /* Fehler */
-      sFwuState = WAIT_FOR_UPD_ENTER;      
+      sFwuState = WAIT_FOR_UPD_ENTER;
    }
    sei();
-      
+
    /* Startup-Msg senden */
-   sTxBusMsg.type = eBusDevStartup;  
-   sTxBusMsg.senderAddr = MY_ADDR; 
-   BusSend(&sTxBusMsg);  
-   SioReadFlush();
- 
+   sTxBusMsg.type = eBusDevStartup;
+   sTxBusMsg.senderAddr = MY_ADDR;
+   BusSend(&sTxBusMsg);
+
    /* Hauptschleife */
-   while (1) {   
+   while (1) {
       ret = BusCheck();
       ProcessBus(ret);
       /* Mit timeout auf Request zum Firmwareupdate warten  */
@@ -177,11 +176,11 @@ int main(void) {
             /* Application starten */
             break;
          }
-      } 
-   } 
-            
+      }
+   }
+
    cli();
-   
+
    /* Enable change of Interrupt Vectors */
    MCUCR = (1 << IVCE);
    /* Move interrupts to application section */
@@ -189,25 +188,25 @@ int main(void) {
 
    /* jump to application */
    ApplicationEntry();
-   
+
    /* never reach this */
    return 0;
-} 
+}
 
 /*-----------------------------------------------------------------------------
 *  Verarbeitung der Bustelegramme
 */
 static void ProcessBus(uint8_t ret) {
-   
-   TBusMsgType   msgType;    
+
+   TBusMsgType   msgType;
    uint16_t        *pData;
    uint16_t        wordAddr;
    bool          rc;
    bool          msgForMe = false;
 
    if (ret == BUS_MSG_OK) {
-      msgType = spRxBusMsg->type; 
-      switch (msgType) {  
+      msgType = spRxBusMsg->type;
+      switch (msgType) {
          case eBusDevReqReboot:
          case eBusDevReqUpdEnter:
          case eBusDevReqUpdData:
@@ -222,10 +221,10 @@ static void ProcessBus(uint8_t ret) {
          return;
       }
 
-    
+
       if (msgType == eBusDevReqReboot) {
-         /* Über Watchdog Reset auslösen */    
-         /* Watchdogtimeout auf kurzeste Zeit (14 ms) stellen */                     
+         /* Über Watchdog Reset auslösen */
+         /* Watchdogtimeout auf kurzeste Zeit (14 ms) stellen */
          cli();
          wdt_enable(WDTO_15MS);
          /* warten auf Reset */
@@ -235,13 +234,13 @@ static void ProcessBus(uint8_t ret) {
             case WAIT_FOR_UPD_ENTER_TIMEOUT:
             case WAIT_FOR_UPD_ENTER:
                if (msgType == eBusDevReqUpdEnter) {
-                  /* Applicationbereich des Flash löschen */  
+                  /* Applicationbereich des Flash löschen */
                   FlashErase();
                   /* Antwort senden */
                   SetMsg(eBusDevRespUpdEnter, spRxBusMsg->senderAddr);
                   BusSend(&sTxBusMsg);
-                  sFwuState = WAIT_FOR_UPD_DATA;     
-               }           
+                  sFwuState = WAIT_FOR_UPD_DATA;
+               }
                break;
             case WAIT_FOR_UPD_DATA:
                if (msgType == eBusDevReqUpdData) {
@@ -258,7 +257,7 @@ static void ProcessBus(uint8_t ret) {
                      /* Problem bei Programmierung: -1 als wordAddr zurücksenden */
                      sTxBusMsg.msg.devBus.x.devResp.updData.wordAddr = -1;
                   }
-                  BusSend(&sTxBusMsg);  
+                  BusSend(&sTxBusMsg);
                } else if (msgType == eBusDevReqUpdTerm) {
                   /* programmiervorgang im Flash abschließen (falls erforderlich) */
                   rc = FlashProgramTerminate();
@@ -285,8 +284,8 @@ static void ProcessBus(uint8_t ret) {
 *  Sendedaten eintragen
 */
 static void SetMsg(TBusMsgType type, uint8_t receiver) {
-   sTxBusMsg.type = type;  
-   sTxBusMsg.senderAddr = MY_ADDR; 
+   sTxBusMsg.type = type;
+   sTxBusMsg.senderAddr = MY_ADDR;
    sTxBusMsg.msg.devBus.receiverAddr = receiver;
 }
 

@@ -44,6 +44,16 @@
 #define TIMER_MS1       4               // 4 * 256 / 1000000 = 1
 #define TIMER_MS2       8               // 8 * 256 / 1000000 = 2
 
+#elif (F_CPU == 1843200UL)
+#define UBRR_9600   11     /* 9600 @ 1.8432MHz  */
+#define BRX2_9600   false  /* double baud rate */
+#define ERR_9600    false  /* baud rate is possible */
+
+/* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
+#define TIMER_PRESCALER (0b100 << SIO_TIMER_TCCRB_CS) // prescaler clk/256
+#define TIMER_MS1       8              // 8 * 256 / 1843200 = 1.1
+#define TIMER_MS2      16              // 16 * 1024 / 3686400 = 2.2
+
 #elif (F_CPU == 3686400UL)
 #define UBRR_9600   23     /* 9600 @ 3.6864MHz  */
 #define BRX2_9600   false  /* double baud rate */
@@ -63,6 +73,16 @@
 #define TIMER_PRESCALER (0b101 << SIO_TIMER_TCCRB_CS) // prescaler clk/1024
 #define TIMER_MS1       8               // 8  * 1024 / 8000000 = 1
 #define TIMER_MS2       16              // 16 * 1024 / 8000000 = 2
+
+#elif (F_CPU == 14745600UL)
+#define UBRR_9600   95     /* 9600 @ 14.7456MHz  */
+#define BRX2_9600   false  /* double baud rate */
+#define ERR_9600    false  /* baud rate is possible */
+
+/* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
+#define TIMER_PRESCALER (0b101 << SIO_TIMER_TCCRB_CS) // prescaler clk/1024
+#define TIMER_MS1       18              // 18 * 1024 / 18432000 = 1
+#define TIMER_MS2       36              // 36 * 1024 / 18432000 = 2
 
 #elif (F_CPU == 18432000UL)
 #define UBRR_9600   119    /* 9600 @ 18.432MHz  */

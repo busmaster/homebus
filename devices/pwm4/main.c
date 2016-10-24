@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * Copyright 2019 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,37 +37,38 @@
 #include "sysdef.h"
 #include "board.h"
 #include "bus.h"
-#include "button.h"
-#include "led.h"
+#include "pwm.h"
 #include "application.h"
-
-#include "rs485.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros
 */
+/* Bits in WDTCR */
+#define WDCE     4
+#define WDE      3
+#define WDP0     0
+#define WDP1     1
+#define WDP2     2
+
 /* offset addresses in EEPROM */
 #define MODUL_ADDRESS           0  /* 1 byte */
 #define CLIENT_ADDRESS_BASE     1  /* BUS_MAX_CLIENT_NUM from bus.h (16 byte) */
 #define CLIENT_RETRY_CNT        17 /* size: 16 byte (BUS_MAX_CLIENT_NUM)      */
 
 /* DO restore after power fail */
-#define EEPROM_DO_RESTORE_START  (uint8_t *)3072
-#define EEPROM_DO_RESTORE_END    (uint8_t *)4095
+#define EEPROM_PWM_RESTORE_START  (uint8_t *)512
+#define EEPROM_PWM_RESTORE_END    (uint8_t *)1023
 
 /* our bus address */
 #define MY_ADDR    sMyAddr
 
-#define IDLE_SIO0  0x01
+#define IDLE_SIO1  0x01
 
 /* acual value event */
 #define RESPONSE_TIMEOUT_MS         100  /* time in ms */
 /* timeout for unreachable client  */
 #define RETRY_CYCLE_TIME_MS         200 /* time in ms */
 #define CHANGE_DETECT_CYCLE_TIME_MS 500 /* time in ms */
-
-/* timeout for doClockCalibReq */
-#define CLOCK_CALIB_TIMEOUT_MS 200 /* time in ms */
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -85,40 +86,28 @@ typedef struct {
     uint16_t requestTimeStamp;
 } TClient;
 
-typedef struct {
-    enum {
-        eCalibIdle,
-        eCalibInit,
-        eCalibContinue,
-        eCalibWaitForResponse,
-        eCalibSuccess,
-        eCalibError,
-        eCalibInternalError,
-    } state;
-    uint8_t address;
-} TClockCalib;
-
 /*-----------------------------------------------------------------------------
 *  Variables
 */
 volatile uint8_t  gTimeMs = 0;
 volatile uint16_t gTimeMs16 = 0;
+volatile uint16_t gTime10Ms16 = 0;
 volatile uint32_t gTimeMs32 = 0;
 volatile uint16_t gTimeS = 0;
 
 static TBusTelegram *spBusMsg;
 static TBusTelegram  sTxBusMsg;
 
-static uint8_t sMyAddr;
+static uint8_t       *spNextPtrToEeprom;
+static uint8_t       sMyAddr;
 
-static uint8_t sIdle = 0;
+static uint8_t       sIdle = 0;
 
-static TClient sClient[BUS_MAX_CLIENT_NUM];
-static uint8_t sNumClients;
+static TClient       sClient[BUS_MAX_CLIENT_NUM];
+static uint8_t       sNumClients;
 
-static TClockCalib sClockCalib;
-
-static uint8_t buf[] = {0, 0, 50, 50, 50, 50, 50, 50, 50, 50 ,50};
+static uint16_t      sOldPwmActVal[NUM_PWM_CHANNEL];
+static uint16_t      sCurPwmActVal[NUM_PWM_CHANNEL];
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -130,97 +119,70 @@ static void CheckButton(void);
 static void ButtonEvent(uint8_t address, uint8_t button);
 static void SwitchEvent(uint8_t address, uint8_t button, bool pressed);
 static void ProcessBus(uint8_t ret);
-static void RestoreOut(void);
+static void RestorePwm(void);
 static void Idle(void);
-static void IdleSio0(bool setIdle);
+static void IdleSio1(bool setIdle);
 static void BusTransceiverPowerDown(bool powerDown);
 static void CheckEvent(void);
 static void GetClientListFromEeprom(void);
-static void ClockCalibTask(void);
 
 /*-----------------------------------------------------------------------------
 *  main
 */
 int main(void) {
 
-    uint8_t  ret;
-    int      sioHdl;
-    uint16_t t_curr;
-    uint16_t t_last;
+   uint8_t ret;
+   int   sioHdl;
 
-    cli();
-    MCUSR = 0;
-    wdt_disable();
-
-    /* get module address from EEPROM */
-    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
-    GetClientListFromEeprom();
+   /* get module address from EEPROM */
+   sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+   GetClientListFromEeprom();
     
-    PortInit();
-    LedInit();
-    TimerInit();
-    ButtonInit();
-    ApplicationInit();
+   PortInit();
+   TimerInit();
+   ButtonInit();
+   PwmInit();
+   ApplicationInit();
 
-    SioInit();
-    SioRandSeed(sMyAddr);
+   SioInit();
+   SioRandSeed(sMyAddr);
 
-    /* sio for bus interface */
-    sioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
-                     eSioStopBits1, eSioModeHalfDuplex);
+   /* sio for bus interface */
+   sioHdl = SioOpen("USART1", eSioBaud9600, eSioDataBits8, eSioParityNo,
+                    eSioStopBits1, eSioModeHalfDuplex);
 
-    SioSetIdleFunc(sioHdl, IdleSio0);
-    SioSetTransceiverPowerDownFunc(sioHdl, BusTransceiverPowerDown);
-    BusTransceiverPowerDown(true);
+   SioSetIdleFunc(sioHdl, IdleSio1);
+   SioSetTransceiverPowerDownFunc(sioHdl, BusTransceiverPowerDown);
+   BusTransceiverPowerDown(true);
 
-    BusInit(sioHdl);
-    spBusMsg = BusMsgBufGet();
+   BusInit(sioHdl);
+   spBusMsg = BusMsgBufGet();
 
-    Rs485Init();
+   /* warten for full operation voltage */
+   while (!POWER_GOOD);
 
-    /* wait for good power */
-    while (!POWER_GOOD);
+   /* enable ints beforen RestorePwm() */
+   ENABLE_INT;
+   TimerStart();
+   RestorePwm();
 
-    ENABLE_INT;
+   /* ext int for power fail: INT0 low level sensitive */
+   EICRA &= ~((1 << ISC01) | (1 << ISC00));
+   EIMSK |= (1 << INT0);
 
-    TimerStart();
-    RestoreOut();
-
-    /* ext int for power fail: PCINT22 low level sensitive */
-    PCICR |= (1 << PCIE2);
-    PCMSK2 |= (1 << PCINT22);
-
-    LedSet(eLedGreenFlashSlow);
-
-    ApplicationStart();
+   ApplicationStart();
    
-    sClockCalib.state = eCalibIdle;
-
-    GET_TIME_MS16(t_curr);
-    t_last = t_curr;
-
-    /* Hauptschleife */
-    while (1) {
-        Idle();
-        ret = BusCheck();
-        ProcessBus(ret);
-        ClockCalibTask();
-        CheckButton();
-        LedCheck();
-        ApplicationCheck();
-        CheckEvent();
-        
-        GET_TIME_MS16(t_curr);
-        if (((uint16_t)(t_curr - t_last)) >= 50) {
-            t_last = t_curr;
-            buf[2]++;
-            buf[3]++;
-            buf[4]++;
-            Rs485Write(buf, sizeof(buf));
-        }
-        
-    }
-    return 0;
+   /* Hauptschleife */
+   while (1) {
+      Idle();
+      ret = BusCheck();
+      ProcessBus(ret);
+      CheckButton();
+      PwmCheck();
+      ApplicationCheck();
+      CheckEvent();
+   }
+   return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -312,13 +274,15 @@ static void CheckEvent(void) {
     /* do the change detection not in each cycle */
     GET_TIME_MS16(actualTime16);
     if (((uint16_t)(actualTime16 - sChangeTestTimeStamp)) >= CHANGE_DETECT_CYCLE_TIME_MS) {
-        if (0) {
+        PwmGetAll(sCurPwmActVal, sizeof(sCurPwmActVal));
+        if (memcmp(sCurPwmActVal, sOldPwmActVal, sizeof(sCurPwmActVal)) == 0) {
             actValChanged = false;
         } else {
             actValChanged = true;
         }
      
         if (actValChanged) {
+            memcpy(sOldPwmActVal, sCurPwmActVal, sizeof(sOldPwmActVal));
             sActualClient = 0;
             sNewClientCycleDelay = false;
             InitClientState();
@@ -346,8 +310,11 @@ static void CheckEvent(void) {
         sTxBusMsg.type = eBusDevReqActualValueEvent;
         sTxBusMsg.senderAddr = MY_ADDR;
         sTxBusMsg.msg.devBus.receiverAddr = pClient->address;
-        pActVal->devType = eBusDevTypeRs485If;
+        pActVal->devType = eBusDevTypePwm4;
     
+        memcpy(pActVal->actualValue.pwm4.pwm, sCurPwmActVal, 
+               sizeof(pActVal->actualValue.pwm4.pwm));
+        
         if (BusSend(&sTxBusMsg) == BUS_SEND_OK) {
             pClient->state = eEventWaitForConfirmation;
             pClient->requestTimeStamp = actualTime16;
@@ -404,12 +371,12 @@ static void Idle(void) {
 /*-----------------------------------------------------------------------------
 *  sio idle enable
 */
-static void IdleSio0(bool setIdle) {
+static void IdleSio1(bool setIdle) {
 
    if (setIdle == true) {
-      sIdle &= ~IDLE_SIO0;
+      sIdle &= ~IDLE_SIO1;
    } else {
-      sIdle |= IDLE_SIO0;
+      sIdle |= IDLE_SIO1;
    }
 }
 
@@ -428,10 +395,51 @@ static void BusTransceiverPowerDown(bool powerDown) {
 }
 
 /*-----------------------------------------------------------------------------
-*  Ausgangszustand wiederherstellen
+*  restore pwm output state
 */
-static void RestoreOut(void) {
+static void RestorePwm(void) {
 
+    uint8_t     *ptrToEeprom;
+    uint8_t     flags;
+    uint8_t     sizeRestore = NUM_PWM_CHANNEL * sizeof(uint16_t) + 1;
+    uint8_t     pwmLow;
+    uint8_t     pwmHigh;
+    uint8_t     i;
+
+    /* find the newest state */
+    for (ptrToEeprom = EEPROM_PWM_RESTORE_START; 
+         ptrToEeprom < (EEPROM_PWM_RESTORE_END - sizeRestore);
+         ptrToEeprom += sizeRestore) {
+        if (eeprom_read_byte(ptrToEeprom) == 0x00) {
+            break;
+        }
+    }
+    if (ptrToEeprom > (EEPROM_PWM_RESTORE_END - sizeRestore)) {
+        /* not found -> no restore */
+        spNextPtrToEeprom = EEPROM_PWM_RESTORE_START;
+        return;
+    }
+
+//    spNextPtrToEeprom = (const uint8_t *)((int)ptrToEeprom + sizeRestore);
+    spNextPtrToEeprom = ptrToEeprom + sizeRestore;
+    if (spNextPtrToEeprom > (EEPROM_PWM_RESTORE_END - sizeRestore)) {
+        spNextPtrToEeprom = EEPROM_PWM_RESTORE_START;
+    }
+
+    /* restore pwm output */
+    flags = DISABLE_INT;
+    for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        pwmLow  = eeprom_read_byte(ptrToEeprom + 1 + i * sizeof(uint16_t));
+        pwmHigh = eeprom_read_byte(ptrToEeprom + 1 + i * sizeof(uint16_t) + 1);
+        PwmSet(i, pwmLow + 256 * pwmHigh);
+    }
+    /* delete  */
+    eeprom_write_byte((uint8_t *)ptrToEeprom, 0xff);
+    for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        eeprom_write_byte(ptrToEeprom + 1 + i * 2, 0xff);
+        eeprom_write_byte(ptrToEeprom + 1 + i * 2 + 1, 0xff);
+    }
+    RESTORE_INT(flags);
 }
 
 /*-----------------------------------------------------------------------------
@@ -456,10 +464,10 @@ static void ProcessBus(uint8_t ret) {
     uint8_t                i;
     bool                   msgForMe = false;
     uint8_t                state;
+    uint8_t                mask8;
     TBusDevRespInfo        *pInfo;
     TBusDevRespActualValue *pActVal;
     TClient                *pClient;
-    TClockCalibState       calibState;
     static TBusTelegram    sTxMsg;
     static bool            sTxRetry = false;
 
@@ -482,8 +490,6 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqSetClientAddr:
         case eBusDevReqGetClientAddr:
         case eBusDevRespActualValueEvent:
-        case eBusDevReqClockCalib:
-        case eBusDevRespDoClockCalib:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
             }
@@ -497,7 +503,6 @@ static void ProcessBus(uint8_t ret) {
             break;
         }
     } else if (ret == BUS_MSG_ERROR) {
-        LedSet(eLedRedBlinkOnceShort);
         ButtonTimeStampRefresh();
     } 
 
@@ -530,7 +535,7 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespInfo;
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        pInfo->devType = eBusDevTypeRs485If;
+        pInfo->devType = eBusDevTypePwm4;
         strncpy((char *)(pInfo->version), ApplicationVersion(), sizeof(pInfo->version));
         pInfo->version[sizeof(pInfo->version) - 1] = '\0';
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
@@ -541,12 +546,19 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespActualValue;
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        pActVal->devType = eBusDevTypeRs485If;
+        pActVal->devType = eBusDevTypePwm4;
+        PwmGetAll(pActVal->actualValue.pwm4.pwm, sizeof(pActVal->actualValue.pwm4.pwm));
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetValue:
-        if (spBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypeRs485If) {
+        if (spBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypePwm4) {
             break;
+        }
+        mask8 = spBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.mask;
+        for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+            if (((1 << i) & mask8) != 0) {
+                PwmSet(i, spBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.pwm[i]);
+            }
         }
         /* response packet */
         sTxMsg.type = eBusDevRespSetValue;
@@ -601,8 +613,15 @@ static void ProcessBus(uint8_t ret) {
         for (i = 0; i < sNumClients; i++) {
             if ((pClient->address == spBusMsg->senderAddr) &&
                 (pClient->state == eEventWaitForConfirmation)) {
-                /* todo: compare with current state */
-                pClient->state = eEventConfirmationOK;
+                TBusDevActualValuePwm4 *p;
+                uint16_t buf[NUM_PWM_CHANNEL];
+
+                PwmGetAll(buf, sizeof(buf));
+
+                p = &spBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4;
+                if (memcmp(p->pwm, buf, sizeof(buf)) == 0) {
+                    pClient->state = eEventConfirmationOK;
+                }
                 break;
             }
             pClient++;
@@ -629,119 +648,7 @@ static void ProcessBus(uint8_t ret) {
         }
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
-    case eBusDevReqClockCalib:
-        sTxMsg.type = eBusDevRespClockCalib;
-        sTxMsg.senderAddr = MY_ADDR;
-        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-
-        if (spBusMsg->msg.devBus.x.devReq.clockCalib.command == eBusClockCalibCommandIdle) {
-            sClockCalib.state = eCalibIdle;
-            calibState = eBusClockCalibStateIdle;
-        } else if ((spBusMsg->msg.devBus.x.devReq.clockCalib.command == eBusClockCalibCommandCalibrate) &&
-                   (sClockCalib.state == eCalibIdle)) {
-            sClockCalib.state = eCalibInit;
-            sClockCalib.address = spBusMsg->msg.devBus.x.devReq.clockCalib.address;
-            calibState = eBusClockCalibStateBusy;
-        } else if (spBusMsg->msg.devBus.x.devReq.clockCalib.command == eBusClockCalibCommandGetState) {
-            switch (sClockCalib.state) {
-            case eCalibIdle:
-                calibState = eBusClockCalibStateIdle;
-                break;
-            case eCalibInit:
-            case eCalibContinue:
-            case eCalibWaitForResponse:
-                calibState = eBusClockCalibStateBusy;
-                break;
-            case eCalibSuccess:
-                calibState = eBusClockCalibStateSuccess;
-                break;
-            case eCalibError:
-                calibState = eBusClockCalibStateError;
-                break;
-            default:
-                calibState = eBusClockCalibStateInternalError;
-                break;
-            }
-        } else {
-            calibState = eBusClockCalibStateInvalidCommand;
-        }
-        sTxMsg.msg.devBus.x.devResp.clockCalib.state = calibState;
-        sTxMsg.msg.devBus.x.devResp.clockCalib.address = sClockCalib.address;
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
-        break;
-    case eBusDevRespDoClockCalib:
-        switch (spBusMsg->msg.devBus.x.devResp.doClockCalib.state) {
-        case eBusDoClockCalibStateSuccess:
-            sClockCalib.state = eCalibSuccess;
-            break;
-        case eBusDoClockCalibStateContiune:
-            sClockCalib.state = eCalibContinue;
-            break;
-        case eBusDoClockCalibStateError:
-            sClockCalib.state = eCalibError;
-            break;
-        default:
-            sClockCalib.state = eCalibInternalError;
-            break;
-        }
-        break;
     default:
-        break;
-    }
-}
-
-/*-----------------------------------------------------------------------------
-*   clock calibration state machine
-*/
-static void ClockCalibTask(void) {
- 
-    uint8_t  ch;
-    uint8_t  i;
-    uint16_t actualTime16;
-    static uint16_t sReqTimeStamp;
-    
-    if (sClockCalib.state == eCalibIdle) {
-        return;
-    }
-
-    GET_TIME_MS16(actualTime16);
-    switch (sClockCalib.state) {
-    case eCalibInit:
-    case eCalibContinue:
-        sTxBusMsg.type = eBusDevReqDoClockCalib;
-        sTxBusMsg.senderAddr = MY_ADDR;
-        sTxBusMsg.msg.devBus.receiverAddr = sClockCalib.address;
-        if (sClockCalib.state == eCalibInit) {
-            sTxBusMsg.msg.devBus.x.devReq.doClockCalib.command = eBusDoClockCalibInit;
-        } else {
-            sTxBusMsg.msg.devBus.x.devReq.doClockCalib.command = eBusDoClockCalibContiune;
-        }
-        if (BusSendToBuf(&sTxBusMsg) == BUS_SEND_OK) {
-            /* send calib sequence 0xff, 0xff, 0x00 .. 0x00 (64) */
-            ch = 0xff;
-            BusSendToBufRaw(&ch, sizeof(ch));
-            BusSendToBufRaw(&ch, sizeof(ch));
-            ch = 0;
-            for (i = 0; i < 64; ) {
-                BusSendToBufRaw(&ch, sizeof(ch));
-                i++;
-            }
-            BusSendBuf();
-            sClockCalib.state = eCalibWaitForResponse;
-            sReqTimeStamp = actualTime16;
-        }
-        break;
-    case eCalibWaitForResponse:
-        if (((uint16_t)(actualTime16 - sReqTimeStamp)) >= CLOCK_CALIB_TIMEOUT_MS) {
-            sClockCalib.state = eCalibError;
-        }
-        break;
-    case eCalibSuccess:
-    case eCalibError:
-    case eCalibInternalError:
-        break;
-    default:
-        sClockCalib.state = eCalibInternalError;
         break;
     }
 }
@@ -760,7 +667,6 @@ static void ButtonEvent(uint8_t address, uint8_t button) {
    }
 }
 
-
 /*-----------------------------------------------------------------------------
 *  create switch event for application
 */
@@ -773,21 +679,32 @@ static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) {
    ApplicationEventButton(&buttonEventData);
 }
 
-
 /*-----------------------------------------------------------------------------
-*  Power-Fail Interrupt (PCINT22)
+*  Power-Fail Interrupt (Ext. Int 0)
 */
-ISR(PCINT2_vect) {
+ISR(INT0_vect) {
+    uint8_t  *ptrToEeprom;
+    uint16_t pwm[NUM_PWM_CHANNEL];
+    uint8_t  i;
 
-    /* we are interested in PC6 = 0 only */
-    if ((PINC & (1 << PINC6)) != 0) {
-        return;
+    PwmGetAll(pwm, sizeof(pwm));
+    /* switch off all outputs */
+    PwmExit();
+
+    /* save pwm state to eeprom */
+    ptrToEeprom = spNextPtrToEeprom;
+
+    eeprom_write_byte(ptrToEeprom, 0);
+    ptrToEeprom++;
+    for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        eeprom_write_byte(ptrToEeprom, pwm[i] & 0xff);
+        ptrToEeprom++;
+        eeprom_write_byte(ptrToEeprom, pwm[i] >> 8);
+        ptrToEeprom++;
     }
 
-   LedSet(eLedGreenOff);
-   LedSet(eLedRedOff);
-
-   /* todo: save to eeprom */
+   /* Wait for completion of previous write */
+   while (!eeprom_is_ready());
 
    /* auf Powerfail warten */
    /* falls sich die Versorgungsspannung wieder erholt hat und */
@@ -799,7 +716,7 @@ ISR(PCINT2_vect) {
    /* Watchdogtimeout auf 2 s stellen */
    wdt_enable(WDTO_2S);
 
-   /* warten auf Reset */
+   /* wait for reset */
    while (1);
 }
 
@@ -813,24 +730,19 @@ static void TimerInit(void) {
     * and change sio timer settings when changing the prescaler!
     */
    
-   /* prescaler @ 3.6864 MHz:  1024  */
-   /*           @ 18.432 MHz:  1024  */
+   /* prescaler @ 1.8432 MHz: 256  */
    /* compare match pin not used: COM3A[1:0] = 00 */
    /* compare register OCR3A:  */
-   /* 3.6864 MHz: 18 -> 5 ms */
-   /* 18.432 MHz: 90 -> 5 ms */
+   /* 1.8432 MHz: 36 -> 5 ms */
    /* timer mode 0: normal: WGM3[3:0]= 0000 */
 
    TCCR3A = (0 << COM3A1) | (0 << COM3A0) | (0 << COM3B1) | (0 << COM3B0) | (0 << WGM31) | (0 << WGM30);
    TCCR3B = (0 << ICNC3) | (0 << ICES3) |
             (0 << WGM33) | (0 << WGM32) | 
-            (1 << CS32)  | (0 << CS31)  | (1 << CS30); 
+            (1 << CS32)  | (0 << CS31)  | (0 << CS30); 
 
-#if (F_CPU == 3686400UL)
-   #define TIMER_TCNT_INC    18
-   #define TIMER_INC_MS      5
-#elif (F_CPU == 18432000UL)
-   #define TIMER_TCNT_INC    90
+#if (F_CPU == 1843200UL)
+   #define TIMER_TCNT_INC    36
    #define TIMER_INC_MS      5
 #else
 #error adjust timer settings for your CPU clock frequency
@@ -843,7 +755,6 @@ static void TimerStart(void) {
    TIFR3 = 1 << OCF3A;
    TIMSK3 |= 1 << OCIE3A;
 }
-
 
 /*-----------------------------------------------------------------------------
 *  time interrupt for time counter
@@ -866,46 +777,48 @@ ISR(TIMER3_COMPA_vect)  {
     }
 }
 /*-----------------------------------------------------------------------------
-*  Einstellung der Portpins
+*  port settings
 */
 static void PortInit(void) {
 
-   /* PA.6, PA.7: LED1, LED2: output low */
-   /* PA.5: unused: output low */
-   /* PA.4: input: high z */
-   /* PA.3 .. PA.0: input pull up */
-   PORTA = 0b00001111;
-   DDRA  = 0b11100000;
+    /* PB.7: digout: output low */
+    /* PB.6, digout: output low */
+    /* PB.5: digout: output low */
+    /* PB.4: unused: output low */
+    /* PB.3: MISO: output low */
+    /* PB.2: MOSI: output low */
+    /* PB.1: SCK: output low */
+    /* PB.0: unused: output low */
+    PORTB = 0b00000000;
+    DDRB  = 0b11111111;
 
-   /* PB.7: SCK: output low */
-   /* PB.6, MISO: output low */
-   /* PB.5: MOSI: output low */
-   /* PB.4 .. PB.3: input, high z */
-   /* PB.2: input, high z */
-   /* PB.1: unused, output low */
-   /* PB.0: transceiver power, output high */
-   PORTB = 0b00000001;
-   DDRB  = 0b11100011;
-   
-   /* PC.7: unused: output low */
-   /* PC.6: power fail input high z */
-   /* PC.5: unused: output low */
-   /* PC.4: unused: output low */
-   /* PC.3: RS485 TXEN: output low */
-   /* PC.2: RS485 nRXEN: output high */
-   /* PC.1: unused: output low */
-   /* PC.0: unused: output low */
-   PORTC = 0b00000100;
-   DDRC  = 0b10111111;
+    /* PC.7: digout: output low  */
+    /* PC.6: unused: output low */
+    PORTC = 0b00000000;
+    DDRC  = 0b11000000;
 
-   /* PD.7: input high z */
-   /* PD.6: input high z */
-   /* PD.5: unused: output low */
-   /* PD.4: digout: output low */
-   /* PD.3: TX1: output high */
-   /* PD.2: RX1: input pull up */
-   /* PD.1: TX0: output high */
-   /* PD.0: RX0: input pull up */
-   PORTD = 0b00001111;
-   DDRD  = 0b00111010;
+    /* PD.7: unused: output low */
+    /* PD.6: unused: output low */
+    /* PD.5: transceiver power, output high */
+    /* PD.4: unused: output low */
+    /* PD.3: TX1: output high */
+    /* PD.2: RX1: input pull up */
+    /* PD.1: input high z */
+    /* PD.0: input high z, power fail */
+    PORTD = 0b00101100;
+    DDRD  = 0b11111000;
+    
+    /* PE.6: unused: output low  */
+    /* PE.2: unused: output low */
+    PORTE = 0b00000000;
+    DDRE  = 0b01000100;
+
+    /* PF.7: unused: output low  */
+    /* PF.6: unused: output low  */
+    /* PF.5: unused: output low  */
+    /* PF.4: unused: output low  */
+    /* PF.1: unused: output low  */
+    /* PF.0: unused: output low */
+    PORTF = 0b00000000;
+    DDRF  = 0b11110011;
 }

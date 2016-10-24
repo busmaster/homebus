@@ -60,9 +60,12 @@
 #define OP_SET_VALUE_DO31_SH                9
 #define OP_SET_VALUE_SW8                    10
 #define OP_SET_VALUE_SW16                   11
-#define OP_INFO                             12
-#define OP_EXIT                             13
-#define OP_CLOCK_CALIB                      14
+#define OP_SET_VALUE_RS485IF                13
+#define OP_SET_VALUE_PWM4                   14
+#define OP_INFO                             15
+#define OP_EXIT                             16
+#define OP_CLOCK_CALIB                      17
+#define OP_SWITCH_STATE                     18
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -93,6 +96,7 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf);
 static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pBuf);
 static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf);
 static bool ModuleClockCalib(uint8_t address, uint8_t calibAddress);
+static bool SwitchEvent(uint8_t clientAddr, uint8_t state);
 static int  GetOperation(int argc, char *argv[], int *pArgi);
 
 #ifndef WIN32
@@ -127,6 +131,7 @@ int main(int argc, char *argv[]) {
     char                   buffer[CMD_SIZE];
     char                   *p;
     uint8_t                val8;
+    uint8_t                defaultMyAddr = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-c") == 0) {
@@ -142,6 +147,7 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "-o") == 0) {
             if (argc > i) {
                 myAddr = atoi(argv[i + 1]);
+                defaultMyAddr = myAddr;
             }
         } else if (strcmp(argv[i], "-s") == 0) {
             server_run = true;
@@ -183,10 +189,15 @@ int main(int argc, char *argv[]) {
                 argc++;
             }
 
+            myAddr = defaultMyAddr;
+
             for (i = 0; i < argc; i++) {
                 if ((strcmp(argv[i], "-a") == 0) &&
                     (argc > i)) {
                     moduleAddr = atoi(argv[i + 1]);
+                } else  if ((strcmp(argv[i], "-o") == 0) &&
+                    (argc > i)) {
+                    myAddr = atoi(argv[i + 1]);
                 }
             }
         }
@@ -366,6 +377,20 @@ int main(int argc, char *argv[]) {
                     }
                     printf("\r\nWIND:  0x%02x\r\n", actVal.actualValue.wind.wind);
                     break;
+                case eBusDevTypeRs485If:
+                    printf("\r\nstate: ");
+                    for (i = 0; i < sizeof(actVal.actualValue.rs485if.state); i++) {
+                        printf("%02x ", actVal.actualValue.rs485if.state[i]);
+                    }
+                    printf("\r\n");
+                    break;
+                case eBusDevTypePwm4:
+                    printf("\r\npwm: ");
+                    for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
+                        printf("%04x ", actVal.actualValue.pwm4.pwm[i]);
+                    }
+                    printf("\r\n");
+                    break;
                 default:
                     break;
                 }
@@ -409,10 +434,32 @@ int main(int argc, char *argv[]) {
             break;
         case OP_SET_VALUE_SW16:
             setVal.devType = eBusDevTypeSw16;
-            operation = OP_SET_VALUE_SW16;
             memset(setVal.setValue.sw16.led_state, 0, sizeof(setVal.setValue.sw16.led_state));
             for (j = argi, k = 0; (j < argc) && (k < (int)(sizeof(setVal.setValue.sw16.led_state) * 2)); j++, k++) {
                 setVal.setValue.sw16.led_state[k / 2] |= ((uint8_t)atoi(argv[j]) & 0x0F) << ((k % 2) * 4);
+            }
+            ret = ModulSetValue(moduleAddr, &setVal);
+            if (ret) {
+                printf("OK\r\n");
+            }
+            break;
+        case OP_SET_VALUE_RS485IF:
+            setVal.devType = eBusDevTypeRs485If;
+            memset(setVal.setValue.rs485if.state, 0, sizeof(setVal.setValue.rs485if.state));
+            for (j = argi, k = 0; (j < argc) && (k < (int)sizeof(setVal.setValue.rs485if.state)); j++, k++) {
+                setVal.setValue.rs485if.state[k] = (uint8_t)atoi(argv[j]);
+            }
+            ret = ModulSetValue(moduleAddr, &setVal);
+            if (ret) {
+                printf("OK\r\n");
+            }
+            break;
+        case OP_SET_VALUE_PWM4:
+            setVal.devType = eBusDevTypePwm4;
+            memset(setVal.setValue.pwm4.pwm, 0, sizeof(setVal.setValue.pwm4.pwm));
+            setVal.setValue.pwm4.mask = (uint8_t)atoi(argv[argi]);
+            for (j = argi + 1, k = 0; (j < argc) && (k < (int)sizeof(setVal.setValue.pwm4.pwm)); j++, k++) {
+                setVal.setValue.pwm4.pwm[k] = (uint16_t)atoi(argv[j]);
             }
             ret = ModulSetValue(moduleAddr, &setVal);
             if (ret) {
@@ -442,6 +489,12 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeWind:
                     printf("WIND");
                     break;
+                case eBusDevTypeRs485If:
+                    printf("RS485IF");
+                    break;
+                case eBusDevTypePwm4:
+                    printf("PWM4");
+                    break;
                 default:
                     break;
                 }
@@ -455,7 +508,13 @@ int main(int argc, char *argv[]) {
             ret = ModuleClockCalib(moduleAddr, atoi(argv[argi]));
             if (ret) {
                 printf("OK\r\n");
-            }            
+            }
+            break;
+        case OP_SWITCH_STATE:
+            ret = SwitchEvent(moduleAddr, atoi(argv[argi]));
+            if (ret) {
+                printf("OK\r\n");
+            }
             break;
         case OP_EXIT:
             printf("OK\r\n");
@@ -636,6 +695,16 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
         case eBusDevTypeWind:
             pBuf->actualValue.wind.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.state;
             pBuf->actualValue.wind.wind = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.wind;
+            break;
+        case eBusDevTypeRs485If:
+            memcpy(pBuf->actualValue.rs485if.state,
+                   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.rs485if.state,
+                   sizeof(pBuf->actualValue.rs485if.state));
+            break;
+        case eBusDevTypePwm4:
+            memcpy(pBuf->actualValue.pwm4.pwm,
+                   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.pwm4.pwm,
+                   sizeof(pBuf->actualValue.pwm4.pwm));
             break;
         default:
             break;
@@ -1041,6 +1110,49 @@ static bool ModuleClockCalib(
     return rc;
 }
 
+/*-----------------------------------------------------------------------------
+*  set new bus module address
+*/
+static bool SwitchEvent(uint8_t clientAddr, uint8_t state) {
+
+    TBusTelegram    txBusMsg;
+    uint8_t         ret;
+    unsigned long   startTimeMs;
+    unsigned long   actualTimeMs;
+    TBusTelegram    *pBusMsg;
+    bool            responseOk = false;
+    bool            timeOut = false;
+
+    txBusMsg.type = eBusDevReqSwitchState;
+    txBusMsg.senderAddr = MY_ADDR;
+    txBusMsg.msg.devBus.receiverAddr = clientAddr;
+    txBusMsg.msg.devBus.x.devReq.switchState.switchState = state;
+    BusSend(&txBusMsg);
+    startTimeMs = GetTickCount();
+    do {
+        actualTimeMs = GetTickCount();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            pBusMsg = BusMsgBufGet();
+            if ((pBusMsg->type == eBusDevRespSwitchState)                      &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR)                  &&
+                (pBusMsg->senderAddr == clientAddr)                            &&
+                (pBusMsg->msg.devBus.x.devResp.switchState.switchState == state)) {
+                responseOk = true;
+            }
+        } else {
+            if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+                timeOut = true;
+            }
+        }
+    } while (!responseOk && !timeOut);
+
+    if (responseOk) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 #ifndef WIN32
 static unsigned long GetTickCount(void) {
@@ -1129,6 +1241,20 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             } else {
                 break;
             }
+        } else if (strcmp(argv[i], "-setvalrs485if") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SET_VALUE_RS485IF;
+            } else {
+                break;
+            }
+        } else if (strcmp(argv[i], "-setvalpwm4") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SET_VALUE_PWM4;
+            } else {
+                break;
+            }
         } else if (strcmp(argv[i], "-info") == 0) {
             operation = OP_INFO;
         } else if (strcmp(argv[i], "-clockcalib") == 0) {
@@ -1138,10 +1264,18 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             } else {
                 break;
             }
+        } else if (strcmp(argv[i], "-switchstate") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SWITCH_STATE;
+            } else {
+                break;
+            }
         } else if (strcmp(argv[i], "-exit") == 0) {
             operation = OP_EXIT;
         }
     }
+
     return operation;
 }
 
@@ -1151,7 +1285,7 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
 static void PrintUsage(void) {
 
     printf("\r\nUsage:\r\n");
-    printf("modulservice -c port -a addr [-o ownaddr] [-d]                \r\n");  
+    printf("modulservice -c port -a addr [-o ownaddr] [-s]                \r\n");  
     printf("                             (-na addr                       |\r\n");
     printf("                              -setcl addr1 .. addr16         |\r\n");
     printf("                              -getcl                         |\r\n");
@@ -1163,13 +1297,16 @@ static void PrintUsage(void) {
     printf("                              -setvaldo31_sh sh0 .. sh14     |\r\n");
     printf("                              -setvalsw8 do0 .. do7          |\r\n");
     printf("                              -setvalsw16 led0 .. led7       |\r\n");
+    printf("                              -setvalrs485if data0 .. data31 |\r\n");
+    printf("                              -setvalpwm4 mask pwm0 .. pwm3  |\r\n");
     printf("                              -info                          |\r\n");
     printf("                              -clockcalib addr               |\r\n");
+    printf("                              -switchstate data              |\r\n");
     printf("                              -exit)                          \r\n");
     printf("-c port: com1 com2 ..\r\n");
     printf("-a addr: addr = address of module\r\n");
-    printf("-o addr: addr = our address\r\n");
-    printf("-s: server mode, accept command from stdin\r\n");
+    printf("-o addr: addr = our address, default:0\r\n");
+    printf("-s server mode, accept command from stdin\r\n");
     printf("-na addr: set new address, addr = new address\r\n");
     printf("-setcl addr1 .. addr16 : set client address list, addr1 = 1st client's address\r\n");
     printf("-getcl: show client address list\r\n");
@@ -1181,7 +1318,10 @@ static void PrintUsage(void) {
     printf("-setvaldo31_sh sh0 .. sh14: set value for shader\r\n");
     printf("-setvalsw8 do0 .. do7: set value for dig out\r\n");
     printf("-setvalsw16 led0 .. led7: set value for led\r\n");
+    printf("-setvalrs485if data0 .. data31: set byte value for rs485if\r\n");
+    printf("-setvalpwm4 mask pwm0 .. pwm3: mask = bit mask for channel, pwmX = 16 bit value\r\n");
     printf("-info: read type and version string from modul\r\n");
     printf("-clockcalib: clock calibration\r\n");
+    printf("-switchstate: generate a switch pressed or released event (ReqSwitchState, -a addr is the client)\r\n");
     printf("-exit: nop operation, exit server\r\n");
 }

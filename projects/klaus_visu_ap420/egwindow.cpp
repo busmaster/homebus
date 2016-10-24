@@ -71,24 +71,6 @@ void egwindow::onIoStateChanged(void) {
         ui->pushButtonLightArbeit->setStyleSheet("background-color: yellow");
     }
 
-    if (io->egState.detail.lightKueche == 0) {
-        ui->pushButtonLightKueche->setStyleSheet("background-color: green");
-    } else {
-        ui->pushButtonLightKueche->setStyleSheet("background-color: yellow");
-    }
-
-    if (io->egState.detail.lightKuecheWand == 0) {
-        ui->pushButtonLightKuecheWand->setStyleSheet("background-color: green");
-    } else {
-        ui->pushButtonLightKuecheWand->setStyleSheet("background-color: yellow");
-    }
-
-    if (io->egState.detail.lightSpeis == 0) {
-        ui->pushButtonLightSpeis->setStyleSheet("background-color: green");
-    } else {
-        ui->pushButtonLightSpeis->setStyleSheet("background-color: yellow");
-    }
-
     if (io->egState.detail.lightTerrasse == 0) {
         ui->pushButtonLightTerrasse->setStyleSheet("background-color: green");
     } else {
@@ -146,22 +128,6 @@ void egwindow::on_pushButtonLightWohn_pressed() {
     emit serviceCmd(command);
 }
 
-void egwindow::on_pushButtonLightKueche_pressed() {
-    char    command[100];
-    uint8_t doState[31];
-
-    memset(doState, 0, sizeof(doState));
-    if (io->egState.detail.lightKueche == 0) {
-        doState[19] = 3; // on
-    } else {
-        doState[19] = 2; // off
-    }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightKueche->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
-}
-
 void egwindow::on_pushButtonLightEss_pressed() {
     char    command[100];
     uint8_t doState[31];
@@ -194,22 +160,6 @@ void egwindow::on_pushButtonLightVorraum_pressed() {
     emit serviceCmd(command);
 }
 
-void egwindow::on_pushButtonLightKuecheWand_pressed() {
-    char    command[100];
-    uint8_t doState[31];
-
-    memset(doState, 0, sizeof(doState));
-    if (io->egState.detail.lightKuecheWand == 0) {
-        doState[30] = 3; // on
-    } else {
-        doState[30] = 2; // off
-    }
-    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightKuecheWand->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
-}
-
 void egwindow::on_pushButtonLightArbeit_pressed() {
     char    command[100];
     uint8_t doState[31];
@@ -222,22 +172,6 @@ void egwindow::on_pushButtonLightArbeit_pressed() {
     }
     do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
     ui->pushButtonLightArbeit->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
-}
-
-void egwindow::on_pushButtonLightSpeis_pressed() {
-    char    command[100];
-    uint8_t doState[31];
-
-    memset(doState, 0, sizeof(doState));
-    if (io->egState.detail.lightSpeis == 0) {
-        doState[24] = 3; // on
-    } else {
-        doState[24] = 2; // off
-    }
-    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightSpeis->setStyleSheet("background-color: grey");
 
     emit serviceCmd(command);
 }

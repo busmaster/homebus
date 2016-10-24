@@ -74,6 +74,8 @@ int main(int argc, char *argv[]) {
     char comPort[SIZE_COMPORT] = "";
     char logFile[MAX_NAME_LEN] = "";
     bool raw = false;
+    uint8_t len;
+    uint8_t val8;
 
     /* COM-Port ermitteln */
     for (i = 1; i < argc; i++) {
@@ -132,6 +134,10 @@ int main(int argc, char *argv[]) {
             fclose(pLogFile);
         }
         return 0;
+    }
+
+    while ((len = SioGetNumRxChar(handle)) != 0) {
+        SioRead(handle, &val8, sizeof(val8));
     }
 
     if (raw) {
@@ -199,9 +205,9 @@ static void BusMonRaw(int sioHandle) {
                 checkSum = CHECKSUM_START;
                 clock_gettime(CLOCK_REALTIME, &ts);
                 ptm = localtime(&ts.tv_sec);
-                fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", 
-                        ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday, 
-                        ptm->tm_hour, ptm->tm_min, ptm->tm_sec, 
+                fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ",
+                        ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday,
+                        ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
                         (int)ts.tv_nsec / 1000000);
             }
             lastCh = ch;
@@ -261,9 +267,9 @@ static void BusMonDecoded(int sioHandle) {
             skipError = false;
             clock_gettime(CLOCK_REALTIME, &ts);
             ptm = localtime(&ts.tv_sec);
-            fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ", 
-                    ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday, 
-                    ptm->tm_hour, ptm->tm_min, ptm->tm_sec, 
+            fprintf(spOutput, "%d-%02d-%02d %2d:%02d:%02d.%03d  ",
+                    ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday,
+                    ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
                     (int)ts.tv_nsec / 1000000);
 
             fprintf(spOutput, "%4d ", pBusMsg->senderAddr);
@@ -357,6 +363,12 @@ static void BusMonDecoded(int sioHandle) {
                     break;
                 case eBusDevTypeSw8Cal:
                     fprintf(spOutput, SPACE "device SW8CAL\r\n");
+                    break;
+                case eBusDevTypeRs485If:
+                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    break;
+                case eBusDevTypePwm4:
+                    fprintf(spOutput, SPACE "device PWM4\r\n");
                     break;
                 default:
                     fprintf(spOutput, SPACE "device unknown\r\n");
@@ -605,6 +617,21 @@ static void BusMonDecoded(int sioHandle) {
                                 pBusMsg->msg.devBus.x.devReq.setValue.setValue.sw16.led_state[i]);
                     }
                     break;
+                case eBusDevTypeRs485If:
+                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "state: ");
+                    for (i = 0; i < BUS_RS485IF_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.rs485if.state[i]);
+                    }
+                    break;
+                case eBusDevTypePwm4:
+                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "mask: %02x\n", pBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.mask);
+                    fprintf(spOutput, SPACE "pwm: ");
+                    for (i = 0; i < BUS_PWM4_PWM_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%04x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.pwm[i]);
+                    }
+                    break;
                   default:
                     fprintf(spOutput, SPACE "device unknown");
                     break;
@@ -670,6 +697,22 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, SPACE "wind:  %02x",
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.wind);
                     break;
+                case eBusDevTypeRs485If:
+                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "state: ");
+                    for (i = 0; i < BUS_RS485IF_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ",
+                                pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.rs485if.state[i]);
+                    }
+                    break;
+                case eBusDevTypePwm4:
+                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "pwm: ");
+                    for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%04x ",
+                                pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.pwm4.pwm[i]);
+                    }
+                    break;
                 default:
                     fprintf(spOutput, SPACE "device unknown");
                     break;
@@ -683,7 +726,7 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, SPACE "device DO31\r\n");
                     fprintf(spOutput, SPACE "DO: ");
                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
-                        fprintf(spOutput, "%02x ", 
+                        fprintf(spOutput, "%02x ",
                                 pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.digOut[i]);
                     }
                     fprintf(spOutput, "\r\n");
@@ -728,6 +771,22 @@ static void BusMonDecoded(int sioHandle) {
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.wind.state);
                     fprintf(spOutput, SPACE "wind:  %02x",
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.wind.wind);
+                    break;
+                case eBusDevTypeRs485If:
+                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "state: ");
+                    for (i = 0; i < BUS_RS485IF_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ",
+                                pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.rs485if.state[i]);
+                    }
+                    break;
+                case eBusDevTypePwm4:
+                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "pwm: ");
+                    for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%04x ",
+                                pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.pwm4.pwm[i]);
+                    }
                     break;
                 default:
                     fprintf(spOutput, SPACE "device unknown");
@@ -785,6 +844,23 @@ static void BusMonDecoded(int sioHandle) {
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.wind.state);
                     fprintf(spOutput, SPACE "wind:  %02x",
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.wind.wind);
+                    break;
+                case eBusDevTypeRs485If:
+                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "state: ");
+                    for (i = 0; i < BUS_RS485IF_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, SPACE "%02x ",
+                                pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.rs485if.state[i]);
+                    }
+                    break;
+                case eBusDevTypePwm4:
+                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "pwm: ");
+                    for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, SPACE "%04x ",
+                                pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4.pwm[i]);
+                    }
+                    fprintf(spOutput, "\r\n");
                     break;
                 default:
                     fprintf(spOutput, SPACE "device unknown");

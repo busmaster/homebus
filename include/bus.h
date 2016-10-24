@@ -43,11 +43,17 @@ extern "C" {
 
 #define BUS_DO31_DIGOUT_SIZE_SET_VALUE     8    /* 8 bytes for 31 dig outs (2 bit for each) */
 #define BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE  4    /* 4 bytes for 31 dig outs (1 bit for each) */
-#define BUS_DO31_SHADER_SIZE_SET_VALUE     15   /* 1 Byte je 15 Rollladen */
-#define BUS_DO31_SHADER_SIZE_ACTUAL_VALUE  15   /* 1 Byte je Rollladen */
+#define BUS_DO31_SHADER_SIZE_SET_VALUE     15   /* 1 byte for each shader */
+#define BUS_DO31_SHADER_SIZE_ACTUAL_VALUE  15   /* 1 byte for each shader */
 
 #define BUS_SW8_DIGOUT_SIZE_SET_VALUE      2    /* 2 byte for 8 DO (2 bit each) */
 #define BUS_SW16_LED_SIZE_SET_VALUE        4    /* 8 leds, 4 bit each -> 4 byte for 8 Leds */
+
+#define BUS_RS485IF_SIZE_SET_VALUE         32
+#define BUS_RS485IF_SIZE_ACTUAL_VALUE      32
+
+#define BUS_PWM4_PWM_SIZE_SET_VALUE        4    /* 4 uint16 for pwm outs */
+#define BUS_PWM4_PWM_SIZE_ACTUAL_VALUE     4    /* 4 uint16 for pwm outs */
 
 #define BUS_MAX_CLIENT_NUM         16   /* size of list for setting client addresses */
 #define BUS_CLIENT_ADDRESS_INVALID 0xff
@@ -131,6 +137,9 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoRs485If;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoPwm4;
+
 typedef enum {
    eBusDevTypeDo31    = 0x00,
    eBusDevTypeSw8     = 0x01,
@@ -139,20 +148,23 @@ typedef enum {
    eBusDevTypeSw16    = 0x04,
    eBusDevTypeWind    = 0x05,
    eBusDevTypeSw8Cal  = 0x06,
-   eBusDevTypeRs485If = 0x07
+   eBusDevTypeRs485If = 0x07,
+   eBusDevTypePwm4    = 0x08
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {
    TBusDevType  devType;
    uint8_t  version[BUS_DEV_INFO_VERSION_LEN];
    union {
-      TBusDevInfoDo31   do31;
-      TBusDevInfoSw8    sw8;
-      TBusDevInfoLum    lum;
-      TBusDevInfoLed    led;
-      TBusDevInfoSw16   sw16;
-      TBusDevInfoWind   wind;
-      TBusDevInfoSw8Cal sw8Cal;
+      TBusDevInfoDo31    do31;
+      TBusDevInfoSw8     sw8;
+      TBusDevInfoLum     lum;
+      TBusDevInfoLed     led;
+      TBusDevInfoSw16    sw16;
+      TBusDevInfoWind    wind;
+      TBusDevInfoSw8Cal  sw8Cal;
+      TBusDevInfoRs485If rs485if;
+      TBusDevInfoPwm4    pwm4;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
 
@@ -272,13 +284,23 @@ typedef struct {
    uint8_t led_state[BUS_SW16_LED_SIZE_SET_VALUE];
 } __attribute__ ((packed)) TBusDevSetValueSw16;
 
+typedef struct {
+   uint8_t state[BUS_RS485IF_SIZE_SET_VALUE];
+} __attribute__ ((packed)) TBusDevSetValueRs485if;
+
+typedef struct {
+    uint8_t  mask;
+    uint16_t pwm[BUS_PWM4_PWM_SIZE_SET_VALUE];
+} __attribute__ ((packed)) TBusDevSetValuePwm4;
 
 typedef struct {
    TBusDevType devType;
    union {
-      TBusDevSetValueSw8  sw8;
-      TBusDevSetValueDo31 do31;
-      TBusDevSetValueSw16 sw16;
+      TBusDevSetValueSw8     sw8;
+      TBusDevSetValueDo31    do31;
+      TBusDevSetValueSw16    sw16;
+      TBusDevSetValueRs485if rs485if;
+      TBusDevSetValuePwm4    pwm4;
    } setValue;
 } __attribute__ ((packed)) TBusDevReqSetValue;   /* Type 0x1d */
 
@@ -323,14 +345,24 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValueWind;
 
 typedef struct {
+   uint8_t state[BUS_RS485IF_SIZE_ACTUAL_VALUE];
+} __attribute__ ((packed)) TBusDevActualValueRs485if;
+
+typedef struct {
+   uint16_t pwm[BUS_PWM4_PWM_SIZE_ACTUAL_VALUE];
+} __attribute__ ((packed)) TBusDevActualValuePwm4;
+
+typedef struct {
    TBusDevType devType;
    union {
-      TBusDevActualValueDo31 do31;
-      TBusDevActualValueSw8  sw8;
-      TBusDevActualValueLum  lum;
-      TBusDevActualValueLed  led;
-      TBusDevActualValueSw16 sw16;
-      TBusDevActualValueWind wind;
+      TBusDevActualValueDo31    do31;
+      TBusDevActualValueSw8     sw8;
+      TBusDevActualValueLum     lum;
+      TBusDevActualValueLed     led;
+      TBusDevActualValueSw16    sw16;
+      TBusDevActualValueWind    wind;
+      TBusDevActualValueRs485if rs485if;
+      TBusDevActualValuePwm4    pwm4;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
@@ -338,24 +370,28 @@ typedef struct {
 typedef struct {
    TBusDevType devType;
    union {
-      TBusDevActualValueDo31 do31;
-      TBusDevActualValueSw8  sw8;
-      TBusDevActualValueLum  lum;
-      TBusDevActualValueLed  led;
-      TBusDevActualValueSw16 sw16;
-      TBusDevActualValueWind wind;
+      TBusDevActualValueDo31    do31;
+      TBusDevActualValueSw8     sw8;
+      TBusDevActualValueLum     lum;
+      TBusDevActualValueLed     led;
+      TBusDevActualValueSw16    sw16;
+      TBusDevActualValueWind    wind;
+      TBusDevActualValueRs485if rs485if;
+      TBusDevActualValuePwm4    pwm4;
    } actualValue;
 } __attribute__ ((packed)) TBusDevReqActualValueEvent;  /* Type 0x21 */
 
 typedef struct {
    TBusDevType devType;
    union {
-      TBusDevActualValueDo31 do31;
-      TBusDevActualValueSw8  sw8;
-      TBusDevActualValueLum  lum;
-      TBusDevActualValueLed  led;
-      TBusDevActualValueSw16 sw16;
-      TBusDevActualValueWind wind;
+      TBusDevActualValueDo31    do31;
+      TBusDevActualValueSw8     sw8;
+      TBusDevActualValueLum     lum;
+      TBusDevActualValueLed     led;
+      TBusDevActualValueSw16    sw16;
+      TBusDevActualValueWind    wind;
+      TBusDevActualValueRs485if rs485if;
+      TBusDevActualValuePwm4    pwm4;
    } actualValue; /* same as request */
 } __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
 

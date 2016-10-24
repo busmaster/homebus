@@ -1,0 +1,11 @@
+fuse settings for atmega32u4 (see pwm4_bootloader/main.c)
+extended fuse byte:
+0xf8 (changed bod level to 000: 4.0 .. 4.5 V)
+fuse byte high:
+0xd8 (changed: JTAG disabled, BOOTRST to bootloader)
+fuse byte low:
+0x5f (changed cklsel to 1111: 8-16 MHz crystal, bod enabled)
+
+avrdude -p m32u4 -c stk200 -U efuse:w:0xf8:m
+avrdude -p m32u4 -c stk200 -U hfuse:w:0xd8:m
+avrdude -p m32u4 -c stk200 -U lfuse:w:0x5f:m

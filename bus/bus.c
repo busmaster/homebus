@@ -48,7 +48,7 @@
 #define MSG_BASE_SIZE2  MSG_BASE_SIZE1 + member_sizeof(TBusDev, receiverAddr)
 
 // max number of length options of variable length telegrams
-#define MAX_NUM_VAR_LEN  8
+#define MAX_NUM_VAR_LEN  9
 
 
 #define L1_WAIT_FOR_STX      0
@@ -122,7 +122,11 @@ static TVarLenMsg sRespInfoSize = {
       {eBusDevTypeRs485If, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespInfo, devType) +
                         member_sizeof(TBusDevRespInfo, version) +
-                        sizeof(TBusDevInfoRs485If)}
+                        sizeof(TBusDevInfoRs485If)},
+      {eBusDevTypePwm4, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespInfo, devType) +
+                        member_sizeof(TBusDevRespInfo, version) +
+                        sizeof(TBusDevInfoPwm4)}
    }
 };
 
@@ -132,6 +136,7 @@ static TVarLenMsg sReqSetStateSize = {
       {eBusDevTypeDo31, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetState, devType) +
                         sizeof(TBusDevSetStateDo31)},
+      {0,               0},
       {0,               0},
       {0,               0},
       {0,               0},
@@ -156,6 +161,7 @@ static TVarLenMsg sRespGetStateSize = {
       {0,               0},
       {0,               0},
       {0,               0},
+      {0,               0},
       {0,               0}
    }
 };
@@ -172,7 +178,12 @@ static TVarLenMsg sReqSetValueSize = {
       {eBusDevTypeSw16, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqSetValue, devType) +
                         sizeof(TBusDevSetValueSw16)},
-      {0,               0},
+      {eBusDevTypeRs485If, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqSetValue, devType) +
+                        sizeof(TBusDevSetValueRs485if)},
+      {eBusDevTypePwm4, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqSetValue, devType) +
+                        sizeof(TBusDevSetValuePwm4)},
       {0,               0},
       {0,               0},
       {0,               0},
@@ -201,8 +212,13 @@ static TVarLenMsg sRespActualValueSize = {
       {eBusDevTypeWind, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValue, devType) +
                         sizeof(TBusDevActualValueWind)},
-      {0,               0},
-      {0,               0}
+      {eBusDevTypeRs485If, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValue, devType) +
+                        sizeof(TBusDevActualValueRs485if)},
+      {eBusDevTypePwm4, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValue, devType) +
+                        sizeof(TBusDevActualValuePwm4)},
+      {0,               0}                        
    }
 };
 
@@ -227,7 +243,12 @@ static TVarLenMsg sReqActualValueEventSize = {
       {eBusDevTypeWind, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevReqActualValueEvent, devType) +
                         sizeof(TBusDevActualValueWind)},
-      {0,               0},
+      {eBusDevTypeRs485If, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueRs485if)},
+      {eBusDevTypePwm4, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevReqActualValueEvent, devType) +
+                        sizeof(TBusDevActualValuePwm4)},
       {0,               0}
    }
 };
@@ -253,7 +274,12 @@ static TVarLenMsg sRespActualValueEventSize = {
       {eBusDevTypeWind, MSG_BASE_SIZE2 +
                         member_sizeof(TBusDevRespActualValueEvent, devType) +
                         sizeof(TBusDevActualValueWind)},
-      {0,               0},
+      {eBusDevTypeRs485If, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValueEvent, devType) +
+                        sizeof(TBusDevActualValueRs485if)},
+      {eBusDevTypePwm4, MSG_BASE_SIZE2 +
+                        member_sizeof(TBusDevRespActualValueEvent, devType) +
+                        sizeof(TBusDevActualValuePwm4)},
       {0,               0}
    }
 };
