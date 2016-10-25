@@ -66,6 +66,8 @@
 #define OP_EXIT                             16
 #define OP_CLOCK_CALIB                      17
 #define OP_SWITCH_STATE                     18
+#define OP_HELP                             19
+#define OP_GET_INFO_RANGE                   20
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -94,7 +96,7 @@ static bool ModulReadEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen,
 static bool ModulWriteEeprom(uint8_t address, uint8_t *pBuf, unsigned int bufLen, unsigned int eepromAddress);
 static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf);
 static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pBuf);
-static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf);
+static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf, uint16_t resp_timeout);
 static bool ModuleClockCalib(uint8_t address, uint8_t calibAddress);
 static bool SwitchEvent(uint8_t clientAddr, uint8_t state);
 static int  GetOperation(int argc, char *argv[], int *pArgi);
@@ -467,7 +469,7 @@ int main(int argc, char *argv[]) {
             }
             break;
         case OP_INFO:
-            ret = ModulInfo(moduleAddr, &info);
+            ret = ModulInfo(moduleAddr, &info, RESPONSE_TIMEOUT);
             if (ret) {
                 printf("devType: ");
                 switch (info.devType) {
@@ -515,6 +517,54 @@ int main(int argc, char *argv[]) {
             if (ret) {
                 printf("OK\r\n");
             }
+            break;
+        case OP_GET_INFO_RANGE:
+            if((argc - argi) > 1 ) {
+                for (moduleAddr = atoi(argv[argi]); ; moduleAddr++) {
+                    ret = ModulInfo(moduleAddr, &info, 100);
+                    if (ret) {
+                        printf("%-8i",moduleAddr);
+                        switch (info.devType) {
+                        case eBusDevTypeDo31:
+                            printf("%-8s", "DO31");
+                            break;
+                        case eBusDevTypeSw8:
+                            printf("%-8s", "SW8");
+                            break;
+                        case eBusDevTypeLum:
+                            printf("%-8s", "LUM");
+                            break;
+                        case eBusDevTypeLed:
+                            printf("%-8s", "LED");
+                            break;
+                        case eBusDevTypeSw16:
+                            printf("%-8s", "SW16");
+                            break;
+                        case eBusDevTypeWind:
+                            printf("%-8s", "WIND");
+                            break;
+                        case eBusDevTypeRs485If:
+                            printf("%-8s", "RS485IF");
+                            break;
+                        case eBusDevTypePwm4:
+                            printf("%-8s", "PWM4");
+                            break;                            
+                        default:
+                            break;
+                        }
+                        printf("%s\r\n", info.version);
+                    } else {
+                        printf("%i\r\n",moduleAddr);
+                        ret = 1;
+                    }
+                    if (moduleAddr == atoi(argv[argi+1])) {
+                        break;
+                    }
+                }
+            }
+            break;
+        case OP_HELP:
+            PrintUsage();
             break;
         case OP_EXIT:
             printf("OK\r\n");
@@ -581,7 +631,7 @@ static bool ModulSetValue(uint8_t address, TBusDevReqSetValue *pSetVal) {
 /*-----------------------------------------------------------------------------
 *  read info
 */
-static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf) {
+static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf, uint16_t resp_timeout) {
 
     TBusTelegram    txBusMsg;
     uint8_t         ret;
@@ -600,13 +650,14 @@ static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf) {
         actualTimeMs = GetTickCount();
         ret = BusCheck();
         if (ret == BUS_MSG_OK) {
+			startTimeMs = GetTickCount();
             pBusMsg = BusMsgBufGet();
             if ((pBusMsg->type == eBusDevRespInfo) &&
                 (pBusMsg->senderAddr == address)) {
                 responseOk = true;
             }
         } else {
-            if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+            if ((actualTimeMs - startTimeMs) > resp_timeout) {
                 timeOut = true;
             }
         }
@@ -1271,6 +1322,15 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             } else {
                 break;
             }
+        } else if (strcmp(argv[i], "-inforange") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_GET_INFO_RANGE;
+            } else {
+                break;
+            }
+        } else if (strcmp(argv[i], "-help") == 0) {
+            operation = OP_HELP;
         } else if (strcmp(argv[i], "-exit") == 0) {
             operation = OP_EXIT;
         }
@@ -1300,8 +1360,10 @@ static void PrintUsage(void) {
     printf("                              -setvalrs485if data0 .. data31 |\r\n");
     printf("                              -setvalpwm4 mask pwm0 .. pwm3  |\r\n");
     printf("                              -info                          |\r\n");
+    printf("                              -inforange start stopp         |\r\n");	
     printf("                              -clockcalib addr               |\r\n");
     printf("                              -switchstate data              |\r\n");
+    printf("                              -help                          |\r\n");
     printf("                              -exit)                          \r\n");
     printf("-c port: com1 com2 ..\r\n");
     printf("-a addr: addr = address of module\r\n");
@@ -1321,7 +1383,9 @@ static void PrintUsage(void) {
     printf("-setvalrs485if data0 .. data31: set byte value for rs485if\r\n");
     printf("-setvalpwm4 mask pwm0 .. pwm3: mask = bit mask for channel, pwmX = 16 bit value\r\n");
     printf("-info: read type and version string from modul\r\n");
+    printf("-inforange start stopp: read type and version string from modul start to stopp address\r\n");	
     printf("-clockcalib: clock calibration\r\n");
     printf("-switchstate: generate a switch pressed or released event (ReqSwitchState, -a addr is the client)\r\n");
+    printf("-help: print this help\r\n");
     printf("-exit: nop operation, exit server\r\n");
 }
