@@ -411,14 +411,14 @@ static void ProcessBus(void) {
 */
 static void PortInit(void) {
 
-   /* configure unused pins to input high-z */
-   PORTB = 0b00000000; 
+   /* configure unused pins to input pull up */
+   PORTB = 0b11111110; 
    DDRB =  0b00000001; /* PB0 is used to trigger the capture of timer 1 -> output */
    
-   PORTC = 0b00000000;
+   PORTC = 0b11111111;
    DDRC =  0b00000000;            
 
-   PORTD = 0b00100010;
+   PORTD = 0b11111111;
    DDRD =  0b00100010;
 }
 
