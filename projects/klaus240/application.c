@@ -630,11 +630,15 @@ void ApplicationPressed30_0(void) {
     DigOutToggle(eDigOut24);
 }
 void ApplicationReleased30_0(void) {
-   /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
-   DigOutToggle(eDigOut13);
-   DigOutToggle(eDigOut15);
-   DigOutToggle(eDigOut23);
-   DigOutToggle(eDigOut24);
+    /* Glocke */    
+    if (!sDoorbellOn) {
+        return;
+    }
+    /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
+    DigOutToggle(eDigOut13);
+    DigOutToggle(eDigOut15);
+    DigOutToggle(eDigOut23);
+    DigOutToggle(eDigOut24);
 }
 void ApplicationPressed30_1(void) {}
 void ApplicationReleased30_1(void) {}
@@ -758,12 +762,8 @@ void ApplicationReleased45_0(void) {}
 void ApplicationPressed45_1(void) {}
 void ApplicationReleased45_1(void) {}
 
-void ApplicationPressed46_0(void) {
-    DigOutOn(eDigOut29); /* Küche Unterbau */
-}
-void ApplicationReleased46_0(void) {
-    DigOutOff(eDigOut29); /* Küche Unterbau */
-}
+void ApplicationPressed46_0(void) {}
+void ApplicationReleased46_0(void) {}
 void ApplicationPressed46_1(void) {}
 void ApplicationReleased46_1(void) {}
 

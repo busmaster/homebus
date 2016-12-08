@@ -415,50 +415,102 @@ static void ApplicationReleased45_0(void) {}
 static void ApplicationPressed45_1(void) {}
 static void ApplicationReleased45_1(void) {}
 
-void ApplicationPressed46_0(void) {
 
-    PwmSet(0, 65535);
-
-    /* digout29/do31 240 on */
-    sTxBusMsg.type = eBusDevReqSetValue;
-    sTxBusMsg.senderAddr = 239;
-    sTxBusMsg.msg.devBus.receiverAddr = 240;
-    sTxBusMsg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
-
-    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, 
-           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut)); // default: no change
-    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, 
-           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader)); // default: no change
-
-    sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x3 << ((29 % 4) * 2);
-
-    sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
-}
-void ApplicationReleased46_0(void) {
-
-    PwmSet(0, 0);
-
-    /* digout29/do31 240 off */
-    sTxBusMsg.type = eBusDevReqSetValue;
-    sTxBusMsg.senderAddr = 239;
-    sTxBusMsg.msg.devBus.receiverAddr = 240;
-    sTxBusMsg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
-
-    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, 
-           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut)); // default: no change
-    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, 
-           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader)); // default: no change
-
-    sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x2 << ((29 % 4) * 2);
+static void SetSupply(void) {
+    uint16_t val;
+    uint8_t  i;
+    bool     do_On;
     
+    /* digout29/do31 240 on/off */
+    sTxBusMsg.type = eBusDevReqSetValue;
+    sTxBusMsg.senderAddr = 239;
+    sTxBusMsg.msg.devBus.receiverAddr = 240;
+    sTxBusMsg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
+
+    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, 
+           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut)); // default: no change
+    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, 
+           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader)); // default: no change
+
+    do_On = false;
+    for (i = 0; i < 4; i++) {
+        PwmGet(i, &val);
+        if (val != 0) {
+            do_On = true;
+            break;
+        }
+    }
+    if (do_On) {
+        /* on */
+        sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x3 << ((29 % 4) * 2);
+    } else {
+        /* off */
+        sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x2 << ((29 % 4) * 2);
+    }
     sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
 }
-static void ApplicationPressed46_1(void) {}
-static void ApplicationReleased46_1(void) {}
 
-static void ApplicationPressed47_0(void) {}
+void ApplicationPressed46_0(void) {
+    uint16_t val;
+
+    /* Kaffeemschine */ 
+    if (PwmGet(2, &val)) {
+        if (val == 0) {
+            val = 65535;
+        } else {
+            val = 0;
+        }
+        PwmSet(2, val);
+    }
+    SetSupply();
+}
+void ApplicationReleased46_0(void) {}
+
+static void ApplicationPressed46_1(void) {
+    uint16_t val;
+    
+    /* Geschirrspüler */
+    if (PwmGet(0, &val)) {
+        if (val == 0) {
+            val = 65535;
+        } else {
+            val = 0;
+        }
+        PwmSet(0, val);
+    }
+    SetSupply();
+}
+static void ApplicationReleased46_1(void) {}
+static void ApplicationPressed47_0(void) {
+    uint16_t val;
+
+    /* Dunstabzug */ 
+    if (PwmGet(3, &val)) {
+        if (val == 0) {
+            val = 65535;
+        } else {
+            val = 0;
+        }
+        PwmSet(3, val);
+    }
+    SetSupply();
+}
 static void ApplicationReleased47_0(void) {}
-static void ApplicationPressed47_1(void) {}
+static void ApplicationPressed47_1(void) {
+    uint16_t val;
+
+    /* Abwasch */ 
+    if (PwmGet(1, &val)) {
+        if (val == 0) {
+            val = 65535;
+        } else {
+            val = 0;
+        }
+        PwmSet(1, val);
+    }
+
+    SetSupply();
+}
 static void ApplicationReleased47_1(void) {}
 
 static void ApplicationPressed48_0(void) {}
