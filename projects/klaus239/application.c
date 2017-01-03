@@ -453,7 +453,7 @@ static void SetSupply(void) {
 void ApplicationPressed46_0(void) {
     uint16_t val;
 
-    /* Kaffeemschine */ 
+    /* Kaffeemaschine */ 
     if (PwmGet(2, &val)) {
         if (val == 0) {
             val = 65535;
