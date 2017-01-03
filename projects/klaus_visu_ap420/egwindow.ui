@@ -34,8 +34,8 @@
   <widget class="QPushButton" name="pushButtonLightGang">
    <property name="geometry">
     <rect>
-     <x>123</x>
-     <y>4</y>
+     <x>242</x>
+     <y>86</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -53,7 +53,7 @@
   <widget class="QPushButton" name="pushButtonLightEss">
    <property name="geometry">
     <rect>
-     <x>242</x>
+     <x>4</x>
      <y>86</y>
      <width>115</width>
      <height>78</height>
@@ -73,7 +73,7 @@
    <property name="geometry">
     <rect>
      <x>4</x>
-     <y>86</y>
+     <y>4</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -91,7 +91,7 @@
   <widget class="QPushButton" name="pushButtonLightArbeit">
    <property name="geometry">
     <rect>
-     <x>4</x>
+     <x>242</x>
      <y>4</y>
      <width>115</width>
      <height>78</height>
@@ -132,7 +132,7 @@
   <widget class="QPushButton" name="pushButtonLightVorraum">
    <property name="geometry">
     <rect>
-     <x>242</x>
+     <x>361</x>
      <y>4</y>
      <width>115</width>
      <height>78</height>
@@ -152,7 +152,7 @@
    <property name="geometry">
     <rect>
      <x>361</x>
-     <y>4</y>
+     <y>86</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -190,7 +190,7 @@
    <property name="geometry">
     <rect>
      <x>123</x>
-     <y>86</y>
+     <y>4</y>
      <width>115</width>
      <height>78</height>
     </rect>

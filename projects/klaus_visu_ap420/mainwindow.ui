@@ -38,7 +38,7 @@ font: 12pt &quot;Sans&quot;;
    <property name="geometry">
     <rect>
      <x>4</x>
-     <y>4</y>
+     <y>86</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -75,7 +75,7 @@ geschoß</string>
   <widget class="QPushButton" name="pushButtonOG">
    <property name="geometry">
     <rect>
-     <x>123</x>
+     <x>4</x>
      <y>4</y>
      <width>115</width>
      <height>78</height>
@@ -103,8 +103,8 @@ geschoß</string>
   <widget class="QPushButton" name="pushButtonUG">
    <property name="geometry">
     <rect>
-     <x>242</x>
-     <y>4</y>
+     <x>4</x>
+     <y>168</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -131,8 +131,8 @@ geschoß</string>
   <widget class="QPushButton" name="pushButtonGarage">
    <property name="geometry">
     <rect>
-     <x>361</x>
-     <y>4</y>
+     <x>242</x>
+     <y>86</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -216,8 +216,8 @@ font: 11pt &quot;Sans&quot;;</string>
   <widget class="QPushButton" name="pushButtonInternet">
    <property name="geometry">
     <rect>
-     <x>4</x>
-     <y>168</y>
+     <x>361</x>
+     <y>4</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -253,7 +253,7 @@ font: 11pt &quot;Sans&quot;;</string>
   <widget class="QPushButton" name="pushButtonKueche">
    <property name="geometry">
     <rect>
-     <x>4</x>
+     <x>123</x>
      <y>86</y>
      <width>115</width>
      <height>78</height>
