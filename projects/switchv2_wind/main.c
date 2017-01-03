@@ -49,6 +49,7 @@
 
 #define WIND_THRESHOLD1         18
 #define WIND_THRESHOLD2         19
+#define WIND_MAX_VAL            20
 
 #define STARTUP_DELAY  10 /* delay in seconds */
 
@@ -91,7 +92,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-char version[] = "Sw88_wind 0.03";
+char version[] = "Sw88_wind 0.04";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -134,6 +135,7 @@ int main(void) {
     int     sioHandle;
     uint8_t windThreshold1;
     uint8_t windThreshold2;
+    uint8_t windMaxValue;
 
     MCUSR = 0;
     wdt_disable();
@@ -142,6 +144,7 @@ int main(void) {
     sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
     windThreshold1 = eeprom_read_byte((const uint8_t *)WIND_THRESHOLD1);
     windThreshold2 = eeprom_read_byte((const uint8_t *)WIND_THRESHOLD2);
+    windMaxValue = eeprom_read_byte((const uint8_t *)WIND_MAX_VAL);
     GetClientListFromEeprom();
 
     PortInit();
@@ -179,6 +182,10 @@ int main(void) {
             sWindSwitch |= 0x02;
         } else {
             sWindSwitch &= ~0x02;
+        }
+        if (sWind > windMaxValue) {
+            windMaxValue = sWind;
+            eeprom_write_byte((uint8_t *)WIND_MAX_VAL, windMaxValue);
         }
     }
     return 0;  /* never reached */
