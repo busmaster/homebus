@@ -136,6 +136,8 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    // wait for sio input to settle and the flush
+    usleep(100000);
     while ((len = SioGetNumRxChar(handle)) != 0) {
         SioRead(handle, &val8, sizeof(val8));
     }

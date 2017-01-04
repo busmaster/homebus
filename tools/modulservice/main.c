@@ -168,6 +168,8 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    // wait for sio input to settle and the flush
+    usleep(100000);
     while ((len = SioGetNumRxChar(handle)) != 0) {
         SioRead(handle, &val8, sizeof(val8));
     }
@@ -548,7 +550,7 @@ int main(int argc, char *argv[]) {
                             break;
                         case eBusDevTypePwm4:
                             printf("%-8s", "PWM4");
-                            break;                            
+                            break;
                         default:
                             break;
                         }
@@ -650,7 +652,7 @@ static bool ModulInfo(uint8_t address, TBusDevRespInfo *pBuf, uint16_t resp_time
         actualTimeMs = GetTickCount();
         ret = BusCheck();
         if (ret == BUS_MSG_OK) {
-			startTimeMs = GetTickCount();
+            startTimeMs = GetTickCount();
             pBusMsg = BusMsgBufGet();
             if ((pBusMsg->type == eBusDevRespInfo) &&
                 (pBusMsg->senderAddr == address)) {
