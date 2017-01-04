@@ -395,7 +395,13 @@ static void ProcessBus(void) {
     uint8_t       i;
     uint8_t       *p;
     bool          msgForMe = false;
+    static bool   sTxRetry = false;
 
+    if (sTxRetry) {
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
+        return;
+    }
+ 
     ret = BusCheck();
 
     if (ret == BUS_MSG_OK) {
@@ -452,7 +458,7 @@ static void ProcessBus(void) {
         sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeWind;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.state = sWindSwitch;
         sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.wind.wind = sWind;
-        BusSend(&sTxBusMsg);
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetClientAddr:
         sTxBusMsg.senderAddr = MY_ADDR;
@@ -462,7 +468,7 @@ static void ProcessBus(void) {
             p = &(spRxBusMsg->msg.devBus.x.devReq.setClientAddr.clientAddr[i]);
             eeprom_write_byte((uint8_t *)(CLIENT_ADDRESS_BASE + i), *p);
         }
-        BusSend(&sTxBusMsg);
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
         GetClientListFromEeprom();
         break;
     case eBusDevReqGetClientAddr:
@@ -473,7 +479,7 @@ static void ProcessBus(void) {
             p = &(sTxBusMsg.msg.devBus.x.devResp.getClientAddr.clientAddr[i]);
             *p = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
         }
-        BusSend(&sTxBusMsg);
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqInfo:
         sTxBusMsg.type = eBusDevRespInfo;
@@ -483,7 +489,7 @@ static void ProcessBus(void) {
         strncpy((char *)(sTxBusMsg.msg.devBus.x.devResp.info.version),
                 version, BUS_DEV_INFO_VERSION_LEN);
         sTxBusMsg.msg.devBus.x.devResp.info.version[BUS_DEV_INFO_VERSION_LEN - 1] = '\0';
-        BusSend(&sTxBusMsg);
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetAddr:
         sTxBusMsg.senderAddr = MY_ADDR;
@@ -491,7 +497,7 @@ static void ProcessBus(void) {
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         p = &(spRxBusMsg->msg.devBus.x.devReq.setAddr.addr);
         eeprom_write_byte((uint8_t *)MODUL_ADDRESS, *p);
-        BusSend(&sTxBusMsg);
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqEepromRead:
         sTxBusMsg.senderAddr = MY_ADDR;
@@ -499,7 +505,7 @@ static void ProcessBus(void) {
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         sTxBusMsg.msg.devBus.x.devResp.readEeprom.data =
         eeprom_read_byte((const uint8_t *)spRxBusMsg->msg.devBus.x.devReq.readEeprom.addr);
-        BusSend(&sTxBusMsg);
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqEepromWrite:
         sTxBusMsg.senderAddr = MY_ADDR;
@@ -507,7 +513,7 @@ static void ProcessBus(void) {
         sTxBusMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         p = &(spRxBusMsg->msg.devBus.x.devReq.writeEeprom.data);
         eeprom_write_byte((uint8_t *)spRxBusMsg->msg.devBus.x.devReq.readEeprom.addr, *p);
-        BusSend(&sTxBusMsg);
+        sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
         break;
     default:
         break;
