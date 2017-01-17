@@ -35,10 +35,10 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Include Directories
-INCLUDES = -I ../../include/avr -I ../../include/devices/common -I ../../include 
+INCLUDES = -I . -I ../../include/avr -I ../../include/devices/common -I ../../include
 
 ## Objects that must be built in order to link
-OBJECTS = main.o bus.o siotype1.o
+OBJECTS = main.o bus.o siosingle.o
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
@@ -53,7 +53,7 @@ main.o: main.c
 bus.o: ../../bus/bus.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-siotype1.o: ../../sio/avr/siotype1.c
+siosingle.o: ../../sio/avr/siosingle.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
