@@ -134,6 +134,10 @@ int main(void) {
    uint8_t ret;
    int   sioHdl;
 
+   /* set clock prescaler to 2 (set clock to 7.3928 MHz) */
+   CLKPR = 1 << CLKPCE;
+   CLKPR = 1;
+
    /* get module address from EEPROM */
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
    GetClientListFromEeprom();
@@ -730,10 +734,12 @@ static void TimerInit(void) {
     * and change sio timer settings when changing the prescaler!
     */
    
-   /* prescaler @ 1.8432 MHz: 256  */
+   /* prescaler @ 1.8432/3.6864/7.3728 MHz: 256  */
    /* compare match pin not used: COM3A[1:0] = 00 */
    /* compare register OCR3A:  */
    /* 1.8432 MHz: 36 -> 5 ms */
+   /* 3.6864 MHz: 72 -> 5 ms */
+   /* 7.3728 MHz: 144 -> 5 ms */
    /* timer mode 0: normal: WGM3[3:0]= 0000 */
 
    TCCR3A = (0 << COM3A1) | (0 << COM3A0) | (0 << COM3B1) | (0 << COM3B0) | (0 << WGM31) | (0 << WGM30);
@@ -744,10 +750,17 @@ static void TimerInit(void) {
 #if (F_CPU == 1843200UL)
    #define TIMER_TCNT_INC    36
    #define TIMER_INC_MS      5
+#elif (F_CPU == 3686400UL)
+   #define TIMER_TCNT_INC    72
+   #define TIMER_INC_MS      5
+#elif (F_CPU == 7372800UL)
+   #define TIMER_TCNT_INC    144
+   #define TIMER_INC_MS      5
 #else
 #error adjust timer settings for your CPU clock frequency
 #endif
 }
+
 
 static void TimerStart(void) {
 

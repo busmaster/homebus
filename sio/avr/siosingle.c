@@ -39,60 +39,84 @@
 #define BRX2_9600   true   /* double baud rate */
 #define ERR_9600    false  /* baud rate is possible */
 
+#ifdef SIO_TIMER_INIT_TCCR
 /* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
 #define TIMER_PRESCALER (0b100 << SIO_TIMER_TCCRB_CS) // prescaler clk/256
 #define TIMER_MS1       4               // 4 * 256 / 1000000 = 1
 #define TIMER_MS2       8               // 8 * 256 / 1000000 = 2
+#endif
 
 #elif (F_CPU == 1843200UL)
 #define UBRR_9600   11     /* 9600 @ 1.8432MHz  */
 #define BRX2_9600   false  /* double baud rate */
 #define ERR_9600    false  /* baud rate is possible */
 
+#ifdef SIO_TIMER_INIT_TCCR
 /* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
 #define TIMER_PRESCALER (0b100 << SIO_TIMER_TCCRB_CS) // prescaler clk/256
 #define TIMER_MS1       8              // 8 * 256 / 1843200 = 1.1
 #define TIMER_MS2      16              // 16 * 1024 / 3686400 = 2.2
+#endif
 
 #elif (F_CPU == 3686400UL)
 #define UBRR_9600   23     /* 9600 @ 3.6864MHz  */
 #define BRX2_9600   false  /* double baud rate */
 #define ERR_9600    false  /* baud rate is possible */
 
+#ifdef SIO_TIMER_INIT_TCCR
 /* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
 #define TIMER_PRESCALER (0b101 << SIO_TIMER_TCCRB_CS) // prescaler clk/1024
 #define TIMER_MS1       4              // 4 * 1024 / 3686400 = 1.1
 #define TIMER_MS2       8              // 8 * 1024 / 3686400 = 2.2
+#endif
+
+#elif (F_CPU == 7372800UL)
+#define UBRR_9600   47     /* 9600 @ 7.3728MHz  */
+#define BRX2_9600   false  /* double baud rate */
+#define ERR_9600    false  /* baud rate is possible */
+
+#ifdef SIO_TIMER_INIT_TCCR
+/* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
+#define TIMER_PRESCALER (0b101 << SIO_TIMER_TCCRB_CS) // prescaler clk/1024
+#define TIMER_MS1       8              // 8 * 1024 / 7372800 = 1.1
+#define TIMER_MS2       16             // 16 * 1024 / 7372800 = 2.2
+#endif
 
 #elif (F_CPU == 8000000UL)
 #define UBRR_9600   51     /* 9600 @ 8MHz  */
 #define BRX2_9600   false  /* double baud rate */
 #define ERR_9600    false  /* baud rate is possible */
 
+#ifdef SIO_TIMER_INIT_TCCR
 /* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
 #define TIMER_PRESCALER (0b101 << SIO_TIMER_TCCRB_CS) // prescaler clk/1024
 #define TIMER_MS1       8               // 8  * 1024 / 8000000 = 1
 #define TIMER_MS2       16              // 16 * 1024 / 8000000 = 2
+#endif
 
 #elif (F_CPU == 14745600UL)
 #define UBRR_9600   95     /* 9600 @ 14.7456MHz  */
 #define BRX2_9600   false  /* double baud rate */
 #define ERR_9600    false  /* baud rate is possible */
 
+#ifdef SIO_TIMER_INIT_TCCR
 /* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
 #define TIMER_PRESCALER (0b101 << SIO_TIMER_TCCRB_CS) // prescaler clk/1024
 #define TIMER_MS1       18              // 18 * 1024 / 18432000 = 1
 #define TIMER_MS2       36              // 36 * 1024 / 18432000 = 2
+#endif
 
 #elif (F_CPU == 18432000UL)
 #define UBRR_9600   119    /* 9600 @ 18.432MHz  */
 #define BRX2_9600   false  /* double baud rate */
 #define ERR_9600    false  /* baud rate is possible */
 
+#ifdef SIO_TIMER_INIT_TCCR
 /* intercharacter timeout: 2 characters @ 9600, 10 bit = 2 ms */
 #define TIMER_PRESCALER (0b101 << SIO_TIMER_TCCRB_CS) // prescaler clk/1024
 #define TIMER_MS1       18              // 18 * 1024 / 18432000 = 1
 #define TIMER_MS2       36              // 36 * 1024 / 18432000 = 2
+#endif
 
 #else
 #error adjust baud rate settings for your CPU clock frequency
@@ -720,6 +744,7 @@ static void TimerExit(void) {
 * after delayTicks the timer ISR is called
 */
 static void TimerStart(uint16_t delayTicks) {
+    
     SIO_TIMER_OCR = SIO_TIMER_TCNT + delayTicks;
 
     if ((SIO_TIMER_TIMSK & (1 << SIO_TIMER_TIMSK_OCIE)) == 0) {
