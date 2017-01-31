@@ -54,14 +54,18 @@ extern "C" {
 #define SIO_TIMER_TIFR       TIFR3
 #define SIO_TIMER_TIFR_OCF   OCF3B
 
+#if (F_CPU == 7372800UL)
 #define TIMER_MS1       29     // clock prescaler is 256 (main.c): 29 * 256 / 7372800 = 1
 #define TIMER_MS2       58     // clock prescaler is 256 (main.c): 58 * 256 / 7372800 = 2
-
-//#define TIMER_MS1       15     // clock prescaler is 256 (main.c): 15 * 256 / 3686400 = 1
-//#define TIMER_MS2       30     // clock prescaler is 256 (main.c): 30 * 256 / 3686400 = 2
-
-//#define TIMER_MS1       8     // clock prescaler is 256 (main.c): 8 * 256 / 1843200 = 1
-//#define TIMER_MS2       16    // clock prescaler is 256 (main.c): 16 * 256 / 1843200 = 2
+#elif (F_CPU == 3686400UL)
+#define TIMER_MS1       15     // clock prescaler is 256 (main.c): 15 * 256 / 3686400 = 1
+#define TIMER_MS2       30     // clock prescaler is 256 (main.c): 30 * 256 / 3686400 = 2
+#elif (F_CPU == 1843200UL)
+#define TIMER_MS1       8      // clock prescaler is 256 (main.c): 8 * 256 / 1843200 = 1
+#define TIMER_MS2       16     // clock prescaler is 256 (main.c): 16 * 256 / 1843200 = 2
+#else
+#error adjust sio timer settings for your CPU clock frequency
+#endif
 
 #ifdef __cplusplus
 }
