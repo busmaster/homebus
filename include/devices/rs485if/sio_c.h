@@ -54,6 +54,13 @@ extern "C" {
 #define SIO_TIMER_TIFR       TIFR3
 #define SIO_TIMER_TIFR_OCF   OCF3B
 
+#if (F_CPU == 18432000UL)
+#define TIMER_MS1       18     // clock prescaler is 1024 (main.c): 18 * 1024 / 18432000 = 1
+#define TIMER_MS2       36     // clock prescaler is 1024 (main.c): 36 * 1024 / 18432000 = 2
+#else
+#error adjust sio timer settings for your CPU clock frequency
+#endif
+
 #ifdef __cplusplus
 }
 #endif
