@@ -461,10 +461,17 @@ int main(int argc, char *argv[]) {
         case OP_SET_VALUE_PWM4:
             setVal.devType = eBusDevTypePwm4;
             memset(setVal.setValue.pwm4.pwm, 0, sizeof(setVal.setValue.pwm4.pwm));
-            setVal.setValue.pwm4.mask = (uint8_t)atoi(argv[argi]);
-            for (j = argi + 1, k = 0; (j < argc) && (k < (int)sizeof(setVal.setValue.pwm4.pwm)); j++, k++) {
-                setVal.setValue.pwm4.pwm[k] = (uint16_t)atoi(argv[j]);
+            setVal.setValue.pwm4.set = 0;
+            for (j = argi, k = 0; (j < argc) && (k < (int)sizeof(setVal.setValue.pwm4.pwm)); j++) {
+                if ((j % 2) == 0) {
+                    setVal.setValue.pwm4.set |= (uint8_t)((atoi(argv[j]) & 0x3) << (k * 2));
+                } else {
+                    setVal.setValue.pwm4.pwm[k] = (uint16_t)atoi(argv[j]);
+                    k++;
+                }
             }
+            
+printf("%02x %04x %04x %04x %04x\n", setVal.setValue.pwm4.set, setVal.setValue.pwm4.pwm[0], setVal.setValue.pwm4.pwm[1], setVal.setValue.pwm4.pwm[2], setVal.setValue.pwm4.pwm[3]);
             ret = ModulSetValue(moduleAddr, &setVal);
             if (ret) {
                 printf("OK\r\n");
@@ -1348,25 +1355,25 @@ static void PrintUsage(void) {
 
     printf("\r\nUsage:\r\n");
     printf("modulservice -c port -a addr [-o ownaddr] [-s]                \r\n");  
-    printf("                             (-na addr                       |\r\n");
-    printf("                              -setcl addr1 .. addr16         |\r\n");
-    printf("                              -getcl                         |\r\n");
-    printf("                              -reset                         |\r\n");
-    printf("                              -eerd addr len                 |\r\n");
-    printf("                              -eewr addr data1 .. dataN      |\r\n");
-    printf("                              -actval                        |\r\n");
-    printf("                              -setvaldo31_do do0 .. do30     |\r\n");
-    printf("                              -setvaldo31_sh sh0 .. sh14     |\r\n");
-    printf("                              -setvalsw8 do0 .. do7          |\r\n");
-    printf("                              -setvalsw16 led0 .. led7       |\r\n");
-    printf("                              -setvalrs485if data0 .. data31 |\r\n");
-    printf("                              -setvalpwm4 mask pwm0 .. pwm3  |\r\n");
-    printf("                              -info                          |\r\n");
-    printf("                              -inforange start stopp         |\r\n");	
-    printf("                              -clockcalib addr               |\r\n");
-    printf("                              -switchstate data              |\r\n");
-    printf("                              -help                          |\r\n");
-    printf("                              -exit)                          \r\n");
+    printf("                             (-na addr                           |\r\n");
+    printf("                              -setcl addr1 .. addr16             |\r\n");
+    printf("                              -getcl                             |\r\n");
+    printf("                              -reset                             |\r\n");
+    printf("                              -eerd addr len                     |\r\n");
+    printf("                              -eewr addr data1 .. dataN          |\r\n");
+    printf("                              -actval                            |\r\n");
+    printf("                              -setvaldo31_do do0 .. do30         |\r\n");
+    printf("                              -setvaldo31_sh sh0 .. sh14         |\r\n");
+    printf("                              -setvalsw8 do0 .. do7              |\r\n");
+    printf("                              -setvalsw16 led0 .. led7           |\r\n");
+    printf("                              -setvalrs485if data0 .. data31     |\r\n");
+    printf("                              -setvalpwm4 set0 pwm0 .. set3 pwm3 |\r\n");
+    printf("                              -info                              |\r\n");
+    printf("                              -inforange start stopp             |\r\n");
+    printf("                              -clockcalib addr                   |\r\n");
+    printf("                              -switchstate data                  |\r\n");
+    printf("                              -help                              |\r\n");
+    printf("                              -exit)                             \r\n");
     printf("-c port: com1 com2 ..\r\n");
     printf("-a addr: addr = address of module\r\n");
     printf("-o addr: addr = our address, default:0\r\n");
@@ -1383,7 +1390,7 @@ static void PrintUsage(void) {
     printf("-setvalsw8 do0 .. do7: set value for dig out\r\n");
     printf("-setvalsw16 led0 .. led7: set value for led\r\n");
     printf("-setvalrs485if data0 .. data31: set byte value for rs485if\r\n");
-    printf("-setvalpwm4 mask pwm0 .. pwm3: mask = bit mask for channel, pwmX = 16 bit value\r\n");
+    printf("-setvalpwm4 set0 pwm0 .. set3 pwm3: setX = command, pwmX = 16 bit value\r\n");
     printf("-info: read type and version string from modul\r\n");
     printf("-inforange start stopp: read type and version string from modul start to stopp address\r\n");	
     printf("-clockcalib: clock calibration\r\n");

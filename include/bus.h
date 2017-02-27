@@ -289,7 +289,11 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevSetValueRs485if;
 
 typedef struct {
-    uint8_t  mask;
+    uint8_t  set; /* 2 bits per output                                        */
+                  /* 00: no change, ignore pwm[] field                        */
+                  /* 01: on: set to current pwm value, ignore pwm[] field     */
+                  /* 10: on: set to value from pwm[] field                    */ 
+                  /* 11: off, ignore pwm[] field                              */
     uint16_t pwm[BUS_PWM4_PWM_SIZE_SET_VALUE];
 } __attribute__ ((packed)) TBusDevSetValuePwm4;
 
