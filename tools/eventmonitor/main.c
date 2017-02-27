@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
     fd_set        rfds;
     int           ret;
     uint8_t       val8;
+    uint16_t      val16;
     char          buffer[SIZE_CMD_BUF];
     char          *p;
 
@@ -155,6 +156,18 @@ int main(int argc, char *argv[]) {
                                pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.shader,
                                BUS_DO31_SHADER_SIZE_ACTUAL_VALUE);
                         txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeDo31;
+                        break;
+                    case eBusDevTypePwm4:
+                        Print("PWM4\n");
+                        for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
+                            val16 = pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.pwm4.pwm[i];
+                            txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4.pwm[i] = val16;
+                            Print("%04x", val16);
+                            if (i < (BUS_PWM4_PWM_SIZE_ACTUAL_VALUE - 1)) {
+                                Print(" ");
+                            }
+                        }
+                        txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypePwm4;
                         break;
                     case eBusDevTypeSw8:
                         Print("SW8\n");
