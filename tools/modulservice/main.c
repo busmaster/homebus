@@ -470,8 +470,6 @@ int main(int argc, char *argv[]) {
                     k++;
                 }
             }
-            
-printf("%02x %04x %04x %04x %04x\n", setVal.setValue.pwm4.set, setVal.setValue.pwm4.pwm[0], setVal.setValue.pwm4.pwm[1], setVal.setValue.pwm4.pwm[2], setVal.setValue.pwm4.pwm[3]);
             ret = ModulSetValue(moduleAddr, &setVal);
             if (ret) {
                 printf("OK\r\n");
