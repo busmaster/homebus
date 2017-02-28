@@ -7,18 +7,18 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
+ *
+ *
  */
 
 #include <stdint.h>
@@ -42,7 +42,7 @@
 
 #define SIZE_COMPORT   100
 #define MAX_NAME_LEN   255
-#define ESC 0x1B  
+#define ESC 0x1B
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -130,26 +130,26 @@ int main(int argc, char *argv[]) {
             comPort[sizeof(comPort) - 1] = 0;
          }
          break;
-      } 
-   }    
+      }
+   }
    if (strlen(comPort) == 0) {
       PrintUsage();
       return 0;
-   }      
-          
+   }
+
 #ifndef WIN32
    set_conio_terminal_mode();
 #endif
-      
+
    SioInit();
-   handle = SioOpen(comPort, eSioBaud9600, eSioDataBits8, eSioParityNo, eSioStopBits1, eSioModeHalfDuplex);
+   handle = SioOpen(comPort, eSioBaud9600, eSioDataBits8, eSioParityEven, eSioStopBits1, eSioModeHalfDuplex);
 
    if (handle == -1) {
       printf("cannot open %s\r\n", comPort);
       return 0;
    }
 
-system("clear");
+  system("clear");
 
   spOutput = stdout;
 
@@ -179,14 +179,14 @@ uint8_t offset = 82;
          if((io_buffer[count-2]==0x30)&&(io_buffer[count-3]==0xF0)&&(io_buffer[count-4]==0x40)&&(io_buffer[count-5]==0x10)) {
             ch = 0xe5;
             SioWrite(handle, &ch , 1);
-//printf("\r\n write 1 e5\r\n");            
+//printf("\r\n write 1 e5\r\n");
 //chcnt = 0;
            count = 0;
            } // Start seqenz
          else if (count >= 101){
             ch = 0xe5;
             SioWrite(handle, &ch , 1);
-//printf("\r\n write 2 e5\r\n");            
+//printf("\r\n write 2 e5\r\n");
 //chcnt = 0;
             for(j=8;j<16;j++) {
                iv[j] = io_buffer[count-86];
