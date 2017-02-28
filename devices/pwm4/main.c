@@ -424,7 +424,6 @@ static void RestorePwm(void) {
         return;
     }
 
-//    spNextPtrToEeprom = (const uint8_t *)((int)ptrToEeprom + sizeRestore);
     spNextPtrToEeprom = ptrToEeprom + sizeRestore;
     if (spNextPtrToEeprom > (EEPROM_PWM_RESTORE_END - sizeRestore)) {
         spNextPtrToEeprom = EEPROM_PWM_RESTORE_START;
@@ -447,7 +446,7 @@ static void RestorePwm(void) {
 }
 
 /*-----------------------------------------------------------------------------
-*  Erkennung von Tasten-Loslass-Ereignissen
+*  detect button release
 */
 static void CheckButton(void) {
    uint8_t        i = 0;
@@ -461,7 +460,7 @@ static void CheckButton(void) {
 }
 
 /*-----------------------------------------------------------------------------
-*  Verarbeitung der Bustelegramme
+*  process bus telegrams
 */
 static void ProcessBus(uint8_t ret) {
     TBusMsgType            msgType;
@@ -469,6 +468,7 @@ static void ProcessBus(uint8_t ret) {
     bool                   msgForMe = false;
     uint8_t                state;
     uint8_t                mask8;
+    uint8_t                action;
     TBusDevRespInfo        *pInfo;
     TBusDevRespActualValue *pActVal;
     TClient                *pClient;
@@ -558,11 +558,29 @@ static void ProcessBus(uint8_t ret) {
         if (spBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypePwm4) {
             break;
         }
-        mask8 = spBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.mask;
+        mask8 = spBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.set;
         for (i = 0; i < NUM_PWM_CHANNEL; i++) {
-            if (((1 << i) & mask8) != 0) {
+            action = (0x3 << (i * 2) & mask8) >> (i * 2);
+            switch (action) {
+            case 0x00:
+                /* no action, ignore pwm[] from telegram */
+                break;
+            case 0x01:
+                /* set current pwm, ignore pwm[] from telegram */
+                PwmOn(i, true);
+                break;
+            case 0x02:
+                /* set to pwm[] from telegram */
                 PwmSet(i, spBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.pwm[i]);
-            }
+                PwmOn(i, true);
+                break;
+            case 0x03:
+                /* off, ignore pwm[] from telegram  */
+                PwmOn(i, false);
+                break;
+            default:
+                break;
+            }    
         }
         /* response packet */
         sTxMsg.type = eBusDevRespSetValue;
@@ -636,7 +654,7 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespSetClientAddr;  
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
-            uint8_t *p = &(sTxMsg.msg.devBus.x.devReq.setClientAddr.clientAddr[i]);
+            uint8_t *p = &spBusMsg->msg.devBus.x.devReq.setClientAddr.clientAddr[i];
             eeprom_write_byte((uint8_t *)(CLIENT_ADDRESS_BASE + i), *p);
         }
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
@@ -647,7 +665,7 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespGetClientAddr;  
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
-            uint8_t *p = &(sTxMsg.msg.devBus.x.devResp.getClientAddr.clientAddr[i]);
+            uint8_t *p = &sTxMsg.msg.devBus.x.devResp.getClientAddr.clientAddr[i];
             *p = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
         }
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
@@ -690,8 +708,15 @@ ISR(INT0_vect) {
     uint8_t  *ptrToEeprom;
     uint16_t pwm[NUM_PWM_CHANNEL];
     uint8_t  i;
+    bool     on;
 
     PwmGetAll(pwm, sizeof(pwm));
+    for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        PwmIsOn(i, &on);
+        if (!on) {
+            pwm[i] = 0;
+        }
+    }
     /* switch off all outputs */
     PwmExit();
 

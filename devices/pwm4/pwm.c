@@ -35,6 +35,7 @@
 
 typedef struct {
     uint16_t pwm;
+    bool     on;
 } TPwmDesc;
 
 /*-----------------------------------------------------------------------------
@@ -76,11 +77,15 @@ void PwmInit(void) {
      */
     TCCR4A = (1 << COM4A1) | (1 << PWM4A);
     TCCR4B = (1 << CS42);
-    
+
     PwmSet(0, 0);
+    PwmOn(0, true);
     PwmSet(1, 0);
+    PwmOn(1, true);
     PwmSet(2, 0);
+    PwmOn(2, true);
     PwmSet(3, 0);
+    PwmOn(3, true);
 }
 
 /*-----------------------------------------------------------------------------
@@ -89,7 +94,11 @@ void PwmInit(void) {
 void PwmExit(void) {
     TCCR1A = 0;
     TCCR4A = 0;
-    memset(sState, 0, sizeof(sState));
+
+    PwmOn(0, false);
+    PwmOn(1, false);
+    PwmOn(2, false);
+    PwmOn(3, false);
 }
 
 /*-----------------------------------------------------------------------------
@@ -103,24 +112,27 @@ void PwmCheck(void) {
 */
 bool PwmGet(TPwmNumber channel, uint16_t *pValue) {
     
-    bool rc = true;
-  
-    switch (channel) {
-    case ePwm0:
-        *pValue = sState[0].pwm;
-        break;
-    case ePwm1:
-        *pValue = sState[1].pwm;
-        break;
-    case ePwm2:
-        *pValue = sState[2].pwm;
-        break;
-    case ePwm3:
-        *pValue = sState[3].pwm;
-        break;
-    default:
+    bool rc;
+    
+    if ((channel >= 0) && (channel < NUM_PWM_CHANNEL)) {
+        *pValue = sState[channel].pwm;
+        rc = true;
+    } else {
         rc = false;
-        break;
+    }
+    
+    return rc;
+}
+
+bool PwmIsOn(TPwmNumber channel, bool *pOn) {
+
+    bool rc;
+    
+    if ((channel >= 0) && (channel < NUM_PWM_CHANNEL)) {
+        *pOn = sState[channel].on;
+        rc = true;
+    } else {
+        rc = false;
     }
     
     return rc;
@@ -133,26 +145,29 @@ bool PwmGetAll(uint16_t *buf, uint8_t buf_size) {
     
     uint8_t i;
     
-    if (buf_size < sizeof(sState)) {
+    if (buf_size < (NUM_PWM_CHANNEL * sizeof(uint16_t))) {
         return false;
     }
     for (i = 0; i < NUM_PWM_CHANNEL; i++) {
-        *(buf + i) = sState[i].pwm;
+        if (sState[i].on) {
+            *(buf + i) = sState[i].pwm;
+        } else {
+            *(buf + i) = 0;
+        }
     }
-    
+
     return true;
 }
 
 /*-----------------------------------------------------------------------------
-*  set immediate
+*  program the pwm value to the hardware
 */
-bool PwmSet(TPwmNumber channel, uint16_t value) {
+static bool ActivatePwm(TPwmNumber channel, uint16_t value) {
     
     bool rc = true;
     
     switch (channel) {
     case ePwm0:
-        sState[0].pwm = value;
         value >>= 6;
         /* if OCR1X is set to 0 a narrow spike will be generated 
          * workaround: set port pin ddr to input
@@ -165,13 +180,11 @@ bool PwmSet(TPwmNumber channel, uint16_t value) {
         OCR1C = value;
         break;
     case ePwm1:
-        sState[1].pwm = value;
         value >>= 6;
         TC4H = (value & 0x3ff) >> 8;
         OCR4A = value;
         break;
     case ePwm2:
-        sState[2].pwm = value;
         value >>= 6;
         if (value == 0) {
             DDRB &= ~(1 << PB6);
@@ -181,7 +194,6 @@ bool PwmSet(TPwmNumber channel, uint16_t value) {
         OCR1B = value;
         break;
     case ePwm3:
-        sState[3].pwm = value;
         value >>= 6;
         if (value == 0) {
             DDRB &= ~(1 << PB5);
@@ -194,6 +206,48 @@ bool PwmSet(TPwmNumber channel, uint16_t value) {
         rc = false;
         break;
     }
+    return rc;
+}
+
+/*-----------------------------------------------------------------------------
+*  set immediate if the channel is on
+*/
+bool PwmSet(TPwmNumber channel, uint16_t value) {
+    
+    bool rc = true;
+    
+    if ((channel >= 0) && (channel < NUM_PWM_CHANNEL)) {
+        sState[channel].pwm = value;
+        if (sState[channel].on) {
+            ActivatePwm(channel, value);
+        }
+        rc = true;
+    } else { 
+        rc = false;
+    }
+    
+    return rc;
+}
+
+/*-----------------------------------------------------------------------------
+*  set on/off - do not change the pwm value
+*/
+bool PwmOn(TPwmNumber channel, bool on) {
+
+    bool rc;
+    
+    if ((channel >= 0) && (channel < NUM_PWM_CHANNEL)) {
+        sState[channel].on = on;
+        if (on) {
+            ActivatePwm(channel, sState[channel].pwm);
+        } else {
+            ActivatePwm(channel, 0);
+        }
+        rc = true;
+    } else {
+        rc = false;
+    }
+    
     return rc;
 }
 

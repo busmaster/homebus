@@ -84,8 +84,10 @@ typedef enum {
 void    PwmInit(void);
 void    PwmExit(void);
 bool    PwmGet(TPwmNumber channel, uint16_t *pValue);
+bool    PwmIsOn(TPwmNumber channel, bool *pOn);
 bool    PwmGetAll(uint16_t *buf, uint8_t buf_size);
 bool    PwmSet(TPwmNumber channel, uint16_t value);
+bool    PwmOn(TPwmNumber channel, bool on);
 void    PwmCheck(void);
 
 #ifdef __cplusplus
