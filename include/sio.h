@@ -48,7 +48,8 @@ typedef enum {
 } TSioDataBits;
 
 typedef enum {
-   eSioParityNo
+   eSioParityNo,
+   eSioParityEven
 } TSioParity;
 
 typedef enum {

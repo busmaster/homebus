@@ -155,6 +155,9 @@ int SioOpen(const char *pPortName,
    switch (parity) {
       case eSioParityNo:
          break;
+      case eSioParityEven:
+         settings.c_cflag |= PARENB;
+         break;
       default:
          break;
    }

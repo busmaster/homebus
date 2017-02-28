@@ -142,6 +142,9 @@ int SioOpen(const char *pPortName,
       case eSioParityNo:
          dcb.Parity = NOPARITY;
          break;
+      case eSioParityEven:
+         dcb.Parity = EVENPARITY;
+         break;
       default:
          dcb.Parity = NOPARITY;
          break;
