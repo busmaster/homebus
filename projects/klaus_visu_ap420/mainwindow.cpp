@@ -221,7 +221,6 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ((ev->data.do31.digOut & 0x04000000) == 0) ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
         ((ev->data.do31.digOut & 0x08000000) == 0) ? io->socket_1 = true                    : io->socket_1 = false; // inverted connection NC
         ((ev->data.do31.digOut & 0x10000000) == 0) ? io->socket_2 = true                    : io->socket_2 = false; // inverted connection NC
-        ((ev->data.do31.digOut & 0x20000000) == 0) ? io->kuecheState.detail.lightAbwasch = 0: io->kuecheState.detail.lightAbwasch = 1;
     } else if ((ev->srcAddr == 241) && (ev->type == eventmonitor::eDevDo31)) {
         ((ev->data.do31.digOut & 0x01000000) == 0) ? io->kuecheState.detail.lightSpeis = 0  : io->kuecheState.detail.lightSpeis = 1;
         ((ev->data.do31.digOut & 0x02000000) == 0) ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
@@ -232,6 +231,11 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ((ev->data.do31.digOut & 0x40000000) == 0) ? io->kuecheState.detail.lightWand = 0   : io->kuecheState.detail.lightWand = 1;
     } else if ((ev->srcAddr == 36) && (ev->type == eventmonitor::eDevSw8)) {
         ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
+    } else if ((ev->srcAddr == 239) && (ev->type == eventmonitor::eDevPwm4)) {
+        ((ev->data.pwm4.pwm[0]) == 0)              ? io->kuecheState.detail.lightGeschirrspueler  = 0 : io->kuecheState.detail.lightGeschirrspueler = 1;
+        ((ev->data.pwm4.pwm[1]) == 0)              ? io->kuecheState.detail.lightAbwasch = 0          : io->kuecheState.detail.lightAbwasch = 1;
+        ((ev->data.pwm4.pwm[2]) == 0)              ? io->kuecheState.detail.lightKaffee = 0           : io->kuecheState.detail.lightKaffee = 1;
+        ((ev->data.pwm4.pwm[3]) == 0)              ? io->kuecheState.detail.lightDunstabzug = 0       : io->kuecheState.detail.lightDunstabzug = 1;
     }
 
     if ((egSum != io->egState.sum) ||

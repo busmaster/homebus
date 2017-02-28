@@ -20,7 +20,7 @@
    <property name="geometry">
     <rect>
      <x>4</x>
-     <y>4</y>
+     <y>86</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -39,7 +39,7 @@
    <property name="geometry">
     <rect>
      <x>123</x>
-     <y>4</y>
+     <y>86</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -59,7 +59,7 @@ Lampe</string>
    <property name="geometry">
     <rect>
      <x>4</x>
-     <y>86</y>
+     <y>168</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -77,8 +77,8 @@ Lampe</string>
   <widget class="QPushButton" name="pushButtonLightAbwasch">
    <property name="geometry">
     <rect>
-     <x>123</x>
-     <y>86</y>
+     <x>242</x>
+     <y>4</y>
      <width>115</width>
      <height>78</height>
     </rect>
@@ -113,6 +113,87 @@ Lampe</string>
    </property>
    <property name="text">
     <string>Zurück</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightKaffee">
+   <property name="geometry">
+    <rect>
+     <x>4</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="text">
+    <string>Kaffee-
+Maschine</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightDunstabzug">
+   <property name="geometry">
+    <rect>
+     <x>123</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="text">
+    <string>Dunstabzug</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonLightGeschirrspueler">
+   <property name="geometry">
+    <rect>
+     <x>361</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="text">
+    <string>Geschirr-
+spüler</string>
+   </property>
+  </widget>
+  <widget class="QSlider" name="verticalSlider">
+   <property name="geometry">
+    <rect>
+     <x>260</x>
+     <y>90</y>
+     <width>71</width>
+     <height>131</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>65535</number>
+   </property>
+   <property name="pageStep">
+    <number>6500</number>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Vertical</enum>
+   </property>
+   <property name="tickPosition">
+    <enum>QSlider::NoTicks</enum>
    </property>
   </widget>
  </widget>

@@ -35,7 +35,7 @@ void setupwindow::on_pushButtonDoorbell_pressed() {
 
     const char *state;
     char       command[100];
-    std::cout << "pressed" << std::endl;
+//    std::cout << "pressed" << std::endl;
 
     if (doorbellState) {
         ui->pushButtonDoorbell->setText(QString("Glocke\nAUS"));

@@ -30,13 +30,17 @@ private slots:
     void on_pushButtonLightWand_pressed();
     void on_pushButtonLightAbwasch_pressed();
     void on_pushButtonLightSpeis_pressed();
+    void on_pushButtonLightDunstabzug_pressed();
+    void on_pushButtonLightKaffee_pressed();
+    void on_pushButtonLightGeschirrspueler_pressed();
+    void on_verticalSlider_valueChanged(int value);
 
 private:
     int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
+    int pwm4Cmd(int pwm41Addr, uint16_t *pPwmState, uint8_t *set, char *pCmd, size_t cmdLen);
     Ui::kuechewindow *ui;
     ioState *io;
     bool isVisible;
-
 };
 
 #endif // KUECHEWINDOW_H

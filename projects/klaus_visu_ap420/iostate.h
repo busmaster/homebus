@@ -63,10 +63,13 @@ public:
     union {
         quint32 sum;
         struct {
-            int light           : 1;
-            int lightWand       : 1;
-            int lightAbwasch    : 1;
-            int lightSpeis      : 1;
+            int light                : 1;
+            int lightWand            : 1;
+            int lightKaffee          : 1;
+            int lightGeschirrspueler : 1;
+            int lightDunstabzug      : 1;
+            int lightAbwasch         : 1;
+            int lightSpeis           : 1;
         } detail;
     } kuecheState;
 

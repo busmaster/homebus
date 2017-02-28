@@ -30,6 +30,7 @@ void eventmonitor::readStdOut() {
     bool doEmit = false;
     QByteArray output = eventmon->readAllStandardOutput();
     QList<QByteArray> ev_lines = output.split('\n');
+    QList<QByteArray> field;
 
     for (i = 0; i < ev_lines.size(); i++) {
         if (qstrcmp(ev_lines[i], "event address 240 device type DO31") == 0) {
@@ -46,6 +47,11 @@ void eventmonitor::readStdOut() {
             evState = eEsWaitForSW8;
             ev.srcAddr = 36;
             ev.type = eDevSw8;
+            continue;
+        } else if (qstrcmp(ev_lines[i], "event address 239 device type PWM4") == 0) {
+            evState = eEsWaitForPWM4;
+            ev.srcAddr = 239;
+            ev.type = eDevPwm4;
             continue;
         }
         switch (evState) {
@@ -73,6 +79,16 @@ void eventmonitor::readStdOut() {
                    ev.data.sw8.digInOut &= ~(1 << j);
                 }
             }
+            evState = eEsWaitForStart;
+            doEmit = true;
+            break;
+        case eEsWaitForPWM4:
+            bool ok;
+            field = ev_lines[i].split(' ');
+            ev.data.pwm4.pwm[0] = field[0].toInt(&ok, 16);
+            ev.data.pwm4.pwm[1] = field[1].toInt(&ok, 16);
+            ev.data.pwm4.pwm[2] = field[2].toInt(&ok, 16);
+            ev.data.pwm4.pwm[3] = field[3].toInt(&ok, 16);
             evState = eEsWaitForStart;
             doEmit = true;
             break;

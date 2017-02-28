@@ -13,7 +13,8 @@ public:
 
     enum devType {
         eDevDo31,
-        eDevSw8
+        eDevSw8,
+        eDevPwm4
     };
 
     struct event {
@@ -27,6 +28,9 @@ public:
             struct {
                 quint8  digInOut;
             } sw8;
+            struct {
+                quint16 pwm[4];
+            } pwm4;
         } data;
     };
 
@@ -44,7 +48,8 @@ private:
         eEsWaitForStart,
         eEsWaitForDO31_Do,
         eEsWaitForDO31_Sh,
-        eEsWaitForSW8
+        eEsWaitForSW8,
+        eEsWaitForPWM4
     } evState;
 
     struct eventmonitor::event ev;
