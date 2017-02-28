@@ -124,7 +124,6 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 };
 
 static TBusTelegram sTxBusMsg;
-static bool         sTxRetry = false;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -135,7 +134,7 @@ static bool         sTxRetry = false;
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "pwm_0.01";
+   return "pwm4_0.02";
 }
 
 /*-----------------------------------------------------------------------------
@@ -176,6 +175,15 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
 
 void ApplicationInit(void) {
 
+    PwmOn(0, false);
+    PwmOn(1, false);
+    PwmOn(2, false);
+    PwmOn(3, false);
+    
+    PwmSet(0, 0xffff);
+    PwmSet(1, 0xffff);
+    PwmSet(2, 0xffff);
+    PwmSet(3, 0xffff);
 }
 
 void ApplicationStart(void) {
@@ -184,9 +192,51 @@ void ApplicationStart(void) {
 
 void ApplicationCheck(void) {
 
+    static bool sTxRetry = false;
+    uint8_t     i;
+    static bool sCurrDo = false;
+    bool        reqDo;
+    bool        on;
+    uint16_t    pwm;
+
     if (sTxRetry) {
         sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
+        return;
     }
+    
+    reqDo = false;
+    for (i = 0; i < 4; i++) {
+        PwmIsOn(i, &on);
+        PwmGet(i, &pwm);
+        if (on && (pwm > 0)) {
+            reqDo = true;
+            break;
+        }
+    }
+    if (reqDo == sCurrDo) {
+        /* no change */
+        return;
+    }
+    
+    sCurrDo = reqDo;
+    /* digout29/do31 240 on/off */
+    sTxBusMsg.type = eBusDevReqSetValue;
+    sTxBusMsg.senderAddr = 239;
+    sTxBusMsg.msg.devBus.receiverAddr = 240;
+    sTxBusMsg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
+
+    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, 
+           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut)); // default: no change
+    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, 
+           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader)); // default: no change
+    if (sCurrDo) {
+        /* on */
+        sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x3 << ((29 % 4) * 2);
+    } else {
+        /* off */
+        sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x2 << ((29 % 4) * 2);
+    }
+    sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
 }
 
 
@@ -415,101 +465,53 @@ static void ApplicationReleased45_0(void) {}
 static void ApplicationPressed45_1(void) {}
 static void ApplicationReleased45_1(void) {}
 
-
-static void SetSupply(void) {
-    uint16_t val;
-    uint8_t  i;
-    bool     do_On;
-    
-    /* digout29/do31 240 on/off */
-    sTxBusMsg.type = eBusDevReqSetValue;
-    sTxBusMsg.senderAddr = 239;
-    sTxBusMsg.msg.devBus.receiverAddr = 240;
-    sTxBusMsg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
-
-    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, 
-           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut)); // default: no change
-    memset(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, 
-           sizeof(sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader)); // default: no change
-
-    do_On = false;
-    for (i = 0; i < 4; i++) {
-        PwmGet(i, &val);
-        if (val != 0) {
-            do_On = true;
-            break;
-        }
-    }
-    if (do_On) {
-        /* on */
-        sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x3 << ((29 % 4) * 2);
-    } else {
-        /* off */
-        sTxBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[29 / 4] = 0x2 << ((29 % 4) * 2);
-    }
-    sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
-}
-
 void ApplicationPressed46_0(void) {
-    uint16_t val;
+    bool on;
 
     /* Kaffeemaschine */ 
-    if (PwmGet(2, &val)) {
-        if (val == 0) {
-            val = 65535;
-        } else {
-            val = 0;
-        }
-        PwmSet(2, val);
+    PwmIsOn(2, &on);
+    if (on) {
+        PwmOn(2, false);
+    } else {
+        PwmOn(2, true);
     }
-    SetSupply();
 }
 void ApplicationReleased46_0(void) {}
 
 static void ApplicationPressed46_1(void) {
-    uint16_t val;
+    bool on;
     
     /* Geschirrspüler */
-    if (PwmGet(0, &val)) {
-        if (val == 0) {
-            val = 65535;
-        } else {
-            val = 0;
-        }
-        PwmSet(0, val);
+    PwmIsOn(0, &on);
+    if (on) {
+        PwmOn(0, false);
+    } else {
+        PwmOn(0, true);
     }
-    SetSupply();
 }
 static void ApplicationReleased46_1(void) {}
 static void ApplicationPressed47_0(void) {
-    uint16_t val;
+    bool on;
 
     /* Dunstabzug */ 
-    if (PwmGet(3, &val)) {
-        if (val == 0) {
-            val = 65535;
-        } else {
-            val = 0;
-        }
-        PwmSet(3, val);
+    PwmIsOn(3, &on);
+    if (on) {
+        PwmOn(3, false);
+    } else {
+        PwmOn(3, true);
     }
-    SetSupply();
 }
 static void ApplicationReleased47_0(void) {}
 static void ApplicationPressed47_1(void) {
-    uint16_t val;
+    bool on;
 
     /* Abwasch */ 
-    if (PwmGet(1, &val)) {
-        if (val == 0) {
-            val = 65535;
-        } else {
-            val = 0;
-        }
-        PwmSet(1, val);
+    PwmIsOn(1, &on);
+    if (on) {
+        PwmOn(1, false);
+    } else {
+        PwmOn(1, true);
     }
-
-    SetSupply();
 }
 static void ApplicationReleased47_1(void) {}
 
