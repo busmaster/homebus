@@ -1,0 +1,1 @@
+avrdude -i 200 -p usb647 -c stk200 -U flash:w:smartmeterif_bootloader.hex
