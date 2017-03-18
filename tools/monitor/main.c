@@ -628,7 +628,7 @@ static void BusMonDecoded(int sioHandle) {
                     break;
                 case eBusDevTypePwm4:
                     fprintf(spOutput, SPACE "device PWM4\r\n");
-                    fprintf(spOutput, SPACE "mask: %02x\n", pBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.mask);
+                    fprintf(spOutput, SPACE "set: %02x\n", pBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.set);
                     fprintf(spOutput, SPACE "pwm: ");
                     for (i = 0; i < BUS_PWM4_PWM_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, "%04x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.pwm[i]);
