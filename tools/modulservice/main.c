@@ -303,6 +303,15 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeWind:
                     printf("WIND");
                     break;
+                case eBusDevTypeRs485If:
+                    printf("RS485IF");
+                    break;
+                case eBusDevTypePwm4:
+                    printf("PWM4");
+                    break;
+                case eBusDevTypeSmIf:
+                    printf("SMIF");
+                    break;
                 default:
                     break;
                 }
@@ -394,6 +403,17 @@ int main(int argc, char *argv[]) {
                         printf("%04x ", actVal.actualValue.pwm4.pwm[i]);
                     }
                     printf("\r\n");
+                    break;
+                case eBusDevTypeSmIf:
+                    printf("\r\n");
+                    printf("A+: %d Wh\r\n", actVal.actualValue.smif.countA_plus);
+                    printf("A-: %d Wh\r\n", actVal.actualValue.smif.countA_minus);
+                    printf("R+: %d varh\r\n", actVal.actualValue.smif.countR_plus);
+                    printf("R-: %d varh\r\n", actVal.actualValue.smif.countR_minus);
+                    printf("P+: %d W\r\n", actVal.actualValue.smif.activePower_plus);
+                    printf("P-: %d W\r\n", actVal.actualValue.smif.activePower_minus);
+                    printf("Q+: %d var\r\n", actVal.actualValue.smif.reactivePower_plus);
+                    printf("Q-: %d var\r\n", actVal.actualValue.smif.reactivePower_minus);
                     break;
                 default:
                     break;
@@ -763,6 +783,16 @@ static bool ModulGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) {
             memcpy(pBuf->actualValue.pwm4.pwm,
                    pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.pwm4.pwm,
                    sizeof(pBuf->actualValue.pwm4.pwm));
+            break;
+        case eBusDevTypeSmIf:
+            pBuf->actualValue.smif.activePower_plus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.activePower_plus;
+            pBuf->actualValue.smif.activePower_minus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.activePower_minus;
+            pBuf->actualValue.smif.reactivePower_plus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.reactivePower_plus;
+            pBuf->actualValue.smif.reactivePower_minus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.reactivePower_minus;
+            pBuf->actualValue.smif.countA_plus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countA_plus;
+            pBuf->actualValue.smif.countA_minus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countA_minus;
+            pBuf->actualValue.smif.countR_plus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countR_plus;
+            pBuf->actualValue.smif.countR_minus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countR_minus;
             break;
         default:
             break;

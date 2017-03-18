@@ -50,18 +50,20 @@
 #include "led.h"
 #include "board.h"
 
+#include "aes.h"
+
 #include "ConfigDescriptor.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros
 */
 /* offset addresses in EEPROM */
-#define MODUL_ADDRESS        0
+#define MODUL_ADDRESS        0 /* size 1  */
+#define KEY_ADDR             1 /* size 16 */
 
 /* our bus address */
 #define MY_ADDR                    sMyAddr
 
-#define SEARCH_ACK   0xe5
 
 /* FT232 line status */
 #define FT_OE      (1<<1)
@@ -78,6 +80,22 @@
 
 #define RECEIVE_TIMEOUT_MS                  2000  /* smartmeter sends every 1000 ms */
 
+#define METER_TELEGRAM_SIZE                 101
+#define AES_KEY_LEN                         16
+#define AES_IV_LEN                          16
+
+#define SEARCH_ACK   0xe5
+
+/* byte offsets of MBUS */
+#define MBUS_ACCESS_NUMBER_OFFS             15
+#define MBUS_PAYLOAD_OFFS                   19
+#define MBUS_PAYLOAD_SIZE                   80
+#define MBUS_CHECKSUM_OFFS                  99
+
+/* checksum range */
+#define MBUS_CHECKSUM_START_OFFS            4
+#define MBUS_CHECKSUM_END_OFFS              98
+
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */
@@ -92,6 +110,7 @@ typedef struct {
     uint8_t  rxbufOvrErr;
     uint8_t  attachedCnt;
     uint8_t  unattachedCnt;
+    uint8_t  csErr;
     uint8_t  rxBuf[128];
     uint8_t  rxIdx;
     uint16_t receiveTimeStamp;
@@ -113,7 +132,22 @@ typedef struct {
     } usbState;
 } TIfState;
 
+typedef struct {
+    uint32_t countA_plus;
+    uint32_t countA_minus;
+    uint32_t countR_plus;
+    uint32_t countR_minus;
+    uint32_t activePower_plus;
+    uint32_t activePower_minus;
+    uint32_t reactivePower_plus;
+    uint32_t reactivePower_minus;
+} TMeterData;
+
 static uint8_t sSearchSeq[] = { 0x10, 0x40, 0xf0, 0x30, 0x16 }; /* SND_NKE for 240 */
+
+static unsigned char sKey[AES_KEY_LEN];
+/* lower half of iv is the secondary address - it's the same for all EAG meters */
+static unsigned char sIv[AES_IV_LEN]  = { 0x2d, 0x4c, 0x00, 0x00, 0x00, 0x00, 0x01, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 /*-----------------------------------------------------------------------------
 *  Variables
@@ -126,9 +160,12 @@ static uint8_t       sMyAddr;
 static TBusTelegram *spBusMsg;
 static TIfState sIfState;
 
-static char version[] = "smif 0.00";
+static uint8_t sPayLoad[MBUS_PAYLOAD_SIZE];
+
+static char version[] = "smif 0.01";
 
 static uint8_t dbgbuf[32];
+static TMeterData sMd;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -241,7 +278,17 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         pActVal->devType = eBusDevTypeSmIf;
-        memcpy(pActVal->actualValue.smif.data, dbgbuf, sizeof(pActVal->actualValue.smif.data));
+//        memcpy(pActVal->actualValue.smif.data, dbgbuf, sizeof(pActVal->actualValue.smif.data));
+        
+        pActVal->actualValue.smif.countA_plus         = sMd.countA_plus;
+        pActVal->actualValue.smif.countA_minus        = sMd.countA_minus;
+        pActVal->actualValue.smif.countR_plus         = sMd.countR_plus;
+        pActVal->actualValue.smif.countR_minus        = sMd.countR_minus;
+        pActVal->actualValue.smif.activePower_plus    = sMd.activePower_plus;
+        pActVal->actualValue.smif.activePower_minus   = sMd.activePower_minus;
+        pActVal->actualValue.smif.reactivePower_plus  = sMd.reactivePower_plus;
+        pActVal->actualValue.smif.reactivePower_minus = sMd.reactivePower_minus;
+        
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetAddr:
@@ -392,6 +439,7 @@ ISR(TIMER3_COMPA_vect)  {
  */
 void SetupHardware(void) {
     uint8_t sioHdl;
+    uint8_t i;
 
     /* Disable watchdog if enabled by bootloader/fuses */
     MCUSR &= ~(1 << WDRF);
@@ -402,6 +450,11 @@ void SetupHardware(void) {
 
     /* get module address from EEPROM */
     sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
+
+    /* our AES key s stored in eeprom */
+    for (i = 0; i < sizeof(sKey); i++) {
+        sKey[i] = eeprom_read_byte((const uint8_t *)(KEY_ADDR + i));
+    }
 
     LedInit();
 
@@ -428,7 +481,6 @@ void SetupHardware(void) {
     
     USB_Init();
 }
-
 /*
  *  Task to manage an enumerated FT232 smartmeter probe once connected
  */
@@ -443,6 +495,8 @@ static void Host_Task(void) {
     uint8_t  txbuf[2];
     uint8_t  rc;
     uint16_t actualTime16;
+    uint8_t  checksum;
+    uint8_t  i;
     
     if (USB_HostState != HOST_STATE_Configured) {
         return;
@@ -510,8 +564,56 @@ static void Host_Task(void) {
                     }
                     break;
                 case eIfWaitForData:
-                    if (sIfState.rxIdx >= 101) {
+                    if (sIfState.rxIdx >= METER_TELEGRAM_SIZE) {
                         LedSet(eLedGreenBlinkOnceShort);
+                        checksum = 0;
+                        for (i = MBUS_CHECKSUM_START_OFFS; i <= MBUS_CHECKSUM_END_OFFS; i++) {
+                            checksum += sIfState.rxBuf[i];
+                        }
+                        if (checksum != sIfState.rxBuf[MBUS_CHECKSUM_OFFS]) {
+                            if (sIfState.csErr < 0xff) {
+                                sIfState.csErr++;
+                            }
+                        } else {
+                            /* set upper half of iv */
+                            for (i = 8; i < 16; i++) {
+                                sIv[i] = sIfState.rxBuf[MBUS_ACCESS_NUMBER_OFFS];
+                            }
+                            AES128_CBC_decrypt_buffer(sPayLoad, &sIfState.rxBuf[MBUS_PAYLOAD_OFFS], sizeof(sPayLoad), sKey, sIv);
+
+                            sMd.activePower_plus  = (uint32_t)sPayLoad[44]         |
+                                                    ((uint32_t)sPayLoad[45] << 8)  | 
+                                                    ((uint32_t)sPayLoad[46] << 16) |
+                                                    ((uint32_t)sPayLoad[47] << 24);
+                            sMd.activePower_minus = (uint32_t)sPayLoad[51]         |
+                                                    ((uint32_t)sPayLoad[52] << 8)  | 
+                                                    ((uint32_t)sPayLoad[53] << 16) |
+                                                    ((uint32_t)sPayLoad[54] << 24);
+                            sMd.reactivePower_plus  = (uint32_t)sPayLoad[58]         |
+                                                      ((uint32_t)sPayLoad[59] << 8)  | 
+                                                      ((uint32_t)sPayLoad[60] << 16) |
+                                                      ((uint32_t)sPayLoad[61] << 24);
+                            sMd.reactivePower_minus = (uint32_t)sPayLoad[66]         |
+                                                      ((uint32_t)sPayLoad[67] << 8)  | 
+                                                      ((uint32_t)sPayLoad[68] << 16) |
+                                                      ((uint32_t)sPayLoad[69] << 24);
+                            sMd.countA_plus  = (uint32_t)sPayLoad[12]         |
+                                               ((uint32_t)sPayLoad[13] << 8)  | 
+                                               ((uint32_t)sPayLoad[14] << 16) |
+                                               ((uint32_t)sPayLoad[15] << 24);
+                            sMd.countA_minus = (uint32_t)sPayLoad[19]         |
+                                               ((uint32_t)sPayLoad[20] << 8)  | 
+                                               ((uint32_t)sPayLoad[21] << 16) |
+                                               ((uint32_t)sPayLoad[22] << 24);
+                            sMd.countR_plus  = (uint32_t)sPayLoad[28]         |
+                                               ((uint32_t)sPayLoad[29] << 8)  | 
+                                               ((uint32_t)sPayLoad[30] << 16) |
+                                               ((uint32_t)sPayLoad[31] << 24);
+                            sMd.countR_minus = (uint32_t)sPayLoad[38]         |
+                                               ((uint32_t)sPayLoad[39] << 8)  | 
+                                               ((uint32_t)sPayLoad[40] << 16) |
+                                               ((uint32_t)sPayLoad[41] << 24);
+                        }
                         sIfState.rxIdx = 0;
                         sendReq = true;
                     }
@@ -573,7 +675,9 @@ static void Host_Task(void) {
     dbgbuf[9] = sIfState.rxbufOvrErr;
     dbgbuf[10] = sIfState.attachedCnt;
     dbgbuf[11] = sIfState.unattachedCnt;    
+    dbgbuf[12] = sIfState.csErr;    
     
+    memcpy(&dbgbuf[13], &sMd.activePower_plus, 4);
 }
 
 /*

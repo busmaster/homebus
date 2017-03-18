@@ -17,10 +17,10 @@ F_CPU        = 8000000
 F_USB        = $(F_CPU)
 OPTIMIZATION = 2
 TARGET       = smartmeterif
-SRC          = $(TARGET).c ConfigDescriptor.c ../../sio/avr/siosingle.c ../../bus/bus.c ../../devices/smartmeterif/led.c $(LUFA_SRC_USB) 
+SRC          = $(TARGET).c ConfigDescriptor.c ../../sio/avr/siosingle.c ../../bus/bus.c ../../devices/smartmeterif/led.c ../../aes/aes.c $(LUFA_SRC_USB) 
 #$(LUFA_SRC_USBCLASS)
 LUFA_PATH    = ../../lufa/lufa-LUFA-140928/LUFA
-CC_FLAGS     = -DUSE_LUFA_CONFIG_HEADER -IConfig/ -I. -I../../include -I../../include/avr -I../../include/devices/smartmeterif -I../../include/devices/common
+CC_FLAGS     = -DUSE_LUFA_CONFIG_HEADER -IConfig/ -I. -I../../include -I../../include/avr -I../../include/devices/smartmeterif -I../../include/devices/common  -I../../include/aes
 LD_FLAGS     =
 
 # Default target

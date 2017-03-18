@@ -140,6 +140,9 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoPwm4;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoSmIf;
+
 typedef enum {
    eBusDevTypeDo31    = 0x00,
    eBusDevTypeSw8     = 0x01,
@@ -149,7 +152,8 @@ typedef enum {
    eBusDevTypeWind    = 0x05,
    eBusDevTypeSw8Cal  = 0x06,
    eBusDevTypeRs485If = 0x07,
-   eBusDevTypePwm4    = 0x08
+   eBusDevTypePwm4    = 0x08,
+   eBusDevTypeSmIf    = 0x09,
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {
@@ -165,6 +169,7 @@ typedef struct {
       TBusDevInfoSw8Cal  sw8Cal;
       TBusDevInfoRs485If rs485if;
       TBusDevInfoPwm4    pwm4;
+      TBusDevInfoSmIf    smif;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
 
@@ -357,6 +362,17 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValuePwm4;
 
 typedef struct {
+   uint32_t countA_plus;
+   uint32_t countA_minus;
+   uint32_t countR_plus;
+   uint32_t countR_minus;
+   uint32_t activePower_plus;
+   uint32_t activePower_minus;
+   uint32_t reactivePower_plus;
+   uint32_t reactivePower_minus;
+} __attribute__ ((packed)) TBusDevActualValueSmif;
+
+typedef struct {
    TBusDevType devType;
    union {
       TBusDevActualValueDo31    do31;
@@ -367,6 +383,7 @@ typedef struct {
       TBusDevActualValueWind    wind;
       TBusDevActualValueRs485if rs485if;
       TBusDevActualValuePwm4    pwm4;
+      TBusDevActualValueSmif    smif;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
