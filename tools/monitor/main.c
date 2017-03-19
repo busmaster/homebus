@@ -321,6 +321,25 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, "success %d ", pBusMsg->msg.devBus.x.devResp.updTerm.success);
                 break;
+            case eBusDevReqDiag:
+                fprintf(spOutput, "request diag ");
+                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
+                break;
+            case eBusDevRespDiag:
+                fprintf(spOutput, "response info ");
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                switch (pBusMsg->msg.devBus.x.devResp.diag.devType) {
+                case eBusDevTypeSmIf:
+                    fprintf(spOutput, SPACE "device SMIF\r\n");
+                    break;
+                default:
+                    break;
+                }
+                fprintf(spOutput, SPACE "data: ");
+                for (i = 0; i < sizeof(pBusMsg->msg.devBus.x.devResp.diag.data); i++) {
+                    fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.diag.data[i]);
+                }
+                break;
             case eBusDevReqInfo:
                 fprintf(spOutput, "request info ");
                 fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
