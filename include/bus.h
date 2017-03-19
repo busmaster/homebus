@@ -55,6 +55,8 @@ extern "C" {
 #define BUS_PWM4_PWM_SIZE_SET_VALUE        4    /* 4 uint16 for pwm outs */
 #define BUS_PWM4_PWM_SIZE_ACTUAL_VALUE     4    /* 4 uint16 for pwm outs */
 
+#define BUS_DIAG_SIZE                      32
+
 #define BUS_MAX_CLIENT_NUM         16   /* size of list for setting client addresses */
 #define BUS_CLIENT_ADDRESS_INVALID 0xff
 
@@ -460,6 +462,15 @@ typedef struct {
     TDoClockCalibState state;
 } __attribute__ ((packed)) TBusDevRespDoClockCalib;       /* type 0x26 */
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevReqDiag;                /* type 0x27 */
+
+typedef struct {
+    TBusDevType devType;
+    uint8_t     data[BUS_DIAG_SIZE];
+} __attribute__ ((packed)) TBusDevRespDiag;               /* type 0x28 */
+
+
 typedef union {
    TBusDevReqReboot           reboot;
    TBusDevReqUpdEnter         updEnter;
@@ -479,6 +490,7 @@ typedef union {
    TBusDevReqEepromWrite      writeEeprom;
    TBusDevReqClockCalib       clockCalib;
    TBusDevReqDoClockCalib     doClockCalib;
+   TBusDevReqDiag             diag;
 } __attribute__ ((packed)) TUniDevReq;
 
 typedef union {
@@ -499,6 +511,7 @@ typedef union {
    TBusDevRespEepromWrite      writeEeprom;
    TBusDevRespClockCalib       clockCalib;
    TBusDevRespDoClockCalib     doClockCalib;
+   TBusDevRespDiag             diag;
 } __attribute__ ((packed)) TUniDevResp;
 
 typedef struct {
@@ -555,6 +568,8 @@ typedef enum {
    eBusDevRespClockCalib =               0x24,
    eBusDevReqDoClockCalib =              0x25,
    eBusDevRespDoClockCalib =             0x26,
+   eBusDevReqDiag =                      0x27,
+   eBusDevRespDiag =                     0x28,
    eBusDevStartup =                      0xff
 } __attribute__ ((packed)) TBusMsgType;
 

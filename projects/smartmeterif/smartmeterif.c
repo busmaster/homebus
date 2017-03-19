@@ -1,37 +1,24 @@
 /*
-             LUFA Library
-     Copyright (C) Dean Camera, 2014.
-
-  dean [at] fourwalledcubicle [dot] com
-           www.lufa-lib.org
-*/
-
-/*
-  Copyright 2014  Dean Camera (dean [at] fourwalledcubicle [dot] com)
-
-  Permission to use, copy, modify, distribute, and sell this
-  software and its documentation for any purpose is hereby granted
-  without fee, provided that the above copyright notice appear in
-  all copies and that both that the copyright notice and this
-  permission notice and warranty disclaimer appear in supporting
-  documentation, and that the name of the author not be used in
-  advertising or publicity pertaining to distribution of the
-  software without specific, written prior permission.
-
-  The author disclaims all warranties with regard to this
-  software, including all implied warranties of merchantability
-  and fitness.  In no event shall the author be liable for any
-  special, indirect or consequential damages or any damages
-  whatsoever resulting from loss of use, data or profits, whether
-  in an action of contract, negligence or other tortious action,
-  arising out of or in connection with the use or performance of
-  this software.
-*/
-
-/** \file
+ * smartmeterif.c
  *
- *  Main source file for the VirtualSerialHost demo. This file contains the main tasks of
- *  the demo and is responsible for the initial application hardware configuration.
+ * Copyright 2017 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ *
+ *
  */
 
 #include <avr/io.h>
@@ -44,7 +31,6 @@
 #include <LUFA/Drivers/USB/USB.h>
 #include <LUFA/Platform/Platform.h>
 
-//#include "smartmeterif.h"
 #include "sio.h"
 #include "bus.h"
 #include "led.h"
@@ -111,6 +97,7 @@ typedef struct {
     uint8_t  attachedCnt;
     uint8_t  unattachedCnt;
     uint8_t  csErr;
+    uint8_t  cycCnt;
     uint8_t  rxBuf[128];
     uint8_t  rxIdx;
     uint16_t receiveTimeStamp;
@@ -161,11 +148,9 @@ static TBusTelegram *spBusMsg;
 static TIfState sIfState;
 
 static uint8_t sPayLoad[MBUS_PAYLOAD_SIZE];
-
-static char version[] = "smif 0.01";
-
-static uint8_t dbgbuf[32];
 static TMeterData sMd;
+
+static char version[] = "smif 0.02";
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -183,8 +168,8 @@ void EVENT_USB_Host_DeviceEnumerationFailed(const uint8_t ErrorCode,
 void EVENT_USB_Host_DeviceEnumerationComplete(void);
 
 
-/** Main program entry point. This routine configures the hardware required by the application, then
- *  enters a loop to run the application tasks in sequence.
+/*
+ * entry
  */
 int main(void) {
 
@@ -221,6 +206,7 @@ static void ProcessBus(uint8_t ret) {
     bool                   msgForMe = false;
     TBusDevRespInfo        *pInfo;
     TBusDevRespActualValue *pActVal;
+    uint8_t                *pData;
     static TBusTelegram    sTxMsg;
     static bool            sTxRetry = false;
 
@@ -238,6 +224,7 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqSetAddr:
         case eBusDevReqEepromRead:
         case eBusDevReqEepromWrite:
+        case eBusDevReqDiag:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
             }
@@ -278,8 +265,7 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         pActVal->devType = eBusDevTypeSmIf;
-//        memcpy(pActVal->actualValue.smif.data, dbgbuf, sizeof(pActVal->actualValue.smif.data));
-        
+       
         pActVal->actualValue.smif.countA_plus         = sMd.countA_plus;
         pActVal->actualValue.smif.countA_minus        = sMd.countA_minus;
         pActVal->actualValue.smif.countR_plus         = sMd.countR_plus;
@@ -312,6 +298,29 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr, 
                           spBusMsg->msg.devBus.x.devReq.writeEeprom.data);
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;  
+        break;
+    case eBusDevReqDiag:
+        sTxMsg.senderAddr = MY_ADDR; 
+        sTxMsg.type = eBusDevRespDiag;
+        sTxMsg.msg.devBus.x.devResp.diag.devType = eBusDevTypeSmIf;
+        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        pData = sTxMsg.msg.devBus.x.devResp.diag.data;
+        if (sizeof(sTxMsg.msg.devBus.x.devResp.diag.data) > 13) {
+            *(pData + 0)  = sIfState.usbState;
+            *(pData + 1)  = sIfState.cycCnt;
+            *(pData + 2)  = sIfState.genErr;
+            *(pData + 3)  = sIfState.commErr;
+            *(pData + 4)  = sIfState.outErr;
+            *(pData + 5)  = sIfState.enumErr;
+            *(pData + 6)  = sIfState.writeStreamErr;
+            *(pData + 7)  = sIfState.readStreamErr;
+            *(pData + 8)  = sIfState.waitReadyErr;
+            *(pData + 9)  = sIfState.rxbufOvrErr;
+            *(pData + 10) = sIfState.attachedCnt;
+            *(pData + 11) = sIfState.unattachedCnt;    
+            *(pData + 12) = sIfState.csErr;
+        }
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;  
         break;
     default:
@@ -616,6 +625,7 @@ static void Host_Task(void) {
                         }
                         sIfState.rxIdx = 0;
                         sendReq = true;
+                        sIfState.cycCnt++;
                     }
                     break;
                 default:
@@ -660,24 +670,7 @@ static void Host_Task(void) {
         Pipe_Freeze();
     }
     
-    dbgbuf[0] = sIfState.rxIdx;
-    if (sendReq) {
-        dbgbuf[1]++;
-    }
-    
-    dbgbuf[2] = sIfState.genErr;
-    dbgbuf[3] = sIfState.commErr;
-    dbgbuf[4] = sIfState.outErr;
-    dbgbuf[5] = sIfState.enumErr;
-    dbgbuf[6] = sIfState.writeStreamErr;
-    dbgbuf[7] = sIfState.readStreamErr;
-    dbgbuf[8] = sIfState.waitReadyErr;
-    dbgbuf[9] = sIfState.rxbufOvrErr;
-    dbgbuf[10] = sIfState.attachedCnt;
-    dbgbuf[11] = sIfState.unattachedCnt;    
-    dbgbuf[12] = sIfState.csErr;    
-    
-    memcpy(&dbgbuf[13], &sMd.activePower_plus, 4);
+ 
 }
 
 /*
