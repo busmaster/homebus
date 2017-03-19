@@ -326,7 +326,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
                 break;
             case eBusDevRespDiag:
-                fprintf(spOutput, "response info ");
+                fprintf(spOutput, "response diag ");
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devResp.diag.devType) {
                 case eBusDevTypeSmIf:
