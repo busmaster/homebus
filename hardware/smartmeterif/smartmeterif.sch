@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="6.5.0">
+<eagle version="7.1.0">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -25165,18 +25165,18 @@ Source: http://www.diodes.com/datasheets/ds23001.pdf</description>
 <part name="C17" library="resistor" deviceset="C-EU" device="C0603" value="100n"/>
 <part name="GND25" library="supply1" deviceset="GND" device=""/>
 <part name="L6" library="rcl" deviceset="L-EU" device="L1812" value="6µ8/0A6"/>
-<part name="R7" library="rcl" deviceset="R-EU_" device="R0603" value="1k"/>
+<part name="R7" library="rcl" deviceset="R-EU_" device="R0603" value="1k n.b."/>
 <part name="GND26" library="supply1" deviceset="GND" device=""/>
 <part name="U$3" library="mylib" deviceset="MKDSO_2.5/3_L" device=""/>
 <part name="U$4" library="mylib" deviceset="MKDSO_2.5/3_L" device=""/>
 <part name="P+10" library="supply1" deviceset="+12V" device=""/>
 <part name="GND28" library="supply1" deviceset="GND" device=""/>
 <part name="JP1" library="pinhead" deviceset="PINHD-1X2" device="" value="LED"/>
-<part name="R9" library="resistor" deviceset="R-EU_" device="R0603" value="10k"/>
+<part name="R9" library="resistor" deviceset="R-EU_" device="R0603" value="2k2"/>
 <part name="GND3" library="supply1" deviceset="GND" device=""/>
 <part name="C18" library="rcl" deviceset="CPOL-EU" device="SMCA" value="4µ7/10V"/>
 <part name="GND29" library="supply1" deviceset="GND" device=""/>
-<part name="R10" library="rcl" deviceset="R-EU_" device="R0603" value="1k"/>
+<part name="R10" library="rcl" deviceset="R-EU_" device="R0603" value="1k n.b."/>
 <part name="GND30" library="supply1" deviceset="GND" device=""/>
 </parts>
 <sheets>
