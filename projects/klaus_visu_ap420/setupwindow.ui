@@ -44,14 +44,27 @@
   <widget class="QPushButton" name="pushButtonDoorbell">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>20</y>
+     <x>4</x>
+     <y>4</y>
      <width>115</width>
      <height>78</height>
     </rect>
    </property>
    <property name="text">
     <string>Glocke</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonInternet">
+   <property name="geometry">
+    <rect>
+     <x>123</x>
+     <y>4</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Internet</string>
    </property>
   </widget>
  </widget>

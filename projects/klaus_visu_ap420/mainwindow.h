@@ -47,7 +47,6 @@ private slots:
     void on_pushButtonUG_clicked();
     void on_pushButtonKueche_clicked();
     void on_pushButtonGarage_clicked();
-    void on_pushButtonInternet_clicked();
     void on_pushButtonSetup_clicked();
     void onBusEvent(struct eventmonitor::event *);
 
