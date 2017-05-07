@@ -238,11 +238,13 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ((ev->data.pwm4.pwm[3]) == 0)              ? io->kuecheState.detail.lightDunstabzug = 0       : io->kuecheState.detail.lightDunstabzug = 1;
     }
 
-    if ((egSum != io->egState.sum) ||
-        (ogSum != io->ogState.sum) ||
-        (ugSum != io->ugState.sum) ||
+    if ((egSum != io->egState.sum)         ||
+        (ogSum != io->ogState.sum)         ||
+        (ugSum != io->ugState.sum)         ||
         (kuecheSum != io->kuecheState.sum) ||
-        (garageSum != io->garageState.sum)) {
+        (garageSum != io->garageState.sum) ||
+        (socket_1 != io->socket_1)         ||
+        (socket_2 != io->socket_2)) {
         emit ioChanged();
     }
 
@@ -295,18 +297,6 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ui->pushButtonKueche->update();
     }
 
-    if (socket_1 != io->socket_1) {
-        if (io->socket_1) {
-            ui->pushButtonInternet->setStyleSheet("background-color: yellow");
-        } else {
-            ui->pushButtonInternet->setStyleSheet("background-color: green");
-        }
-    }
-    if (socket_2 != io->socket_2) {
-
-
-    }
-
     if ((io->egState.sum == 0) &&
         (io->ogState.sum == 0) &&
         (io->ugState.sum == 0) &&
@@ -350,22 +340,6 @@ int MainWindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *
         len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
     }
     return len;
-}
-
-void MainWindow::on_pushButtonInternet_clicked() {
-    char    command[100];
-    uint8_t doState[31];
-
-    memset(doState, 0, sizeof(doState));
-    if (io->socket_1) {
-        doState[27] = 3; // on
-    } else {
-        doState[27] = 2; // off
-    }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonInternet->setStyleSheet("background-color: grey");
-
-    onSendServiceCmd(command);
 }
 
 void MainWindow::on_pushButtonSetup_clicked() {

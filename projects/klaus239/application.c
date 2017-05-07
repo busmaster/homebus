@@ -37,6 +37,8 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
+/* switch off the common power supply after this time in sec */
+#define DELAY_COMMON_SUPPLY_OFF_S    1800
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -134,7 +136,7 @@ static TBusTelegram sTxBusMsg;
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "pwm4_0.02";
+   return "pwm4_0.03";
 }
 
 /*-----------------------------------------------------------------------------
@@ -192,18 +194,21 @@ void ApplicationStart(void) {
 
 void ApplicationCheck(void) {
 
-    static bool sTxRetry = false;
-    uint8_t     i;
-    static bool sCurrDo = false;
-    bool        reqDo;
-    bool        on;
-    uint16_t    pwm;
+    static bool     sTxRetry = false;
+    static bool     sCurrDo = false;
+    static uint16_t sOffTimeS = 0;
+    static bool     sDelayOff = false;
+    uint8_t         i;
+    bool            reqDo;
+    bool            on;
+    uint16_t        pwm;
+    uint16_t        currTimeS;    
 
     if (sTxRetry) {
         sTxRetry = BusSend(&sTxBusMsg) != BUS_SEND_OK;
         return;
     }
-    
+    GET_TIME_S(currTimeS);
     reqDo = false;
     for (i = 0; i < 4; i++) {
         PwmIsOn(i, &on);
@@ -213,6 +218,23 @@ void ApplicationCheck(void) {
             break;
         }
     }
+    if (!reqDo && sCurrDo) {
+        if (!sDelayOff) {
+            sOffTimeS = currTimeS;
+            sDelayOff = true;
+        }
+    } else {
+        sDelayOff = false;
+    }
+    
+    if (sDelayOff) {
+        if (((uint16_t)(currTimeS - sOffTimeS)) < DELAY_COMMON_SUPPLY_OFF_S) {
+            reqDo = true;
+        } else {
+            sDelayOff = false;
+        }
+    }
+
     if (reqDo == sCurrDo) {
         /* no change */
         return;

@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
     SioInit();
     handle = SioOpen(comPort, eSioBaud9600, eSioDataBits8, eSioParityNo, eSioStopBits1, eSioModeHalfDuplex);
     if (handle == -1) {
-        printf("cannot open %s\r\n", comPort);
+        printf("cannot open %s\n", comPort);
         return -1;
     }
 
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
             newModuleAddr = atoi(argv[argi]);
             ret = ModuleNewAddress(moduleAddr, newModuleAddr);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_SET_CLIENT_ADDRESS_LIST:
@@ -224,7 +224,7 @@ int main(int argc, char *argv[]) {
             }
             ret = ModuleSetClientAddress(moduleAddr, clientList, sizeof(clientList));
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_GET_CLIENT_ADDRESS_LIST:
@@ -234,13 +234,13 @@ int main(int argc, char *argv[]) {
                 for (i = 0; i < (int)sizeof(clientList); i++) {
                     printf("%02x ", clientList[i]);
                 }
-                printf("\r\n");
+                printf("\n");
             }
             break;
         case OP_RESET:
             ret = ModuleReset(moduleAddr);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_EEPROM_READ:
@@ -255,7 +255,7 @@ int main(int argc, char *argv[]) {
                         printf("eeprom dump:");
                         for (i = 0; i < (int)eepromLength; i++) {
                             if ((i % 16) == 0) {
-                                printf("\r\n%04x: ", eepromAddress + i - eepromAddress % 16);
+                                printf("\n%04x: ", eepromAddress + i - eepromAddress % 16);
                             }
                             if (i < ((int)eepromAddress % 16)) {
                                 printf("   ");
@@ -263,11 +263,11 @@ int main(int argc, char *argv[]) {
                                 printf("%02x ", *(pBuf + i - eepromAddress % 16));
                             }
                         }
-                        printf("\r\n");
+                        printf("\n");
                     }
                     free(pBuf);
                 } else {
-                    printf("cannot allocate memory for command execution\r\n");
+                    printf("cannot allocate memory for command execution\n");
                 }
             }
             break;
@@ -280,7 +280,7 @@ int main(int argc, char *argv[]) {
             }
             ret = ModuleWriteEeprom(moduleAddr, eepromData, eepromLength, eepromAddress);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_GET_ACTUAL_VALUE:
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
                 }
                 switch (actVal.devType) {
                 case eBusDevTypeDo31:
-                    printf("\r\ndigout: ");
+                    printf("\ndigout: ");
                     for (i = 0; i < sizeof(actVal.actualValue.do31.digOut); i++) {
                         for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
                             if ((i == 3) && (j == 7)) {
@@ -335,14 +335,14 @@ int main(int argc, char *argv[]) {
                         }
                         printf(" ");
                     }
-                    printf("\r\nshader: ");
+                    printf("\nshader: ");
                     for (i = 0; i < sizeof(actVal.actualValue.do31.shader); i++) {
                         printf("%02x ", actVal.actualValue.do31.shader[i]);
                     }
-                    printf("\r\n");
+                    printf("\n");
                     break;
                 case eBusDevTypeSw8:
-                    printf("\r\niostate: ");
+                    printf("\niostate: ");
                     for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
                         if (actVal.actualValue.sw8.state & mask) {
                             printf("1");
@@ -350,10 +350,10 @@ int main(int argc, char *argv[]) {
                             printf("0");
                         }
                     }
-                    printf("\r\n");
+                    printf("\n");
                     break;
                 case eBusDevTypeSw16:
-                    printf("\r\ninput state: ");
+                    printf("\ninput state: ");
                     for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
                         if (actVal.actualValue.sw16.input_state & mask) {
                             printf("1");
@@ -361,15 +361,15 @@ int main(int argc, char *argv[]) {
                             printf("0");
                         }
                     }
-                    printf("\r\nled state: ");
+                    printf("\nled state: ");
                     for (i = 0; i < sizeof(actVal.actualValue.sw16.led_state); i++) {
                         printf("%x %x ", actVal.actualValue.sw16.led_state[i] & 0x0f, 
                                         (actVal.actualValue.sw16.led_state[i] & 0xf0) >> 4);
                     }
-                    printf("\r\n");
+                    printf("\n");
                     break;
                 case eBusDevTypeLum:
-                    printf("\r\nstate: ");
+                    printf("\nstate: ");
                     for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
                         if (actVal.actualValue.lum.state & mask) {
                             printf("1");
@@ -377,13 +377,13 @@ int main(int argc, char *argv[]) {
                             printf("0");
                         }
                     }
-                    printf("\r\nADC:   0x%04x\r\n", actVal.actualValue.lum.lum_low | (actVal.actualValue.lum.lum_high << 8));
+                    printf("\nADC:   0x%04x\n", actVal.actualValue.lum.lum_low | (actVal.actualValue.lum.lum_high << 8));
                     break;
                 case eBusDevTypeLed:
-                    printf("\r\nLED state: %02x\r\n", actVal.actualValue.led.state);
+                    printf("\nLED state: %02x\n", actVal.actualValue.led.state);
                     break;
                 case eBusDevTypeWind:
-                    printf("\r\nstate: ");
+                    printf("\nstate: ");
                     for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
                         if (actVal.actualValue.wind.state & mask) {
                             printf("1");
@@ -391,37 +391,37 @@ int main(int argc, char *argv[]) {
                             printf("0");
                         }
                     }
-                    printf("\r\nWIND:  0x%02x\r\n", actVal.actualValue.wind.wind);
+                    printf("\nWIND:  0x%02x\n", actVal.actualValue.wind.wind);
                     break;
                 case eBusDevTypeRs485If:
-                    printf("\r\nstate: ");
+                    printf("\nstate: ");
                     for (i = 0; i < sizeof(actVal.actualValue.rs485if.state); i++) {
                         printf("%02x ", actVal.actualValue.rs485if.state[i]);
                     }
-                    printf("\r\n");
+                    printf("\n");
                     break;
                 case eBusDevTypePwm4:
-                    printf("\r\npwm: ");
+                    printf("\npwm: ");
                     for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
                         printf("%04x ", actVal.actualValue.pwm4.pwm[i]);
                     }
-                    printf("\r\n");
+                    printf("\n");
                     break;
                 case eBusDevTypeSmIf:
-                    printf("\r\n");
-                    printf("A+: %d Wh\r\n", actVal.actualValue.smif.countA_plus);
-                    printf("A-: %d Wh\r\n", actVal.actualValue.smif.countA_minus);
-                    printf("R+: %d varh\r\n", actVal.actualValue.smif.countR_plus);
-                    printf("R-: %d varh\r\n", actVal.actualValue.smif.countR_minus);
-                    printf("P+: %d W\r\n", actVal.actualValue.smif.activePower_plus);
-                    printf("P-: %d W\r\n", actVal.actualValue.smif.activePower_minus);
-                    printf("Q+: %d var\r\n", actVal.actualValue.smif.reactivePower_plus);
-                    printf("Q-: %d var\r\n", actVal.actualValue.smif.reactivePower_minus);
+                    printf("\n");
+                    printf("A+: %d Wh\n", actVal.actualValue.smif.countA_plus);
+                    printf("A-: %d Wh\n", actVal.actualValue.smif.countA_minus);
+                    printf("R+: %d varh\n", actVal.actualValue.smif.countR_plus);
+                    printf("R-: %d varh\n", actVal.actualValue.smif.countR_minus);
+                    printf("P+: %d W\n", actVal.actualValue.smif.activePower_plus);
+                    printf("P-: %d W\n", actVal.actualValue.smif.activePower_minus);
+                    printf("Q+: %d var\n", actVal.actualValue.smif.reactivePower_plus);
+                    printf("Q-: %d var\n", actVal.actualValue.smif.reactivePower_minus);
                     break;
                 default:
                     break;
                 }
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_SET_VALUE_DO31_DO:
@@ -433,7 +433,7 @@ int main(int argc, char *argv[]) {
             }
             ret = ModuleSetValue(moduleAddr, &setVal);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_SET_VALUE_DO31_SH:
@@ -445,7 +445,7 @@ int main(int argc, char *argv[]) {
             }
             ret = ModuleSetValue(moduleAddr, &setVal);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_SET_VALUE_SW8:
@@ -456,7 +456,7 @@ int main(int argc, char *argv[]) {
             }
             ret = ModuleSetValue(moduleAddr, &setVal);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_SET_VALUE_SW16:
@@ -467,7 +467,7 @@ int main(int argc, char *argv[]) {
             }
             ret = ModuleSetValue(moduleAddr, &setVal);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_SET_VALUE_RS485IF:
@@ -478,7 +478,7 @@ int main(int argc, char *argv[]) {
             }
             ret = ModuleSetValue(moduleAddr, &setVal);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_SET_VALUE_PWM4:
@@ -495,7 +495,7 @@ int main(int argc, char *argv[]) {
             }
             ret = ModuleSetValue(moduleAddr, &setVal);
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_INFO:
@@ -533,22 +533,21 @@ int main(int argc, char *argv[]) {
                 default:
                     break;
                 }
-                printf("\r\n");
-                printf("version: %s\r\n", info.version);
-            } else {
-                printf("ERROR\r\n");
+                printf("\n");
+                printf("version: %s\n", info.version);
+                printf("OK\n");
             }
             break;
         case OP_CLOCK_CALIB:
             ret = ModuleClockCalib(moduleAddr, atoi(argv[argi]));
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_SWITCH_STATE:
             ret = SwitchEvent(moduleAddr, atoi(argv[argi]));
             if (ret) {
-                printf("OK\r\n");
+                printf("OK\n");
             }
             break;
         case OP_GET_INFO_RANGE:
@@ -588,15 +587,16 @@ int main(int argc, char *argv[]) {
                         default:
                             break;
                         }
-                        printf("%s\r\n", info.version);
+                        printf("%s\n", info.version);
                     } else {
-                        printf("%i\r\n",moduleAddr);
+                        printf("%i\n",moduleAddr);
                         ret = 1;
                     }
                     if (moduleAddr == atoi(argv[argi+1])) {
                         break;
                     }
                 }
+                printf("OK\n");
             }
             break;
         case OP_HELP:
@@ -637,17 +637,15 @@ int main(int argc, char *argv[]) {
                 default:
                     break;
                 }
-                printf("\r\n");
+                printf("\n");
                 for (i = 0; i < sizeof(diag.data); i++) {
                     printf("%02x ", diag.data[i]);
                 }
-                printf("\r\n");
-            } else {
-                printf("ERROR\r\n");
+                printf("\nOK\n");
             }
             break;
         case OP_EXIT:
-            printf("OK\r\n");
+            printf("OK\n");
             server_run = false;
             break;
         default:
@@ -662,7 +660,7 @@ int main(int argc, char *argv[]) {
     if (ret) {
         return 0;
     } else {
-        printf("ERROR\r\n");
+        printf("ERROR\n");
         return -1;
     }
 }
@@ -1262,17 +1260,17 @@ static bool ModuleClockCalib(
     }
 
     if (clockCalibState == eBusClockCalibStateBusy) {
-        printf("calibrating %d\r\n", stateAddress);
+        printf("calibrating %d\n", stateAddress);
         return true;
     } else if (clockCalibState != eBusClockCalibStateIdle) {
         if (!ClockCalib(moduleAddress, calibAddress, eBusClockCalibCommandIdle, &clockCalibState, &stateAddress)) {
-            printf("command idle error\r\n");
+            printf("command idle error\n");
             return false;
         }
     }
     
     if (!ClockCalib(moduleAddress, calibAddress, eBusClockCalibCommandCalibrate, &clockCalibState, &stateAddress)) {
-        printf("command calibrate error\r\n");
+        printf("command calibrate error\n");
         return false;
     }
 
@@ -1287,7 +1285,7 @@ static bool ModuleClockCalib(
             if (clockCalibState == eBusClockCalibStateSuccess) {
                 rc = true;
             } else {
-                printf("command calibrate result %d\r\n", clockCalibState);
+                printf("command calibrate result %d\n", clockCalibState);
             }
             break;
         }
@@ -1481,48 +1479,48 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
 */
 static void PrintUsage(void) {
 
-    printf("\r\nUsage:\r\n");
-    printf("modulservice -c port -a addr [-o ownaddr] [-s]                \r\n");  
-    printf("                             (-na addr                           |\r\n");
-    printf("                              -setcl addr1 .. addr16             |\r\n");
-    printf("                              -getcl                             |\r\n");
-    printf("                              -reset                             |\r\n");
-    printf("                              -eerd addr len                     |\r\n");
-    printf("                              -eewr addr data1 .. dataN          |\r\n");
-    printf("                              -actval                            |\r\n");
-    printf("                              -setvaldo31_do do0 .. do30         |\r\n");
-    printf("                              -setvaldo31_sh sh0 .. sh14         |\r\n");
-    printf("                              -setvalsw8 do0 .. do7              |\r\n");
-    printf("                              -setvalsw16 led0 .. led7           |\r\n");
-    printf("                              -setvalrs485if data0 .. data31     |\r\n");
-    printf("                              -setvalpwm4 set0 pwm0 .. set3 pwm3 |\r\n");
-    printf("                              -info                              |\r\n");
-    printf("                              -inforange start stopp             |\r\n");
-    printf("                              -clockcalib addr                   |\r\n");
-    printf("                              -switchstate data                  |\r\n");
-    printf("                              -help                              |\r\n");
-    printf("                              -exit)                             \r\n");
-    printf("-c port: com1 com2 ..\r\n");
-    printf("-a addr: addr = address of module\r\n");
-    printf("-o addr: addr = our address, default:0\r\n");
-    printf("-s server mode, accept command from stdin\r\n");
-    printf("-na addr: set new address, addr = new address\r\n");
-    printf("-setcl addr1 .. addr16 : set client address list, addr1 = 1st client's address\r\n");
-    printf("-getcl: show client address list\r\n");
-    printf("-reset: reset module\r\n");
-    printf("-eerd addr len: read EEPROM data from offset addr with number len\r\n");
-    printf("-eewr addr data1 .. dataN: write EEPROM data from offset\r\n");
-    printf("-actval: read actual values from modul\r\n");
-    printf("-setvaldo31_do do0 .. do30: set value for dig out\r\n");
-    printf("-setvaldo31_sh sh0 .. sh14: set value for shader\r\n");
-    printf("-setvalsw8 do0 .. do7: set value for dig out\r\n");
-    printf("-setvalsw16 led0 .. led7: set value for led\r\n");
-    printf("-setvalrs485if data0 .. data31: set byte value for rs485if\r\n");
-    printf("-setvalpwm4 set0 pwm0 .. set3 pwm3: setX = command, pwmX = 16 bit value\r\n");
-    printf("-info: read type and version string from modul\r\n");
-    printf("-inforange start stopp: read type and version string from modul start to stopp address\r\n");	
-    printf("-clockcalib: clock calibration\r\n");
-    printf("-switchstate: generate a switch pressed or released event (ReqSwitchState, -a addr is the client)\r\n");
-    printf("-help: print this help\r\n");
-    printf("-exit: nop operation, exit server\r\n");
+    printf("\nUsage:\n");
+    printf("modulservice -c port -a addr [-o ownaddr] [-s]                \n");  
+    printf("                             (-na addr                           |\n");
+    printf("                              -setcl addr1 .. addr16             |\n");
+    printf("                              -getcl                             |\n");
+    printf("                              -reset                             |\n");
+    printf("                              -eerd addr len                     |\n");
+    printf("                              -eewr addr data1 .. dataN          |\n");
+    printf("                              -actval                            |\n");
+    printf("                              -setvaldo31_do do0 .. do30         |\n");
+    printf("                              -setvaldo31_sh sh0 .. sh14         |\n");
+    printf("                              -setvalsw8 do0 .. do7              |\n");
+    printf("                              -setvalsw16 led0 .. led7           |\n");
+    printf("                              -setvalrs485if data0 .. data31     |\n");
+    printf("                              -setvalpwm4 set0 pwm0 .. set3 pwm3 |\n");
+    printf("                              -info                              |\n");
+    printf("                              -inforange start stopp             |\n");
+    printf("                              -clockcalib addr                   |\n");
+    printf("                              -switchstate data                  |\n");
+    printf("                              -help                              |\n");
+    printf("                              -exit)                             \n");
+    printf("-c port: com1 com2 ..\n");
+    printf("-a addr: addr = address of module\n");
+    printf("-o addr: addr = our address, default:0\n");
+    printf("-s server mode, accept command from stdin\n");
+    printf("-na addr: set new address, addr = new address\n");
+    printf("-setcl addr1 .. addr16 : set client address list, addr1 = 1st client's address\n");
+    printf("-getcl: show client address list\n");
+    printf("-reset: reset module\n");
+    printf("-eerd addr len: read EEPROM data from offset addr with number len\n");
+    printf("-eewr addr data1 .. dataN: write EEPROM data from offset\n");
+    printf("-actval: read actual values from modul\n");
+    printf("-setvaldo31_do do0 .. do30: set value for dig out\n");
+    printf("-setvaldo31_sh sh0 .. sh14: set value for shader\n");
+    printf("-setvalsw8 do0 .. do7: set value for dig out\n");
+    printf("-setvalsw16 led0 .. led7: set value for led\n");
+    printf("-setvalrs485if data0 .. data31: set byte value for rs485if\n");
+    printf("-setvalpwm4 set0 pwm0 .. set3 pwm3: setX = command, pwmX = 16 bit value\n");
+    printf("-info: read type and version string from modul\n");
+    printf("-inforange start stopp: read type and version string from modul start to stopp address\n");	
+    printf("-clockcalib: clock calibration\n");
+    printf("-switchstate: generate a switch pressed or released event (ReqSwitchState, -a addr is the client)\n");
+    printf("-help: print this help\n");
+    printf("-exit: nop operation, exit server\n");
 }
