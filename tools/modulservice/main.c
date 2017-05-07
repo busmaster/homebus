@@ -653,6 +653,7 @@ int main(int argc, char *argv[]) {
         default:
             break;
         }
+        fflush(stdout);
     } while (server_run);
 
     if (handle != -1) {
