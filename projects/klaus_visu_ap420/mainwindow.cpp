@@ -74,6 +74,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(meventmon, SIGNAL(busEvent(struct eventmonitor::event *)), this, SLOT(onBusEvent(struct eventmonitor::event *)));
 
     mservice = new moduleservice;
+    connect(mservice, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
+            this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
 
     uiEg = new egwindow(this, io);
     uiOg = new ogwindow(this, io);
@@ -81,6 +83,7 @@ MainWindow::MainWindow(QWidget *parent) :
     uiKueche = new kuechewindow(this, io);
     uiGarage = new garagewindow(this, io);
     uiSetup = new setupwindow(this, io);
+    uiSmartmeter = new smartmeterwindow(this);
 }
 
 MainWindow::~MainWindow() {
@@ -97,6 +100,10 @@ MainWindow::~MainWindow() {
     delete uiEg;
     delete uiOg;
     delete uiUg;
+    delete uiKueche;
+    delete uiGarage;
+    delete uiSetup;
+    delete uiSmartmeter;
     delete io;
 
     if (backlightIsAvailable) {
@@ -177,9 +184,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
   return false;
 }
 
-void MainWindow::onSendServiceCmd(const char *pCmd) {
+void MainWindow::onSendServiceCmd(const struct moduleservice::cmd *cmd, QDialog *dialog) {
 
-    mservice->command(pCmd);
+//printf("MainWindow::onSendServiceCmd\n");
+    mservice->command(cmd, dialog);
 }
 
 void MainWindow::onBusEvent(eventmonitor::event *ev) {
@@ -310,6 +318,11 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     }
 }
 
+void MainWindow::onCmdConf(const struct moduleservice::result *result, QDialog *dialog) {
+
+    emit cmdConf(result, dialog);
+}
+
 void MainWindow::on_pushButtonEG_clicked() {
     uiEg->show();
 }
@@ -330,18 +343,10 @@ void MainWindow::on_pushButtonGarage_clicked() {
     uiGarage->show();
 }
 
-int MainWindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
-    size_t i;
-    int len;
-
-    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
-
-    for (i = 0; i < stateLen; i++) {
-        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
-    }
-    return len;
-}
-
 void MainWindow::on_pushButtonSetup_clicked() {
     uiSetup->show();
+}
+
+void MainWindow::on_pushButtonSmartMeter_clicked() {
+    uiSmartmeter->show();
 }

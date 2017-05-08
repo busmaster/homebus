@@ -77,6 +77,17 @@ public:
     bool socket_1;
     bool socket_2;
 
+
+    struct {
+        quint32 countA_plus;
+        quint32 countA_minus;
+        quint32 countR_plus;
+        quint32 countR_minus;
+        quint32 activePower_plus;
+        quint32 activePower_minus;
+        quint32 reactivePower_plus;
+        quint32 reactivePower_minus;
+    } smartmeter;
 };
 
 #endif // IOSTATE_H

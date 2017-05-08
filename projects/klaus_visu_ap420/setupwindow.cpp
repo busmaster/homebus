@@ -11,8 +11,13 @@ setupwindow::setupwindow(QWidget *parent, ioState *state) :
     ui->setupUi(this);
     isVisible = false;
     io = state;
-    connect(this, SIGNAL(serviceCmd(const char *)), parent, SLOT(onSendServiceCmd(const char *)));
-    connect(parent, SIGNAL(ioChanged(void)), this, SLOT(onIoStateChanged(void)));
+    connect(parent, SIGNAL(ioChanged(void)),
+            this, SLOT(onIoStateChanged(void)));
+    connect(this, SIGNAL(serviceCmd(const moduleservice::cmd *, QDialog *)),
+            parent, SLOT(onSendServiceCmd(const struct moduleservice::cmd *, QDialog *)));
+    connect(parent, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
+            this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
+
     doorbellState = false;
     ui->pushButtonDoorbell->setStyleSheet("background-color: grey");
     on_pushButtonDoorbell_pressed();
@@ -47,53 +52,65 @@ void setupwindow::onIoStateChanged(void) {
     }
 }
 
-int setupwindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
-    size_t i;
-    int len;
-
-    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
-
-    for (i = 0; i < stateLen; i++) {
-        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
-    }
-    return len;
-}
-
-
-
 void setupwindow::on_pushButtonDoorbell_pressed() {
 
-    const char *state;
-    char       command[100];
-//    std::cout << "pressed" << std::endl;
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSwitchstate;
+    command.destAddr = 240;
+    command.ownAddr = 100;
 
     if (doorbellState) {
-        ui->pushButtonDoorbell->setText(QString("Glocke\nAUS"));
-        state = "0";
-        doorbellState = false;
+        command.data.switchstate = 0;
     } else {
-        ui->pushButtonDoorbell->setText(QString("Glocke\nEIN"));
-        state = "1";
-        doorbellState = true;
+        command.data.switchstate = 1;
     }
 
-    snprintf(command, sizeof(command), "-a 240 -o 100 -switchstate %s", state);
+    ui->pushButtonDoorbell->setText(QString("Glocke\n"));
+    currentButton = ui->pushButtonDoorbell;
 
-    emit serviceCmd(command);
+    emit serviceCmd(&command, this);
 }
 
 void setupwindow::on_pushButtonInternet_clicked() {
 
-    char    command[100];
-    uint8_t doState[31];
+    struct moduleservice::cmd command;
 
-    ui->pushButtonInternet->setText(QString("Internet\n"));
-    memset(doState, 0, sizeof(doState));
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->socket_1) {
-        doState[27] = 3; // on
+        command.data.setvaldo31_do.setval[27] = 3; // on
+        currentButtonState = false;
     } else {
-        doState[27] = 2; // off
+        command.data.setvaldo31_do.setval[27] = 2; // off
+        currentButtonState = true;
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    emit serviceCmd(command);
+    ui->pushButtonInternet->setText(QString("Internet\n"));
+    currentButton = ui->pushButtonInternet;
+
+    emit serviceCmd(&command, this);
+}
+
+void setupwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
+
+    if ((dialog == this) && (res->data.state == moduleservice::eCmdOk)) {
+        if (currentButton == ui->pushButtonInternet) {
+            if (currentButtonState) {
+                currentButton->setText(QString("Internet\nEIN"));
+            } else {
+                currentButton->setText(QString("Internet\nAUS"));
+            }
+        } else if (currentButton == ui->pushButtonDoorbell) {
+            if (doorbellState) {
+                currentButton->setText(QString("Glocke\nAUS"));
+                doorbellState = false;
+            } else {
+                currentButton->setText(QString("Glocke\nEIN"));
+                doorbellState = true;
+            }
+        }
+//        printf("setupwindow cmdconf %d\n", res->data.state);
+    }
 }

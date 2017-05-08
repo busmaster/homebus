@@ -10,8 +10,12 @@ egwindow::egwindow(QWidget *parent, ioState *state) :
     ui->setupUi(this);
     io = state;
     isVisible = false;
-    connect(parent, SIGNAL(ioChanged(void)), this, SLOT(onIoStateChanged(void)));
-    connect(this, SIGNAL(serviceCmd(const char *)), parent, SLOT(onSendServiceCmd(const char *)));
+    connect(parent, SIGNAL(ioChanged(void)),
+            this, SLOT(onIoStateChanged(void)));
+    connect(this, SIGNAL(serviceCmd(const moduleservice::cmd *, QDialog *)),
+            parent, SLOT(onSendServiceCmd(const struct moduleservice::cmd *, QDialog *)));
+    connect(parent, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
+            this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
 }
 
 egwindow::~egwindow() {
@@ -84,144 +88,182 @@ void egwindow::onIoStateChanged(void) {
     }
 }
 
-int egwindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
-    size_t i;
-    int len;
-
-    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
-
-    for (i = 0; i < stateLen; i++) {
-        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
-    }
-    return len;
-}
-
 void egwindow::on_pushButtonLightGang_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 241;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->egState.detail.lightGang == 0) {
-        doState[25] = 3; // on
+        command.data.setvaldo31_do.setval[25] = 3; // on
     } else {
-        doState[25] = 2; // off
+        command.data.setvaldo31_do.setval[25] = 2; // off
     }
-    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightGang->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    ui->pushButtonLightGang->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLightGang;
+    currentButtonState = (io->egState.detail.lightGang == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
 }
 
 void egwindow::on_pushButtonLightWohn_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->egState.detail.lightWohn == 0) {
-        doState[13] = 3; // on
+        command.data.setvaldo31_do.setval[13] = 3; // on
     } else {
-        doState[13] = 2; // off
+        command.data.setvaldo31_do.setval[13] = 2; // off
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightWohn->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    ui->pushButtonLightWohn->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLightWohn;
+    currentButtonState = (io->egState.detail.lightWohn == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
 }
 
 void egwindow::on_pushButtonLightEss_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->egState.detail.lightEss == 0) {
-        doState[15] = 3; // on
+        command.data.setvaldo31_do.setval[15] = 3; // on
     } else {
-        doState[15] = 2; // off
+        command.data.setvaldo31_do.setval[15] = 2; // off
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightEss->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    ui->pushButtonLightEss->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLightEss;
+    currentButtonState = (io->egState.detail.lightEss == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
 }
 
 void egwindow::on_pushButtonLightVorraum_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->egState.detail.lightVorraum == 0) {
-        doState[16] = 3; // on
+        command.data.setvaldo31_do.setval[16] = 3; // on
     } else {
-        doState[16] = 2; // off
+        command.data.setvaldo31_do.setval[16] = 2; // off
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightVorraum->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    ui->pushButtonLightVorraum->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLightVorraum;
+    currentButtonState = (io->egState.detail.lightVorraum == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
 }
 
 void egwindow::on_pushButtonLightArbeit_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 241;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->egState.detail.lightArbeit == 0) {
-        doState[26] = 3; // on
+        command.data.setvaldo31_do.setval[26] = 3; // on
     } else {
-        doState[26] = 2; // off
+        command.data.setvaldo31_do.setval[26] = 2; // off
     }
-    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightArbeit->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    ui->pushButtonLightArbeit->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLightArbeit;
+    currentButtonState = (io->egState.detail.lightArbeit == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
 }
 
 void egwindow::on_pushButtonLightWC_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->egState.detail.lightWC == 0) {
-        doState[17] = 3; // on
+        command.data.setvaldo31_do.setval[17] = 3; // on
     } else {
-        doState[17] = 2; // off
+        command.data.setvaldo31_do.setval[17] = 2; // off
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightWC->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    ui->pushButtonLightWC->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLightWC;
+    currentButtonState = (io->egState.detail.lightWC == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
 }
 
 void egwindow::on_pushButtonLightTerrasse_pressed() {
-    char    command[250];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->egState.detail.lightTerrasse == 0) {
-        doState[20] = 3; // on
+        command.data.setvaldo31_do.setval[20] = 3; // on
     } else {
-        doState[20] = 2; // off
+        command.data.setvaldo31_do.setval[20] = 2; // off
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightTerrasse->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    ui->pushButtonLightTerrasse->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLightTerrasse;
+    currentButtonState = (io->egState.detail.lightTerrasse == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
 }
 
-
-
 void egwindow::on_pushButtonLightWohnLese_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+
+    memset(&command.data, 0, sizeof(command.data));
     if (io->egState.detail.lightWohnLese == 0) {
-        doState[14] = 3; // on
+        command.data.setvaldo31_do.setval[14] = 3; // on
     } else {
-        doState[14] = 2; // off
+        command.data.setvaldo31_do.setval[14] = 2; // off
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightWohnLese->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    ui->pushButtonLightWohnLese->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLightWohnLese;
+    currentButtonState = (io->egState.detail.lightWohnLese == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
+}
+
+void egwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
+
+    if ((dialog == this) && (res->data.state == moduleservice::eCmdOk)) {
+        if (currentButtonState) {
+            currentButton->setStyleSheet("background-color: green");
+        } else {
+            currentButton->setStyleSheet("background-color: yellow");
+        }
+//        printf("egwindow cmdconf %d\n", res->data.state);
+    }
 }

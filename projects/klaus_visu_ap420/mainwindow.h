@@ -14,6 +14,7 @@
 #include "kuechewindow.h"
 #include "garagewindow.h"
 #include "setupwindow.h"
+#include "smartmeterwindow.h"
 #include "iostate.h"
 #include "moduleservice.h"
 #include "eventmonitor.h"
@@ -35,9 +36,10 @@ public:
 
 signals:
     void ioChanged(void);
+    void cmdConf(const struct moduleservice::result *, QDialog *);
 
 public slots:
-    void onSendServiceCmd(const char *cmd);
+    void onSendServiceCmd(const struct moduleservice::cmd *, QDialog *);
 
 private slots:
     void scrTimerEvent();
@@ -48,12 +50,13 @@ private slots:
     void on_pushButtonKueche_clicked();
     void on_pushButtonGarage_clicked();
     void on_pushButtonSetup_clicked();
+    void on_pushButtonSmartMeter_clicked();
+
     void onBusEvent(struct eventmonitor::event *);
+    void onCmdConf(const struct moduleservice::result *, QDialog *);
+
 
 private:
-
-    int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
-
     Ui::MainWindow *ui;
     egwindow *uiEg;
     ogwindow *uiOg;
@@ -61,6 +64,7 @@ private:
     kuechewindow *uiKueche;
     garagewindow *uiGarage;
     setupwindow *uiSetup;
+    smartmeterwindow *uiSmartmeter;
 
     QTimer *scrTimer;
     QTimer *cycTimer;

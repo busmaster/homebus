@@ -249,6 +249,23 @@ font: 11pt &quot;Sans&quot;;</string>
 lungen</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="pushButtonSmartMeter">
+   <property name="geometry">
+    <rect>
+     <x>361</x>
+     <y>86</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 255, 255);</string>
+   </property>
+   <property name="text">
+    <string>Strom-
+zähler</string>
+   </property>
+  </widget>
  </widget>
  <customwidgets>
   <customwidget>

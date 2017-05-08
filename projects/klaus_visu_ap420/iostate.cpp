@@ -8,5 +8,6 @@ ioState::ioState(QObject *parent) : QObject(parent) {
    kuecheState.sum = 0;
    socket_1 = false;
    socket_2 = false;
+   memset(&smartmeter, 0, sizeof(smartmeter));
 }
 
