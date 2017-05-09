@@ -93,130 +93,55 @@ void ogwindow::onIoStateChanged(void) {
     }
 }
 
-void ogwindow::on_pushButtonLightAnna_pressed() {
+void ogwindow::sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState) {
 
     struct moduleservice::cmd command;
 
     command.type = moduleservice::eSetvaldo31_do;
-    command.destAddr = 241;
+    command.destAddr = destAddr;
 
     memset(&command.data, 0, sizeof(command.data));
-    if (io->ogState.detail.lightAnna == 0) {
-        command.data.setvaldo31_do.setval[27] = 3; // on
+    currentButtonState = currState;
+    if (currState) {
+        command.data.setvaldo31_do.setval[doNr] = 2; // off
     } else {
-        command.data.setvaldo31_do.setval[27] = 2; // off
+        command.data.setvaldo31_do.setval[doNr] = 3; // on
     }
 
-    ui->pushButtonLightAnna->setStyleSheet("background-color: grey");
-    currentButton = ui->pushButtonLightAnna;
-    currentButtonState = (io->ogState.detail.lightAnna == 0) ? false : true;
+    button->setStyleSheet("background-color: grey");
+    currentButton = button;
 
     emit serviceCmd(&command, this);
+}
+
+void ogwindow::on_pushButtonLightAnna_pressed() {
+
+    sendDo31Cmd(241, 27, ui->pushButtonLightAnna, io->ogState.detail.lightAnna != 0);
 }
 
 void ogwindow::on_pushButtonLightSeverin_pressed() {
 
-    struct moduleservice::cmd command;
-
-    command.type = moduleservice::eSetvaldo31_do;
-    command.destAddr = 241;
-
-    memset(&command.data, 0, sizeof(command.data));
-    if (io->ogState.detail.lightSeverin == 0) {
-        command.data.setvaldo31_do.setval[28] = 3; // on
-    } else {
-        command.data.setvaldo31_do.setval[28] = 2; // off
-    }
-
-    ui->pushButtonLightSeverin->setStyleSheet("background-color: grey");
-    currentButton = ui->pushButtonLightSeverin;
-    currentButtonState = (io->ogState.detail.lightSeverin == 0) ? false : true;
-
-    emit serviceCmd(&command, this);
+    sendDo31Cmd(241, 28, ui->pushButtonLightSeverin, io->ogState.detail.lightSeverin != 0);
 }
 
 void ogwindow::on_pushButtonLightWC_pressed() {
 
-    struct moduleservice::cmd command;
-
-    command.type = moduleservice::eSetvaldo31_do;
-    command.destAddr = 241;
-
-    memset(&command.data, 0, sizeof(command.data));
-    if (io->ogState.detail.lightWC == 0) {
-        command.data.setvaldo31_do.setval[29] = 3; // on
-    } else {
-        command.data.setvaldo31_do.setval[29] = 2; // off
-    }
-
-    ui->pushButtonLightWC->setStyleSheet("background-color: grey");
-    currentButton = ui->pushButtonLightWC;
-    currentButtonState = (io->ogState.detail.lightWC == 0) ? false : true;
-
-    emit serviceCmd(&command, this);
+    sendDo31Cmd(241, 29, ui->pushButtonLightWC, io->ogState.detail.lightWC != 0);
 }
 
 void ogwindow::on_pushButtonLightBad_pressed() {
 
-    struct moduleservice::cmd command;
-
-    command.type = moduleservice::eSetvaldo31_do;
-    command.destAddr = 240;
-
-    memset(&command.data, 0, sizeof(command.data));
-    if (io->ogState.detail.lightBad == 0) {
-        command.data.setvaldo31_do.setval[12] = 3; // on
-    } else {
-        command.data.setvaldo31_do.setval[12] = 2; // off
-    }
-
-    ui->pushButtonLightBad->setStyleSheet("background-color: grey");
-    currentButton = ui->pushButtonLightBad;
-    currentButtonState = (io->ogState.detail.lightBad == 0) ? false : true;
-
-    emit serviceCmd(&command, this);
+    sendDo31Cmd(240, 12, ui->pushButtonLightBad, io->ogState.detail.lightBad != 0);
 }
 
 void ogwindow::on_pushButtonLightBadSpiegel_pressed() {
 
-    struct moduleservice::cmd command;
-
-    command.type = moduleservice::eSetvaldo31_do;
-    command.destAddr = 240;
-
-    memset(&command.data, 0, sizeof(command.data));
-    if (io->ogState.detail.lightBadSpiegel == 0) {
-        command.data.setvaldo31_do.setval[10] = 3; // on
-    } else {
-        command.data.setvaldo31_do.setval[10] = 2; // off
-    }
-
-    ui->pushButtonLightBadSpiegel->setStyleSheet("background-color: grey");
-    currentButton = ui->pushButtonLightBadSpiegel;
-    currentButtonState = (io->ogState.detail.lightBadSpiegel == 0) ? false : true;
-
-    emit serviceCmd(&command, this);
+    sendDo31Cmd(240, 10, ui->pushButtonLightBadSpiegel, io->ogState.detail.lightBadSpiegel != 0);
 }
 
 void ogwindow::on_pushButtonLightVorraum_pressed() {
 
-    struct moduleservice::cmd command;
-
-    command.type = moduleservice::eSetvaldo31_do;
-    command.destAddr = 240;
-
-    memset(&command.data, 0, sizeof(command.data));
-    if (io->ogState.detail.lightVorraum == 0) {
-        command.data.setvaldo31_do.setval[11] = 3; // on
-    } else {
-        command.data.setvaldo31_do.setval[11] = 2; // off
-    }
-
-    ui->pushButtonLightVorraum->setStyleSheet("background-color: grey");
-    currentButton = ui->pushButtonLightVorraum;
-    currentButtonState = (io->ogState.detail.lightVorraum == 0) ? false : true;
-
-    emit serviceCmd(&command, this);
+    sendDo31Cmd(240, 11, ui->pushButtonLightVorraum, io->ogState.detail.lightVorraum != 0);
 }
 
 void ogwindow::on_pushButtonLightStiege_pressed() {
@@ -254,44 +179,12 @@ void ogwindow::on_pushButtonLightStiege_pressed() {
 
 void ogwindow::on_pushButtonLightSchlaf_pressed() {
 
-    struct moduleservice::cmd command;
-
-    command.type = moduleservice::eSetvaldo31_do;
-    command.destAddr = 240;
-
-    memset(&command.data, 0, sizeof(command.data));
-    if (io->ogState.detail.lightSchlaf == 0) {
-        command.data.setvaldo31_do.setval[8] = 3; // on
-    } else {
-        command.data.setvaldo31_do.setval[8] = 2; // off
-    }
-
-    ui->pushButtonLightSchlaf->setStyleSheet("background-color: grey");
-    currentButton = ui->pushButtonLightSchlaf;
-    currentButtonState = (io->ogState.detail.lightSchlaf == 0) ? false : true;
-
-    emit serviceCmd(&command, this);
+    sendDo31Cmd(240, 8, ui->pushButtonLightSchlaf, io->ogState.detail.lightSchlaf != 0);
 }
 
 void ogwindow::on_pushButtonLightSchrank_pressed() {
 
-    struct moduleservice::cmd command;
-
-    command.type = moduleservice::eSetvaldo31_do;
-    command.destAddr = 240;
-
-    memset(&command.data, 0, sizeof(command.data));
-    if (io->ogState.detail.lightSchrank == 0) {
-        command.data.setvaldo31_do.setval[7] = 3; // on
-    } else {
-        command.data.setvaldo31_do.setval[7] = 2; // off
-    }
-
-    ui->pushButtonLightSchrank->setStyleSheet("background-color: grey");
-    currentButton = ui->pushButtonLightSchrank;
-    currentButtonState = (io->ogState.detail.lightSchrank == 0) ? false : true;
-
-    emit serviceCmd(&command, this);
+    sendDo31Cmd(240, 7, ui->pushButtonLightSchrank, io->ogState.detail.lightSchrank != 0);
 }
 
 void ogwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {

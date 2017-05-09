@@ -38,7 +38,9 @@ private slots:
     void on_verticalSlider_valueChanged(int value);
 
 private:
-//    int pwm4Cmd(int pwm41Addr, uint16_t *pPwmState, uint8_t *set, char *pCmd, size_t cmdLen);
+    void sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState);
+    void sendPwm4Cmd(quint8 destAddr, quint8 pwmNr, QPushButton *button, bool currState);
+
     Ui::kuechewindow *ui;
     ioState *io;
     bool isVisible;

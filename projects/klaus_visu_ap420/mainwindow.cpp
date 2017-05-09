@@ -186,7 +186,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 
 void MainWindow::onSendServiceCmd(const struct moduleservice::cmd *cmd, QDialog *dialog) {
 
-//printf("MainWindow::onSendServiceCmd\n");
     mservice->command(cmd, dialog);
 }
 

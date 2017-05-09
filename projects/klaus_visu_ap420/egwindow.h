@@ -36,6 +36,7 @@ private slots:
     void on_pushButtonLightWohnLese_pressed();
 
 private:
+    void sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState);
     Ui::egwindow *ui;
     ioState *io;
     bool isVisible;

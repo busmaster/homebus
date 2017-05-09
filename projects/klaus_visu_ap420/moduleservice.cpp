@@ -28,14 +28,14 @@ void moduleservice::readStdOut() {
 
 //   std::cout << QString(modulservice->readAllStandardOutput()).toUtf8().constData() << std::endl;
 
-//   int i;
+   int i;
    bool doEmit = false;
    QByteArray output = modulservice->readAllStandardOutput();
    QList<QByteArray> lines = output.split('\n');
 
-//   for (i = 0; i < lines.size(); i++) {
-//       printf("%s\n", lines[i].data());
-//   }
+   for (i = 0; i < lines.size(); i++) {
+       printf("%s\n", lines[i].data());
+   }
 
 
    if (resultState == eRsWaitForState) {
@@ -51,24 +51,24 @@ void moduleservice::readStdOut() {
        resultState = eRsIdle;
        res.type = eActvalState;
        if ((lines.size() >= 10) && (qstrcmp(lines[9].data(), "OK") == 0)) {
-       }
-       if (qstrcmp(lines[0].data(), "devType: SMIF") == 0) {
-           res.data.actval.type = eDevSmif;
-           if ((lines.size() >= 10) &&
-               (qstrcmp(lines[9].data(), "OK") == 0)) {
-               res.data.state = eCmdOk;
-               res.data.actval.data.smif.a_plus = strtol(strchr(lines[1].data(), ' ') + 1, 0, 0);
-               res.data.actval.data.smif.a_minus = strtol(strchr(lines[2].data(), ' ') + 1, 0, 0);
-               res.data.actval.data.smif.r_plus = strtol(strchr(lines[3].data(), ' ') + 1, 0, 0);
-               res.data.actval.data.smif.r_minus = strtol(strchr(lines[4].data(), ' ') + 1, 0, 0);
-               res.data.actval.data.smif.p_plus = strtol(strchr(lines[5].data(), ' ') + 1, 0, 0);
-               res.data.actval.data.smif.p_minus = strtol(strchr(lines[6].data(), ' ') + 1, 0, 0);
-               res.data.actval.data.smif.q_plus = strtol(strchr(lines[7].data(), ' ') + 1, 0, 0);
-               res.data.actval.data.smif.q_minus = strtol(strchr(lines[8].data(), ' ') + 1, 0, 0);
-           } else {
-               res.data.state = eCmdError;
+           if (qstrcmp(lines[0].data(), "devType: SMIF") == 0) {
+               res.data.actval.type = eDevSmif;
+               if ((lines.size() >= 10) &&
+                   (qstrcmp(lines[9].data(), "OK") == 0)) {
+                   res.data.state = eCmdOk;
+                   res.data.actval.data.smif.a_plus = strtol(strchr(lines[1].data(), ' ') + 1, 0, 0);
+                   res.data.actval.data.smif.a_minus = strtol(strchr(lines[2].data(), ' ') + 1, 0, 0);
+                   res.data.actval.data.smif.r_plus = strtol(strchr(lines[3].data(), ' ') + 1, 0, 0);
+                   res.data.actval.data.smif.r_minus = strtol(strchr(lines[4].data(), ' ') + 1, 0, 0);
+                   res.data.actval.data.smif.p_plus = strtol(strchr(lines[5].data(), ' ') + 1, 0, 0);
+                   res.data.actval.data.smif.p_minus = strtol(strchr(lines[6].data(), ' ') + 1, 0, 0);
+                   res.data.actval.data.smif.q_plus = strtol(strchr(lines[7].data(), ' ') + 1, 0, 0);
+                   res.data.actval.data.smif.q_minus = strtol(strchr(lines[8].data(), ' ') + 1, 0, 0);
+               } else {
+                   res.data.state = eCmdError;
+               }
+               doEmit = true;
            }
-           doEmit = true;
        }
    }
    if (doEmit) {
