@@ -689,7 +689,8 @@ static bool ModuleSetValue(uint8_t address, TBusDevReqSetValue *pSetVal) {
         ret = BusCheck();
         if (ret == BUS_MSG_OK) {
             pBusMsg = BusMsgBufGet();
-            if ((pBusMsg->type == eBusDevRespSetValue) &&
+            if ((pBusMsg->type == eBusDevRespSetValue)        &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR) &&
                 (pBusMsg->senderAddr == address)) {
                 responseOk = true;
             }
@@ -731,7 +732,8 @@ static bool ModuleInfo(uint8_t address, TBusDevRespInfo *pBuf, uint16_t resp_tim
         if (ret == BUS_MSG_OK) {
             startTimeMs = GetTickCount();
             pBusMsg = BusMsgBufGet();
-            if ((pBusMsg->type == eBusDevRespInfo) &&
+            if ((pBusMsg->type == eBusDevRespInfo)            &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR) &&
                 (pBusMsg->senderAddr == address)) {
                 responseOk = true;
             }
@@ -785,7 +787,8 @@ static bool ModuleDiag(uint8_t address, TBusDevRespDiag *pBuf, uint16_t resp_tim
         if (ret == BUS_MSG_OK) {
             startTimeMs = GetTickCount();
             pBusMsg = BusMsgBufGet();
-            if ((pBusMsg->type == eBusDevRespDiag) &&
+            if ((pBusMsg->type == eBusDevRespDiag)            &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR) &&
                 (pBusMsg->senderAddr == address)) {
                 responseOk = true;
             }
@@ -828,7 +831,8 @@ static bool ModuleGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) 
         ret = BusCheck();
         if (ret == BUS_MSG_OK) {
             pBusMsg = BusMsgBufGet();
-            if ((pBusMsg->type == eBusDevRespActualValue) &&
+            if ((pBusMsg->type == eBusDevRespActualValue)     &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR) &&
                 (pBusMsg->senderAddr == address)) {
                 responseOk = true;
             }
