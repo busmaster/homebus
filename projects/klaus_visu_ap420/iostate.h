@@ -76,7 +76,6 @@ public:
     /* switchable sockets Technik */
     bool socket_1;
     bool socket_2;
-
 };
 
 #endif // IOSTATE_H

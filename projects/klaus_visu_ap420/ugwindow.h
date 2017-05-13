@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <QDialog>
+#include "moduleservice.h"
 #include "iostate.h"
 
 namespace Ui {
@@ -19,9 +20,10 @@ public:
     void hide(void);
 
 signals:
-    void serviceCmd(const char *);
+    void serviceCmd(const moduleservice::cmd *, QDialog *);
 
 private slots:
+    void onCmdConf(const struct moduleservice::result *, QDialog *);
     void onIoStateChanged(void);
 
     void on_pushButtonLightStiege_pressed();
@@ -32,10 +34,14 @@ private slots:
     void on_pushButtonLightArbeit_pressed();
 
 private:
-    int do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen);
+    void sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState);
+
     Ui::ugwindow *ui;
     ioState *io;
     bool isVisible;
+
+    QPushButton *currentButton;
+    bool        currentButtonState;
 };
 
 #endif // UGWINDOW_H

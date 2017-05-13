@@ -10,8 +10,13 @@ garagewindow::garagewindow(QWidget *parent, ioState *state) :
     ui->setupUi(this);
     io = state;
     isVisible = false;
-    connect(parent, SIGNAL(ioChanged(void)), this, SLOT(onIoStateChanged(void)));
-    connect(this, SIGNAL(serviceCmd(const char *)), parent, SLOT(onSendServiceCmd(const char *)));
+    connect(parent, SIGNAL(ioChanged(void)),
+            this, SLOT(onIoStateChanged(void)));
+    connect(this, SIGNAL(serviceCmd(const moduleservice::cmd *, QDialog *)),
+            parent, SLOT(onSendServiceCmd(const struct moduleservice::cmd *, QDialog *)));
+    connect(parent, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
+            this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
+
 }
 
 garagewindow::~garagewindow() {
@@ -47,30 +52,35 @@ void garagewindow::onIoStateChanged(void) {
     }
 }
 
-int garagewindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
-    size_t i;
-    int len;
+void garagewindow::on_pushButtonLight_pressed() {
 
-    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
+    struct moduleservice::cmd command;
 
-    for (i = 0; i < stateLen; i++) {
-        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+
+    memset(&command.data, 0, sizeof(command.data));
+    if (io->garageState.detail.light == 0) {
+        command.data.setvaldo31_do.setval[9] = 3; // on
+    } else {
+        command.data.setvaldo31_do.setval[9] = 2; // off
     }
-    return len;
+
+    ui->pushButtonLight->setStyleSheet("background-color: grey");
+    currentButton = ui->pushButtonLight;
+    currentButtonState = (io->garageState.detail.light == 0) ? false : true;
+
+    emit serviceCmd(&command, this);
 }
 
-void garagewindow::on_pushButtonLight_pressed() {
-    char    command[100];
-    uint8_t doState[31];
+void garagewindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
 
-    memset(doState, 0, sizeof(doState));
-    if (io->garageState.detail.light == 0) {
-        doState[9] = 3; // on
-    } else {
-        doState[9] = 2; // off
+    if ((dialog == this) && (res->data.state == moduleservice::eCmdOk)) {
+        if (currentButtonState) {
+            currentButton->setStyleSheet("background-color: green");
+        } else {
+            currentButton->setStyleSheet("background-color: yellow");
+        }
+//        printf("garagewindow cmdconf %d\n", res->data.state);
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLight->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
 }

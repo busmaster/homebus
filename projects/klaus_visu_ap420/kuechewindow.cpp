@@ -10,8 +10,12 @@ kuechewindow::kuechewindow(QWidget *parent, ioState *state) :
     ui->setupUi(this);
     io = state;
     isVisible = false;
-    connect(parent, SIGNAL(ioChanged(void)), this, SLOT(onIoStateChanged(void)));
-    connect(this, SIGNAL(serviceCmd(const char *)), parent, SLOT(onSendServiceCmd(const char *)));
+    connect(parent, SIGNAL(ioChanged(void)),
+            this, SLOT(onIoStateChanged(void)));
+    connect(this, SIGNAL(serviceCmd(const moduleservice::cmd *, QDialog *)),
+            parent, SLOT(onSendServiceCmd(const struct moduleservice::cmd *, QDialog *)));
+    connect(parent, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
+            this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
 
 }
 
@@ -79,165 +83,116 @@ void kuechewindow::onIoStateChanged(void) {
     }
 }
 
-int kuechewindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
-    size_t i;
-    int len;
+void kuechewindow::sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState) {
 
-    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
+    struct moduleservice::cmd command;
 
-    for (i = 0; i < stateLen; i++) {
-        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = destAddr;
+
+    memset(&command.data, 0, sizeof(command.data));
+    currentButtonState = currState;
+    if (currState) {
+        command.data.setvaldo31_do.setval[doNr] = 2; // off
+    } else {
+        command.data.setvaldo31_do.setval[doNr] = 3; // on
     }
-    return len;
-}
 
-int kuechewindow::pwm4Cmd(int pwm4Addr, uint16_t *pwmVal, uint8_t *set, char *pCmd, size_t cmdLen) {
-    size_t i;
-    int len;
+    button->setStyleSheet("background-color: grey");
+    currentButton = button;
 
-    len = snprintf(pCmd, cmdLen, "-a %d -setvalpwm4", pwm4Addr);
-
-    for (i = 0; i < 4; i++) {
-        len += snprintf(pCmd + len, cmdLen - len, " %d %d", *(set + i), *(pwmVal + i));
-    }
-    return len;
+    emit serviceCmd(&command, this);
 }
 
 void kuechewindow::on_pushButtonLight_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->kuecheState.detail.light == 0) {
-        doState[19] = 3; // on
-    } else {
-        doState[19] = 2; // off
-    }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLight->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendDo31Cmd(240, 19, ui->pushButtonLight, io->kuecheState.detail.light != 0);
 }
 
 void kuechewindow::on_pushButtonLightWand_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->kuecheState.detail.lightWand == 0) {
-        doState[30] = 3; // on
-    } else {
-        doState[30] = 2; // off
-    }
-    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightWand->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendDo31Cmd(241, 30, ui->pushButtonLightWand, io->kuecheState.detail.lightWand != 0);
 }
 
 void kuechewindow::on_pushButtonLightSpeis_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->kuecheState.detail.lightSpeis == 0) {
-        doState[24] = 3; // on
-    } else {
-        doState[24] = 2; // off
-    }
-    do31Cmd(241, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightSpeis->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendDo31Cmd(241, 24, ui->pushButtonLightSpeis, io->kuecheState.detail.lightSpeis != 0);
 }
 
-void kuechewindow::on_pushButtonLightGeschirrspueler_pressed() {
-    char     command[100];
-    uint16_t pwm[4];
-    uint8_t  set[4];
+void kuechewindow::sendPwm4Cmd(quint8 addr, quint8 pwmNr, QPushButton *button, bool currState) {
 
-    memset(pwm, 0, sizeof(pwm));
-    memset(set, 0, sizeof(set));
-    if (io->kuecheState.detail.lightGeschirrspueler == 0) {
-        set[0] = 1; // on
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvalpwm4;
+    command.destAddr = addr;
+
+    memset(command.data.setvalpwm4.set, 0, sizeof(command.data.setvalpwm4.set));
+    memset(command.data.setvalpwm4.pwm, 0, sizeof(command.data.setvalpwm4.pwm));
+
+    currentButtonState = currState;
+    if (currState) {
+        command.data.setvalpwm4.set[pwmNr] = 3; // off
     } else {
-        set[0] = 3; // off
+        command.data.setvalpwm4.set[pwmNr] = 1; // on
     }
-    pwm4Cmd(239, pwm, set, command, sizeof(command));
-    ui->pushButtonLightGeschirrspueler->setStyleSheet("background-color: grey");
 
-    emit serviceCmd(command);
+    button->setStyleSheet("background-color: grey");
+    currentButton = button;
+
+    emit serviceCmd(&command, this);
+}
+
+
+
+void kuechewindow::on_pushButtonLightGeschirrspueler_pressed() {
+
+    sendPwm4Cmd(239, 0, ui->pushButtonLightGeschirrspueler, io->kuecheState.detail.lightGeschirrspueler != 0);
 }
 
 void kuechewindow::on_pushButtonLightAbwasch_pressed() {
-    char     command[100];
-    uint16_t pwm[4];
-    uint8_t  set[4];
 
-    memset(pwm, 0, sizeof(pwm));
-    memset(set, 0, sizeof(set));
-    if (io->kuecheState.detail.lightAbwasch == 0) {
-        set[1] = 1; // on
-    } else {
-        set[1] = 3; // off
-    }
-    pwm4Cmd(239, pwm, set, command, sizeof(command));
-    ui->pushButtonLightAbwasch->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendPwm4Cmd(239, 1, ui->pushButtonLightAbwasch, io->kuecheState.detail.lightAbwasch != 0);
 }
 
 void kuechewindow::on_pushButtonLightKaffee_pressed() {
-    char     command[100];
-    uint16_t pwm[4];
-    uint8_t  set[4];
 
-    memset(pwm, 0, sizeof(pwm));
-    memset(set, 0, sizeof(set));
-    if (io->kuecheState.detail.lightKaffee == 0) {
-        set[2] = 1; // on
-    } else {
-        set[2] = 3; // off
-    }
-    pwm4Cmd(239, pwm, set, command, sizeof(command));
-    ui->pushButtonLightKaffee->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendPwm4Cmd(239, 2, ui->pushButtonLightKaffee, io->kuecheState.detail.lightKaffee != 0);
 }
 
 void kuechewindow::on_pushButtonLightDunstabzug_pressed() {
-    char     command[100];
-    uint16_t pwm[4];
-    uint8_t  set[4];
 
-    memset(pwm, 0, sizeof(pwm));
-    memset(set, 0, sizeof(set));
-    if (io->kuecheState.detail.lightDunstabzug == 0) {
-        set[3] = 1; // on
-    } else {
-        set[3] = 3; // off
-    }
-    pwm4Cmd(239, pwm, set, command, sizeof(command));
-    ui->pushButtonLightDunstabzug->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendPwm4Cmd(239, 3, ui->pushButtonLightDunstabzug, io->kuecheState.detail.lightDunstabzug != 0);
 }
 
-void kuechewindow::on_verticalSlider_valueChanged(int value)
-{
-    char     command[100];
-    uint16_t pwm[4];
-    uint8_t  set[4];
+void kuechewindow::on_verticalSlider_valueChanged(int value) {
 
-    pwm[0] = value;
-    pwm[1] = value;
-    pwm[2] = value;
-    pwm[3] = value;
-    set[0] = 2;
-    set[1] = 2;
-    set[2] = 2;
-    set[3] = 2;
-    pwm4Cmd(239, pwm, set, command, sizeof(command));
+    struct moduleservice::cmd command;
 
-    emit serviceCmd(command);
+    command.type = moduleservice::eSetvalpwm4;
+    command.destAddr = 239;
+
+    command.data.setvalpwm4.set[0] = 2;
+    command.data.setvalpwm4.set[1] = 2;
+    command.data.setvalpwm4.set[2] = 2;
+    command.data.setvalpwm4.set[3] = 2;
+    command.data.setvalpwm4.pwm[0] = value;
+    command.data.setvalpwm4.pwm[1] = value;
+    command.data.setvalpwm4.pwm[2] = value;
+    command.data.setvalpwm4.pwm[3] = value;
+
+    currentButton = 0;
+
+    emit serviceCmd(&command, this);
+}
+
+void kuechewindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
+
+    if ((dialog == this) && currentButton && (res->data.state == moduleservice::eCmdOk))  {
+        if (currentButtonState) {
+            currentButton->setStyleSheet("background-color: green");
+        } else {
+            currentButton->setStyleSheet("background-color: yellow");
+        }
+//        printf("kuechewindow cmdconf %d\n", res->data.state);
+    }
 }

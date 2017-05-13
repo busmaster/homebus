@@ -23,7 +23,8 @@ SOURCES += main.cpp\
     statusled.cpp \
     eventmonitor.cpp \
     kuechewindow.cpp \
-    setupwindow.cpp
+    setupwindow.cpp \
+    smartmeterwindow.cpp
 
 HEADERS  += mainwindow.h \
     egwindow.h \
@@ -35,7 +36,8 @@ HEADERS  += mainwindow.h \
     statusled.h \
     eventmonitor.h \
     kuechewindow.h \
-    setupwindow.h
+    setupwindow.h \
+    smartmeterwindow.h
 
 FORMS    += \
     mainwindow.ui \
@@ -44,7 +46,8 @@ FORMS    += \
     ugwindow.ui \
     garagewindow.ui \
     kuechewindow.ui \
-    setupwindow.ui
+    setupwindow.ui \
+    smartmeterwindow.ui
 
 target.path += /root
 INSTALLS += target

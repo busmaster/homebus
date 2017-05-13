@@ -10,8 +10,12 @@ ugwindow::ugwindow(QWidget *parent, ioState *state) :
     ui->setupUi(this);
     io = state;
     isVisible = false;
-    connect(parent, SIGNAL(ioChanged(void)), this, SLOT(onIoStateChanged(void)));
-    connect(this, SIGNAL(serviceCmd(const char *)), parent, SLOT(onSendServiceCmd(const char *)));
+    connect(parent, SIGNAL(ioChanged(void)),
+            this, SLOT(onIoStateChanged(void)));
+    connect(this, SIGNAL(serviceCmd(const moduleservice::cmd *, QDialog *)),
+            parent, SLOT(onSendServiceCmd(const struct moduleservice::cmd *, QDialog *)));
+    connect(parent, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
+            this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
 }
 
 ugwindow::~ugwindow() {
@@ -70,113 +74,67 @@ void ugwindow::onIoStateChanged(void) {
     } else {
         ui->pushButtonLightStiege->setStyleSheet("background-color: yellow");
     }
-
 }
 
-int ugwindow::do31Cmd(int do31Addr, uint8_t *pDoState, size_t stateLen, char *pCmd, size_t cmdLen) {
-    size_t i;
-    int len;
+void ugwindow::sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState) {
 
-    len = snprintf(pCmd, cmdLen, "-a %d -setvaldo31_do", do31Addr);
+    struct moduleservice::cmd command;
 
-    for (i = 0; i < stateLen; i++) {
-        len += snprintf(pCmd + len, cmdLen - len, " %d", *(pDoState + i));
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = destAddr;
+
+    memset(&command.data, 0, sizeof(command.data));
+    currentButtonState = currState;
+    if (currState) {
+        command.data.setvaldo31_do.setval[doNr] = 2; // off
+    } else {
+        command.data.setvaldo31_do.setval[doNr] = 3; // on
     }
-    return len;
+
+    button->setStyleSheet("background-color: grey");
+    currentButton = button;
+
+    emit serviceCmd(&command, this);
 }
 
 void ugwindow::on_pushButtonLightStiege_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->ugState.detail.lightStiege == 0) {
-        doState[22] = 3; // on
-    } else {
-        doState[22] = 2; // off
-    }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightStiege->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendDo31Cmd(240, 22, ui->pushButtonLightStiege, io->ugState.detail.lightStiege != 0);
 }
 
 void ugwindow::on_pushButtonLightVorraum_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->ugState.detail.lightVorraum == 0) {
-        doState[25] = 3; // on
-    } else {
-        doState[25] = 2; // off
-    }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightVorraum->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendDo31Cmd(240, 25, ui->pushButtonLightVorraum, io->ugState.detail.lightVorraum != 0);
 }
 
 void ugwindow::on_pushButtonLightTechnik_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->ugState.detail.lightTechnik == 0) {
-        doState[26] = 3; // on
-    } else {
-        doState[26] = 2; // off
-    }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightTechnik->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendDo31Cmd(240, 26, ui->pushButtonLightTechnik, io->ugState.detail.lightTechnik != 0);
 }
 
 void ugwindow::on_pushButtonLightLager_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->ugState.detail.lightLager == 0) {
-        doState[21] = 3; // on
-    } else {
-        doState[21] = 2; // off
-    }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightLager->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendDo31Cmd(240, 21, ui->pushButtonLightLager, io->ugState.detail.lightLager != 0);
 }
 
 void ugwindow::on_pushButtonLightFitness_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->ugState.detail.lightFitness == 0) {
-        doState[24] = 3; // on
-    } else {
-        doState[24] = 2; // off
-    }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightFitness->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
+    sendDo31Cmd(240, 24, ui->pushButtonLightFitness, io->ugState.detail.lightFitness != 0);
 }
 
 void ugwindow::on_pushButtonLightArbeit_pressed() {
-    char    command[100];
-    uint8_t doState[31];
 
-    memset(doState, 0, sizeof(doState));
-    if (io->ugState.detail.lightArbeit == 0) {
-        doState[23] = 3; // on
-    } else {
-        doState[23] = 2; // off
+    sendDo31Cmd(240, 23, ui->pushButtonLightArbeit, io->ugState.detail.lightArbeit != 0);
+}
+
+void ugwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
+
+    if ((dialog == this) && (res->data.state == moduleservice::eCmdOk)) {
+        if (currentButtonState) {
+            currentButton->setStyleSheet("background-color: green");
+        } else {
+            currentButton->setStyleSheet("background-color: yellow");
+        }
+//        printf("ugwindow cmdconf %d\n", res->data.state);
     }
-    do31Cmd(240, doState, sizeof(doState), command, sizeof(command));
-    ui->pushButtonLightArbeit->setStyleSheet("background-color: grey");
-
-    emit serviceCmd(command);
 }
