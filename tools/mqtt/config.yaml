@@ -1,0 +1,11 @@
+- topic: home/eg/gang/licht
+  physical:
+    type: do31
+    address: 241
+    digout: 25
+- topic: home/eg/vorraum/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 16
+
