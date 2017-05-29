@@ -1,7 +1,7 @@
 /*
  * main.cpp
  *
- * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * Copyright 2017 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,7 +43,8 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
-#define MAX_LEN_TOPIC 50
+#define MAX_LEN_TOPIC        50
+#define BUS_RESPONSE_TIMEOUT 100 /* ms */
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -76,6 +77,7 @@ typedef struct {
                          */
     union {
         TBusDevActualValueDo31 do31;
+        TBusDevActualValuePwm4 pwm4;
     } io;
     UT_hash_handle hh;    
 } TDevDesc;
@@ -83,9 +85,11 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-static TTopicDesc *topic_desc;
-static TIoDesc    *io_desc;
-static TDevDesc   *dev_desc;
+static TTopicDesc       *topic_desc;
+static TIoDesc          *io_desc;
+static TDevDesc         *dev_desc;
+static uint8_t          my_addr = 250;
+static struct mosquitto *mosq;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -112,19 +116,19 @@ static int InitBus(const char *comPort) {
     return handle;
 }
 
-void my_connect_callback(struct mosquitto *mosq, void *obj, int result) {
+void my_connect_callback(struct mosquitto *mq, void *obj, int result) {
     printf("connect\n");
 }
 
-void my_disconnect_callback(struct mosquitto *mosq, void *obj, int rc) {
+void my_disconnect_callback(struct mosquitto *mq, void *obj, int rc) {
     printf("disconnect\n");
 }
 
-void my_log_callback(struct mosquitto *mosq, void *obj, int level, const char *str) {
+void my_log_callback(struct mosquitto *mq, void *obj, int level, const char *str) {
     printf("log: %s\n", str);
 }
 
-void my_message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message) {
+void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto_message *message) {
 
     TBusTelegram    txBusMsg;
     TTopicDesc      *cfg;
@@ -246,36 +250,182 @@ static int ReadConfig(const char *pFile)  {
     return num_topics;
 }
 
+static void publish_do31(
+    TDevDesc               *dev_entry, 
+    TBusDevActualValueDo31 *av,
+    bool                   publish_unconditional
+    ) {
+    int                    i;
+    int                    byteIdx;
+    int                    bitPos;
+    uint8_t                actval8;
+    uint32_t               phys_io;
+    TIoDesc                *io_entry;
+    char                   topic[MAX_LEN_TOPIC];        
+
+    for (i = 0; i < 31; i++) {
+        byteIdx = i / 8;
+        bitPos = i % 8;    
+        if (publish_unconditional ||
+            ((dev_entry->io.do31.digOut[byteIdx] & (1 << bitPos)) != 
+             (av->digOut[byteIdx] & (1 << bitPos)))) {
+            actval8 = (av->digOut[byteIdx] & (1 << bitPos)) != 0;
+            phys_io = dev_entry->phys_dev | (i << 16);
+            HASH_FIND_INT(io_desc, &phys_io, io_entry);
+            if (io_entry) {
+                snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
+                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
+            }
+        }
+    }
+    memcpy(dev_entry->io.do31.digOut, av->digOut, sizeof(dev_entry->io.do31.digOut));
+}
+
+static void serve_bus(void) {
+    uint8_t                     busRet;
+    TBusTelegram                *pRxBusMsg;    
+    TBusDevReqActualValueEvent  *ave;
+    TDevDesc                    *dev_entry;
+    uint32_t                    phys_dev;    
+    TBusDevType                 dev_type;
+
+    busRet = BusCheck();
+    if (busRet != BUS_MSG_OK) {
+        return;
+    }
+    pRxBusMsg = BusMsgBufGet();
+    if ((pRxBusMsg->type != eBusDevReqActualValueEvent) ||
+        ((pRxBusMsg->msg.devBus.receiverAddr != my_addr))) {
+        return;
+    }
+    ave = &pRxBusMsg->msg.devBus.x.devReq.actualValueEvent;
+    dev_type = ave->devType;
+    /* find changed io  */
+    phys_dev = dev_type + (pRxBusMsg->senderAddr << 8);
+    HASH_FIND_INT(dev_desc, &phys_dev, dev_entry);
+    if (!dev_entry) {
+        return;
+    }
+    if (phys_dev != dev_entry->phys_dev) {
+        
+    }
+    switch (dev_type) {
+    case eBusDevTypeDo31:
+        publish_do31(dev_entry, &ave->actualValue.do31, false);
+        break;
+    default:
+        break;
+    }
+}
+
+static unsigned long get_tick_count(void) {
+
+    struct timespec ts;
+    unsigned long time_ms;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    time_ms = (unsigned long)((unsigned long long)ts.tv_sec * 1000ULL + 
+              (unsigned long long)ts.tv_nsec / 1000000ULL);
+
+    return time_ms;
+}
+
+static TBusTelegram *request_actval(uint8_t address) {
+    
+    TBusTelegram    tx_msg;
+    TBusTelegram    *rx_msg;
+    uint8_t         ret;
+    unsigned long   start_time;
+    unsigned long   cur_time;
+    bool            response_ok = false;
+    bool            timeout = false;
+
+    tx_msg.type = eBusDevReqActualValue;
+    tx_msg.senderAddr = my_addr;
+    tx_msg.msg.devBus.receiverAddr = address;
+    BusSend(&tx_msg);
+    start_time = get_tick_count();
+    do {
+        cur_time = get_tick_count();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            rx_msg = BusMsgBufGet();
+            if ((rx_msg->type == eBusDevRespActualValue)     &&
+                (rx_msg->msg.devBus.receiverAddr == my_addr) &&
+                (rx_msg->senderAddr == address)) {
+                response_ok = true;
+            }
+        } else {
+            if ((cur_time - start_time) > BUS_RESPONSE_TIMEOUT) {
+                timeout = true;
+            }
+        }
+        usleep(10000);
+    } while (!response_ok && !timeout);
+    
+    return response_ok ? rx_msg : 0;
+}
+    
+static int init_state(void) {
+    
+    TDevDesc               *dev_entry;
+    TDevDesc               *dev_tmp;
+    uint8_t                address;
+    uint8_t                dev_type;
+    TBusTelegram           *rx_msg;
+    TBusDevRespActualValue *av;    
+    
+    int rc = -1;
+   
+    HASH_ITER(hh, dev_desc, dev_entry, dev_tmp) {
+        dev_type = dev_entry->phys_dev & 0xff;
+        address = (dev_entry->phys_dev >> 8) & 0xff;
+        rx_msg = request_actval(address);
+        if (rx_msg) {
+            av = &rx_msg->msg.devBus.x.devResp.actualValue;
+            if (dev_type != av->devType) {
+                printf("configuartion error devType of %d invalid\n", address);
+                break;
+            }
+            
+            switch (dev_type) {
+            case eBusDevTypeDo31:
+printf("publish init state: DO31 at %d %02x %02x %02x %02x\n", address, av->actualValue.do31.digOut[0],
+                                                                av->actualValue.do31.digOut[1],
+                                                                av->actualValue.do31.digOut[2],
+                                                                av->actualValue.do31.digOut[3]);
+                publish_do31(dev_entry, &av->actualValue.do31, true);
+                break;
+            case eBusDevTypePwm4:
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    return rc;
+}
+
 /*-----------------------------------------------------------------------------
 *  program start
 */
 int main(int argc, char *argv[]) {
 
-    struct mosquitto *mosq = 0;
     int              busFd;
     int              mosqFd;
     int              maxFd;
     int              busHandle;
     fd_set           rfds;
     int              ret;
-    TBusTelegram     *pRxBusMsg;
-    uint8_t          busRet;
-    uint8_t          myAddr = 250; 
+
     struct timeval   tv;
     char             topic[MAX_LEN_TOPIC];
-    int              byteIdx;
-    int              bitPos;
-    uint8_t          actval8;
     TTopicDesc       *topic_entry;
     TTopicDesc       *topic_tmp;
     TDevDesc         *dev_entry;
     TDevDesc         *dev_tmp;
     TIoDesc          *io_entry;
     TIoDesc          *io_tmp;
-    uint32_t         phys_io;
-    uint32_t         phys_dev;
-    int              i;
-    TBusTelegram     txBusMsg;
 
     mosquitto_lib_init();
     mosq = mosquitto_new("bus-client", true, 0);
@@ -283,12 +433,10 @@ int main(int argc, char *argv[]) {
         printf("mosq 0\n");
         return 0;
     }
-
     mosquitto_connect_callback_set(mosq, my_connect_callback);
     mosquitto_disconnect_callback_set(mosq, my_disconnect_callback);
     mosquitto_log_callback_set(mosq, my_log_callback);
     mosquitto_message_callback_set(mosq, my_message_callback);
-
 
     ret = mosquitto_connect(mosq, "10.0.0.200", 1883, 60);
 //    printf("connect ret %d\n", ret);
@@ -319,24 +467,14 @@ int main(int argc, char *argv[]) {
         printf("io %04x %s\n", io_entry->phys_io, io_entry->topic);
     }
 
+    init_state();
+
     /* subscribe to all configured topic extended by 'set' */
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
         snprintf(topic, sizeof(topic), "%s/set", topic_entry->topic);
         mosquitto_subscribe(mosq, 0, topic, 1);
     }
 
-    txBusMsg.type = eBusDevReqActualValue;
-    txBusMsg.senderAddr = 250;
-    txBusMsg.msg.devBus.receiverAddr = 240;
-    BusSend(&txBusMsg);
-    
-    txBusMsg.type = eBusDevReqActualValue;
-    txBusMsg.senderAddr = 250;
-    txBusMsg.msg.devBus.receiverAddr = 241;
-    BusSend(&txBusMsg);
-
-
- 
     FD_ZERO(&rfds);
     for (;;) {
         FD_SET(busFd, &rfds);
@@ -346,34 +484,7 @@ int main(int argc, char *argv[]) {
         tv.tv_usec = 100000;
         ret = select(maxFd + 1, &rfds, 0, 0, &tv);
         if ((ret > 0) && FD_ISSET(busFd, &rfds)) {
-            busRet = BusCheck();
-            if (busRet == BUS_MSG_OK) {
-                pRxBusMsg = BusMsgBufGet();
-                if (((pRxBusMsg->type == eBusDevReqActualValueEvent) || (pRxBusMsg->type == eBusDevRespActualValue)) &&
-                    ((pRxBusMsg->msg.devBus.receiverAddr == myAddr))) {
-                    phys_dev = pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.devType + (pRxBusMsg->senderAddr << 8);
-                    HASH_FIND_INT(dev_desc, &phys_dev, dev_entry);
-                    if (dev_entry) {
-                        /* find changed io */
-                        /* do31 do */
-                        for (i = 0; i < 31; i++) {
-                            byteIdx = i / 8;
-                            bitPos = i % 8;                                
-                            if ((dev_entry->io.do31.digOut[byteIdx] & (1 << bitPos)) != 
-                                (pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.digOut[byteIdx] & (1 << bitPos))) {
-                                actval8 = (pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.digOut[byteIdx] & (1 << bitPos)) != 0;
-                                phys_io = phys_dev | (i << 16);
-                                HASH_FIND_INT(io_desc, &phys_io, io_entry);
-                                if (io_entry) {
-                                    snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
-                                    mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
-                                }
-                            }
-                        }
-                        memcpy(dev_entry->io.do31.digOut, pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.digOut, 4);
-                    }
-                }
-            }
+            serve_bus();
         }
         if ((ret > 0) && FD_ISSET(mosqFd, &rfds)) {
 //printf("mosq rfds\n");            

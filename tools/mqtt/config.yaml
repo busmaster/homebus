@@ -8,4 +8,9 @@
     type: do31
     address: 240
     digout: 16
+- topic: home/ug/vorraum/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 25
 
