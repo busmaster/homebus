@@ -20,6 +20,16 @@
  *
  *
  */
+ 
+ 
+/* todo
+ * - send response on eBusDevReqActualValueEvent
+ * - eBusDevReqSetValue for do31 shader
+ * - pwm4 support
+ * 
+ * 
+ * 
+ * */
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -66,27 +76,27 @@ typedef struct {
             T_do31_output_type type;
         } do31;
     } io;
-    UT_hash_handle hh;    
+    UT_hash_handle hh;
 } T_topic_desc;
 
 typedef struct {
-    uint32_t phys_io;  /* the key consists of: device type (8 bit), 
-                        *                      device address (8 bit), 
-                        *                      device specific data e.g. port number (16 bit) 
+    uint32_t phys_io;  /* the key consists of: device type (8 bit),
+                        *                      device address (8 bit),
+                        *                      device specific data e.g. port number (16 bit)
                         */
     char topic[MAX_LEN_TOPIC];
-    UT_hash_handle hh;    
+    UT_hash_handle hh;
 } T_io_desc;
 
 typedef struct {
-    uint32_t phys_dev;  /* the key consists of: device type (8 bit), 
+    uint32_t phys_dev;  /* the key consists of: device type (8 bit),
                          *                      device address (8 bit)
                          */
     union {
         TBusDevActualValueDo31 do31;
         TBusDevActualValuePwm4 pwm4;
     } io;
-    UT_hash_handle hh;    
+    UT_hash_handle hh;
 } T_dev_desc;
 
 /*-----------------------------------------------------------------------------
@@ -95,7 +105,7 @@ typedef struct {
 static T_topic_desc     *topic_desc;
 static T_io_desc        *io_desc;
 static T_dev_desc       *dev_desc;
-static uint8_t          my_addr = 250;
+static uint8_t          my_addr;
 static struct mosquitto *mosq;
 
 /*-----------------------------------------------------------------------------
@@ -144,7 +154,7 @@ void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto
     char            topic[MAX_LEN_TOPIC];
     char            *ch;
     int             len;
-    
+
     ch = strrchr(message->topic, '/');
     len = ch - message->topic;
     memcpy(topic, message->topic, len);
@@ -154,31 +164,34 @@ void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto
         printf("error: topic %s not found\n", message->topic);
         return;
     }
-    
-    txBusMsg.type = eBusDevReqSetValue;
-    txBusMsg.senderAddr = 250;
-    txBusMsg.msg.devBus.receiverAddr = cfg->io.do31.address;
-    txBusMsg.msg.devBus.x.devReq.setValue.devType = cfg->devtype;
-    memset(&txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, sizeof(txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut));
-    memset(&txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, sizeof(txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader));
 
-    /* calculate the bit position (2 bits for each output) */
-    byteIdx = cfg->io.do31.output / 4;
-    bitPos = (cfg->io.do31.output % 4) * 2;
-    if (*(char *)(message->payload) == '0') {
-        txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[byteIdx] = 2 << bitPos;
-    } else {
-        txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[byteIdx] = 3 << bitPos;
+    if ((cfg->devtype == eBusDevTypeDo31) && (cfg->io.do31.type == e_do31_digout)) {
+
+        txBusMsg.type = eBusDevReqSetValue;
+        txBusMsg.senderAddr = my_addr;
+        txBusMsg.msg.devBus.receiverAddr = cfg->io.do31.address;
+        txBusMsg.msg.devBus.x.devReq.setValue.devType = cfg->devtype;
+        memset(&txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, sizeof(txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut));
+        memset(&txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, sizeof(txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader));
+
+        /* calculate the bit position (2 bits for each output) */
+        byteIdx = cfg->io.do31.output / 4;
+        bitPos = (cfg->io.do31.output % 4) * 2;
+        if (*(char *)(message->payload) == '0') {
+            txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[byteIdx] = 2 << bitPos;
+        } else {
+            txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[byteIdx] = 3 << bitPos;
+        }
+        BusSend(&txBusMsg);
     }
-    BusSend(&txBusMsg);
 }
 
 static int ReadConfig(const char *pFile)  {
 
     int num_topics = 0;
-    T_topic_desc *topic_entry;    
-    T_io_desc    *io_entry;    
-    T_io_desc    *io_tmp;    
+    T_topic_desc *topic_entry;
+    T_io_desc    *io_entry;
+    T_io_desc    *io_tmp;
     T_dev_desc   *dev_entry;
     uint32_t   type_addr;
     YAML::Node ymlcfg = YAML::LoadFile(pFile);
@@ -189,7 +202,7 @@ static int ReadConfig(const char *pFile)  {
         const YAML::Node& node = *it;
 //        std::cout << "topic: " << node["topic"].as<std::string>() << "\n";
 //        printf("%s\n", node["topic"].as<std::string>().c_str());
-        
+
         const YAML::Node& physical = node["physical"];
 /*
         if (physical["type"]) {
@@ -247,7 +260,7 @@ static int ReadConfig(const char *pFile)  {
         HASH_ADD_INT(io_desc, phys_io, io_entry);
         num_topics++;
     }
-    
+
     /* create a device table */
     dev_desc = 0;
     HASH_ITER(hh, io_desc, io_entry, io_tmp) {
@@ -260,14 +273,14 @@ static int ReadConfig(const char *pFile)  {
             HASH_ADD_INT(dev_desc, phys_dev, dev_entry);
         }
     }
-    
+
     return num_topics;
 }
 
 #define MAX_LEN_PAYLOAD 10
 
 static void publish_do31(
-    T_dev_desc             *dev_entry, 
+    T_dev_desc             *dev_entry,
     TBusDevActualValueDo31 *av,
     bool                   publish_unconditional
     ) {
@@ -284,9 +297,9 @@ static void publish_do31(
     /* digout */
     for (i = 0; i < 31; i++) {
         byteIdx = i / 8;
-        bitPos = i % 8;    
+        bitPos = i % 8;
         if (publish_unconditional ||
-            ((dev_entry->io.do31.digOut[byteIdx] & (1 << bitPos)) != 
+            ((dev_entry->io.do31.digOut[byteIdx] & (1 << bitPos)) !=
              (av->digOut[byteIdx] & (1 << bitPos)))) {
             phys_io = dev_entry->phys_dev | (i << 16) | (e_do31_digout << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
@@ -341,10 +354,10 @@ static void publish_do31(
 
 static void serve_bus(void) {
     uint8_t                     busRet;
-    TBusTelegram                *pRxBusMsg;    
+    TBusTelegram                *pRxBusMsg;
     TBusDevReqActualValueEvent  *ave;
     T_dev_desc                  *dev_entry;
-    uint32_t                    phys_dev;    
+    uint32_t                    phys_dev;
     TBusDevType                 dev_type;
 
     busRet = BusCheck();
@@ -382,14 +395,14 @@ static unsigned long get_tick_count(void) {
     unsigned long time_ms;
 
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    time_ms = (unsigned long)((unsigned long long)ts.tv_sec * 1000ULL + 
+    time_ms = (unsigned long)((unsigned long long)ts.tv_sec * 1000ULL +
               (unsigned long long)ts.tv_nsec / 1000000ULL);
 
     return time_ms;
 }
 
 static TBusTelegram *request_actval(uint8_t address) {
-    
+
     TBusTelegram    tx_msg;
     TBusTelegram    *rx_msg;
     uint8_t         ret;
@@ -420,21 +433,21 @@ static TBusTelegram *request_actval(uint8_t address) {
         }
         usleep(10000);
     } while (!response_ok && !timeout);
-    
+
     return response_ok ? rx_msg : 0;
 }
-    
+
 static int init_state(void) {
-    
+
     T_dev_desc             *dev_entry;
     T_dev_desc             *dev_tmp;
     uint8_t                address;
     uint8_t                dev_type;
     TBusTelegram           *rx_msg;
-    TBusDevRespActualValue *av;    
-    
+    TBusDevRespActualValue *av;
+
     int rc = -1;
-   
+
     HASH_ITER(hh, dev_desc, dev_entry, dev_tmp) {
         dev_type = dev_entry->phys_dev & 0xff;
         address = (dev_entry->phys_dev >> 8) & 0xff;
@@ -445,7 +458,7 @@ static int init_state(void) {
                 printf("configuartion error devType of %d invalid\n", address);
                 break;
             }
-            
+
             switch (dev_type) {
             case eBusDevTypeDo31:
 printf("publish init state: DO31 at %d\n", address);
@@ -553,7 +566,7 @@ int main(int argc, char *argv[]) {
     mosqFd = mosquitto_socket(mosq);
     if (mosqFd > busFd) {
         maxFd = mosqFd;
-    } 
+    }
 
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
         printf("topic %s %d %d %d\n", topic_entry->topic, topic_entry->devtype,  topic_entry->io.do31.address, topic_entry->io.do31.output);
@@ -592,10 +605,10 @@ int main(int argc, char *argv[]) {
             serve_bus();
         }
         if ((ret > 0) && FD_ISSET(mosqFd, &rfds)) {
-//printf("mosq rfds\n");            
+//printf("mosq rfds\n");
             mosquitto_loop_read(mosq, 1);
         }
-//printf("mosq loop misc\n");            
+//printf("mosq loop misc\n");
         mosquitto_loop_misc(mosq);
     }
 

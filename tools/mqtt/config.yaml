@@ -93,6 +93,11 @@
     type: do31
     address: 240
     digout: 26
+- topic: home/eg/speis/licht
+  physical:
+    type: do31
+    address: 241
+    digout: 24
 - topic: home/eg/gang/licht
   physical:
     type: do31
@@ -118,6 +123,11 @@
     type: do31
     address: 241
     digout: 29
+- topic: home/eg/kueche/wand/licht
+  physical:
+    type: do31
+    address: 241
+    digout: 30
 - topic: home/eg/arbeit/rollo
   physical:
     type: do31
