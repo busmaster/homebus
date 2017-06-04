@@ -46,6 +46,8 @@
 #define MAX_LEN_TOPIC        50
 #define BUS_RESPONSE_TIMEOUT 100 /* ms */
 
+#define PATH_LEN   255
+
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */
@@ -470,6 +472,10 @@ int main(int argc, char *argv[]) {
     int              busHandle;
     fd_set           rfds;
     int              ret;
+    int              i;
+    char             com_port[PATH_LEN] = "";
+    char             config[PATH_LEN] = "";
+    bool             my_addr_valid = false;
 
     struct timeval   tv;
     char             topic[MAX_LEN_TOPIC];
@@ -479,6 +485,49 @@ int main(int argc, char *argv[]) {
     T_dev_desc       *dev_tmp;
     T_io_desc        *io_entry;
     T_io_desc        *io_tmp;
+
+    /* get com interface */
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-c") == 0) {
+            if (argc > i) {
+                snprintf(com_port, sizeof(com_port), "%s", argv[i + 1]);
+            }
+            break;
+        }
+    }
+
+    /* our bus address */
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-a") == 0) {
+            if (argc > i) {
+                my_addr = (uint8_t)strtoul(argv[i + 1], 0, 0);
+                my_addr_valid = true;
+            }
+            break;
+        }
+    }
+
+    /* config */
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-f") == 0) {
+            if (argc > i) {
+                snprintf(config, sizeof(config), "%s", argv[i + 1]);
+            }
+            break;
+        }
+    }
+
+    if ((strlen(com_port) == 0) ||
+        !my_addr_valid          ||
+        (strlen(config) == 0)) {
+        printf("param error\n");
+        return 0;
+    }
+
+    if (ReadConfig(config) == 0) {
+        printf("config error\n");
+        return 0;
+    }
 
     mosquitto_lib_init();
     mosq = mosquitto_new("bus-client", true, 0);
@@ -494,9 +543,9 @@ int main(int argc, char *argv[]) {
     ret = mosquitto_connect(mosq, "10.0.0.200", 1883, 60);
 //    printf("connect ret %d\n", ret);
 
-    busHandle = InitBus("/dev/hausbus");
+    busHandle = InitBus(com_port);
     if (busHandle == -1) {
-        printf("cannot open\n");
+        printf("cannot open %s\n", com_port);
         return -1;
     }
     busFd = SioGetFd(busHandle);
@@ -505,16 +554,12 @@ int main(int argc, char *argv[]) {
     if (mosqFd > busFd) {
         maxFd = mosqFd;
     } 
-    ReadConfig("config.yaml");
 
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
         printf("topic %s %d %d %d\n", topic_entry->topic, topic_entry->devtype,  topic_entry->io.do31.address, topic_entry->io.do31.output);
     }
     HASH_ITER(hh, dev_desc, dev_entry, dev_tmp) {
-        printf("dev %04x %02x %02x %02x %02x\n", dev_entry->phys_dev, dev_entry->io.do31.digOut[0],
-                                                                      dev_entry->io.do31.digOut[1],
-                                                                      dev_entry->io.do31.digOut[2],
-                                                                      dev_entry->io.do31.digOut[3]);
+        printf("dev %04x\n", dev_entry->phys_dev);
     }
     HASH_ITER(hh, io_desc, io_entry, io_tmp) {
         printf("io %04x %s\n", io_entry->phys_io, io_entry->topic);
