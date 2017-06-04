@@ -1,16 +1,127 @@
-- topic: home/eg/gang/licht
-  physical:
+- topic: home/og/schrank/licht
+  physical:  
     type: do31
-    address: 241
-    digout: 25
+    address: 240
+    digout: 7
+- topic: home/og/schlaf/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 8
+- topic: home/og/garage/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 9
+- topic: home/og/bad/spiegel/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 10
+- topic: home/og/bad/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 12
+- topic: home/og/vorraum/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 11
+- topic: home/eg/wohn/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 13
+- topic: home/eg/wohn/lesen/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 14
+- topic: home/eg/ess/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 15
 - topic: home/eg/vorraum/licht
   physical:  
     type: do31
     address: 240
     digout: 16
+- topic: home/eg/wc/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 17
+- topic: home/eg/kueche/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 19
+- topic: home/eg/terrasse/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 20
+- topic: home/ug/lager/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 21
+- topic: home/ug/stiege/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 22
+- topic: home/ug/arbeit/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 23
+- topic: home/ug/fitness/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 24
 - topic: home/ug/vorraum/licht
   physical:  
     type: do31
     address: 240
     digout: 25
-
+- topic: home/ug/technik/licht
+  physical:  
+    type: do31
+    address: 240
+    digout: 26
+- topic: home/eg/gang/licht
+  physical:
+    type: do31
+    address: 241
+    digout: 25
+- topic: home/eg/arbeit/licht
+  physical:
+    type: do31
+    address: 241
+    digout: 26
+- topic: home/og/anna/licht
+  physical:
+    type: do31
+    address: 241
+    digout: 27
+- topic: home/og/severin/licht
+  physical:
+    type: do31
+    address: 241
+    digout: 28
+- topic: home/og/wc/licht
+  physical:
+    type: do31
+    address: 241
+    digout: 29
+- topic: home/eg/arbeit/rollo
+  physical:
+    type: do31
+    address: 241
+    shader: 11
+    
+    

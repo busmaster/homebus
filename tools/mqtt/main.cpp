@@ -49,6 +49,10 @@
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */
+typedef enum {
+    e_do31_digout = 0,
+    e_do31_shader = 1
+} T_do31_output_type;
 
 typedef struct {
     char topic[MAX_LEN_TOPIC];  /* the key */
@@ -57,10 +61,11 @@ typedef struct {
         struct {
             uint8_t address;
             uint8_t output;
+            T_do31_output_type type;
         } do31;
     } io;
     UT_hash_handle hh;    
-} TTopicDesc;
+} T_topic_desc;
 
 typedef struct {
     uint32_t phys_io;  /* the key consists of: device type (8 bit), 
@@ -69,7 +74,7 @@ typedef struct {
                         */
     char topic[MAX_LEN_TOPIC];
     UT_hash_handle hh;    
-} TIoDesc;
+} T_io_desc;
 
 typedef struct {
     uint32_t phys_dev;  /* the key consists of: device type (8 bit), 
@@ -80,14 +85,14 @@ typedef struct {
         TBusDevActualValuePwm4 pwm4;
     } io;
     UT_hash_handle hh;    
-} TDevDesc;
+} T_dev_desc;
 
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-static TTopicDesc       *topic_desc;
-static TIoDesc          *io_desc;
-static TDevDesc         *dev_desc;
+static T_topic_desc     *topic_desc;
+static T_io_desc        *io_desc;
+static T_dev_desc       *dev_desc;
 static uint8_t          my_addr = 250;
 static struct mosquitto *mosq;
 
@@ -131,7 +136,7 @@ void my_log_callback(struct mosquitto *mq, void *obj, int level, const char *str
 void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto_message *message) {
 
     TBusTelegram    txBusMsg;
-    TTopicDesc      *cfg;
+    T_topic_desc    *cfg;
     int             byteIdx;
     int             bitPos;
     char            topic[MAX_LEN_TOPIC];
@@ -169,10 +174,10 @@ void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto
 static int ReadConfig(const char *pFile)  {
 
     int num_topics = 0;
-    TTopicDesc *topic_entry;    
-    TIoDesc    *io_entry;    
-    TIoDesc    *io_tmp;    
-    TDevDesc   *dev_entry;
+    T_topic_desc *topic_entry;    
+    T_io_desc    *io_entry;    
+    T_io_desc    *io_tmp;    
+    T_dev_desc   *dev_entry;
     uint32_t   type_addr;
     YAML::Node ymlcfg = YAML::LoadFile(pFile);
 
@@ -194,8 +199,8 @@ static int ReadConfig(const char *pFile)  {
         unsigned long i = strtoul(physical["digout"].as<std::string>().c_str(), 0, 0);
         printf("%lu\n", i);
 */
-        topic_entry = (TTopicDesc *)malloc(sizeof(TTopicDesc));
-        io_entry = (TIoDesc *)malloc(sizeof(TIoDesc));
+        topic_entry = (T_topic_desc *)malloc(sizeof(T_topic_desc));
+        io_entry = (T_io_desc *)malloc(sizeof(T_io_desc));
         if (!topic_entry || !io_entry) {
             break;
         }
@@ -219,11 +224,18 @@ static int ReadConfig(const char *pFile)  {
                break;
             }
             if (physical["digout"]) {
+                topic_entry->io.do31.type = e_do31_digout;
                 topic_entry->io.do31.output = (uint8_t)strtoul(physical["digout"].as<std::string>().c_str(), 0, 0);
-                io_entry->phys_io |= (topic_entry->io.do31.output << 16);
+                io_entry->phys_io |= topic_entry->io.do31.output << 16;
+                io_entry->phys_io |= topic_entry->io.do31.type << 24;
+            } else if (physical["shader"]) {
+                topic_entry->io.do31.type = e_do31_shader;
+                topic_entry->io.do31.output = (uint8_t)strtoul(physical["shader"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= topic_entry->io.do31.output << 16;
+                io_entry->phys_io |= topic_entry->io.do31.type << 24;
             } else {
-               printf("missing digout at topic %s\n", node["topic"].as<std::string>().c_str());
-               break;
+                printf("missing digout at topic %s\n", node["topic"].as<std::string>().c_str());
+                break;
             }
         } else {
             printf("unknown or missing type at topic %s\n", node["topic"].as<std::string>().c_str());
@@ -240,7 +252,7 @@ static int ReadConfig(const char *pFile)  {
         type_addr = io_entry->phys_io & 0xffff;
         HASH_FIND_INT(dev_desc, &type_addr, dev_entry);
         if (!dev_entry) {
-            dev_entry = (TDevDesc *)malloc(sizeof(TDevDesc));
+            dev_entry = (T_dev_desc *)malloc(sizeof(T_dev_desc));
             dev_entry->phys_dev = type_addr;
             memset(&dev_entry->io, 0, sizeof(dev_entry->io));
             HASH_ADD_INT(dev_desc, phys_dev, dev_entry);
@@ -250,8 +262,10 @@ static int ReadConfig(const char *pFile)  {
     return num_topics;
 }
 
+#define MAX_LEN_PAYLOAD 10
+
 static void publish_do31(
-    TDevDesc               *dev_entry, 
+    T_dev_desc             *dev_entry, 
     TBusDevActualValueDo31 *av,
     bool                   publish_unconditional
     ) {
@@ -260,32 +274,74 @@ static void publish_do31(
     int                    bitPos;
     uint8_t                actval8;
     uint32_t               phys_io;
-    TIoDesc                *io_entry;
-    char                   topic[MAX_LEN_TOPIC];        
+    T_io_desc              *io_entry;
+    char                   topic[MAX_LEN_TOPIC];
+    char                   payload[MAX_LEN_PAYLOAD];
+    int                    payloadlen;
 
+    /* digout */
     for (i = 0; i < 31; i++) {
         byteIdx = i / 8;
         bitPos = i % 8;    
         if (publish_unconditional ||
             ((dev_entry->io.do31.digOut[byteIdx] & (1 << bitPos)) != 
              (av->digOut[byteIdx] & (1 << bitPos)))) {
-            actval8 = (av->digOut[byteIdx] & (1 << bitPos)) != 0;
-            phys_io = dev_entry->phys_dev | (i << 16);
+            phys_io = dev_entry->phys_dev | (i << 16) | (e_do31_digout << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
             if (io_entry) {
+                actval8 = (av->digOut[byteIdx] & (1 << bitPos)) != 0;
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
                 mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
             }
         }
     }
     memcpy(dev_entry->io.do31.digOut, av->digOut, sizeof(dev_entry->io.do31.digOut));
+
+    /* shader */
+    for (i = 0; i < 15; i++) {
+        if (publish_unconditional ||
+            (dev_entry->io.do31.shader[i] != av->shader[i])) {
+            phys_io = dev_entry->phys_dev | (i << 16) | (e_do31_shader << 24);
+            HASH_FIND_INT(io_desc, &phys_io, io_entry);
+            if (io_entry) {
+                snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
+                payloadlen = 0;
+                actval8 = av->shader[i];
+                if (actval8 <= 100) {
+                    payloadlen = snprintf(payload, sizeof(payload), "%d", actval8);
+                } else {
+                    switch (actval8) {
+                    case 252:
+                        payloadlen = snprintf(payload, sizeof(payload), "not configured");
+                        break;
+                    case 253:
+                        payloadlen = snprintf(payload, sizeof(payload), "opening");
+                        break;
+                    case 254:
+                        payloadlen = snprintf(payload, sizeof(payload), "closing");
+                        break;
+                    case 255:
+                        payloadlen = snprintf(payload, sizeof(payload), "error");
+                        break;
+                    default:
+                        printf("unsupported shader state %d\n", actval8);
+                        break;
+                    }
+                }
+                if (payloadlen) {
+                    mosquitto_publish(mosq, 0, topic, payloadlen, payload, 1, true);
+                }
+            }
+        }
+    }
+    memcpy(dev_entry->io.do31.shader, av->shader, sizeof(dev_entry->io.do31.shader));
 }
 
 static void serve_bus(void) {
     uint8_t                     busRet;
     TBusTelegram                *pRxBusMsg;    
     TBusDevReqActualValueEvent  *ave;
-    TDevDesc                    *dev_entry;
+    T_dev_desc                  *dev_entry;
     uint32_t                    phys_dev;    
     TBusDevType                 dev_type;
 
@@ -307,7 +363,7 @@ static void serve_bus(void) {
         return;
     }
     if (phys_dev != dev_entry->phys_dev) {
-        
+        printf("configuration mismatch at address %d: conf %d, recv %d\n", pRxBusMsg->senderAddr, dev_entry->phys_dev & 0xff, dev_type);
     }
     switch (dev_type) {
     case eBusDevTypeDo31:
@@ -368,8 +424,8 @@ static TBusTelegram *request_actval(uint8_t address) {
     
 static int init_state(void) {
     
-    TDevDesc               *dev_entry;
-    TDevDesc               *dev_tmp;
+    T_dev_desc             *dev_entry;
+    T_dev_desc             *dev_tmp;
     uint8_t                address;
     uint8_t                dev_type;
     TBusTelegram           *rx_msg;
@@ -390,10 +446,7 @@ static int init_state(void) {
             
             switch (dev_type) {
             case eBusDevTypeDo31:
-printf("publish init state: DO31 at %d %02x %02x %02x %02x\n", address, av->actualValue.do31.digOut[0],
-                                                                av->actualValue.do31.digOut[1],
-                                                                av->actualValue.do31.digOut[2],
-                                                                av->actualValue.do31.digOut[3]);
+printf("publish init state: DO31 at %d\n", address);
                 publish_do31(dev_entry, &av->actualValue.do31, true);
                 break;
             case eBusDevTypePwm4:
@@ -420,12 +473,12 @@ int main(int argc, char *argv[]) {
 
     struct timeval   tv;
     char             topic[MAX_LEN_TOPIC];
-    TTopicDesc       *topic_entry;
-    TTopicDesc       *topic_tmp;
-    TDevDesc         *dev_entry;
-    TDevDesc         *dev_tmp;
-    TIoDesc          *io_entry;
-    TIoDesc          *io_tmp;
+    T_topic_desc     *topic_entry;
+    T_topic_desc     *topic_tmp;
+    T_dev_desc       *dev_entry;
+    T_dev_desc       *dev_tmp;
+    T_io_desc        *io_entry;
+    T_io_desc        *io_tmp;
 
     mosquitto_lib_init();
     mosq = mosquitto_new("bus-client", true, 0);
@@ -468,6 +521,13 @@ int main(int argc, char *argv[]) {
     }
 
     init_state();
+
+
+    for (int i = 0; i < 100; i++) {
+       usleep(100000);
+       mosquitto_loop_misc(mosq);
+       mosquitto_loop_read(mosq, 1);
+    }
 
     /* subscribe to all configured topic extended by 'set' */
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
