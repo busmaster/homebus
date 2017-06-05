@@ -17,7 +17,7 @@ eventmonitor::eventmonitor(QObject *parent) : QObject(parent) {
     QString program = "/home/germana/Oeffentlich/git/homebus/tools/eventmonitor/bin/eventmonitor";
 #endif
     QStringList arguments;
-    arguments << "-c" << "/dev/hausbus0" << "-a" << "250";
+    arguments << "-c" << "/dev/hausbus0" << "-a" << "250" << "-l";
 
     evState = eEsWaitForStart;
     eventmon->start(program, arguments);
