@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
     uint16_t      val16;
     char          buffer[SIZE_CMD_BUF];
     char          *p;
+    bool          listenOnly = false;
 
     signal(SIGPIPE, sighandler);
 
@@ -95,6 +96,14 @@ int main(int argc, char *argv[]) {
                 myAddr = atoi(argv[i + 1]);
                 myAddrValid = true;
             }
+            break;
+        }
+    }
+
+    /* list only mode */
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-l") == 0) {
+            listenOnly = true;
             break;
         }
     }
@@ -149,13 +158,15 @@ int main(int argc, char *argv[]) {
                                 Print(" ");
                             }
                         }
-                        memcpy(txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.do31.digOut,
-                               pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.digOut,
-                               BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE);
-                        memcpy(txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.do31.shader,
-                               pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.shader,
-                               BUS_DO31_SHADER_SIZE_ACTUAL_VALUE);
-                        txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeDo31;
+                        if (!listenOnly) {
+                            memcpy(txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.do31.digOut,
+                                   pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.digOut,
+                                   BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE);
+                            memcpy(txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.do31.shader,
+                                   pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.shader,
+                                   BUS_DO31_SHADER_SIZE_ACTUAL_VALUE);
+                            txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeDo31;
+                        }
                         break;
                     case eBusDevTypePwm4:
                         Print("PWM4\n");
@@ -167,7 +178,9 @@ int main(int argc, char *argv[]) {
                                 Print(" ");
                             }
                         }
-                        txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypePwm4;
+                        if (!listenOnly) {
+                            txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypePwm4;
+                        }
                         break;
                     case eBusDevTypeSw8:
                         Print("SW8\n");
@@ -179,18 +192,22 @@ int main(int argc, char *argv[]) {
                                 Print("0");
                             }
                         }
-                        txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state = val8;
-                        txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeSw8;
+                        if (!listenOnly) {
+                            txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state = val8;
+                            txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeSw8;
+                        }
                         break;
                     default:
                         break;
                     }
                     Print("\n");
                     fflush(stdout);
-                    txBusMsg.type = eBusDevRespActualValueEvent;
-                    txBusMsg.senderAddr = pRxBusMsg->msg.devBus.receiverAddr;
-                    txBusMsg.msg.devBus.receiverAddr = pRxBusMsg->senderAddr;
-                    BusSend(&txBusMsg);
+                    if (!listenOnly) {
+                        txBusMsg.type = eBusDevRespActualValueEvent;
+                        txBusMsg.senderAddr = pRxBusMsg->msg.devBus.receiverAddr;
+                        txBusMsg.msg.devBus.receiverAddr = pRxBusMsg->senderAddr;
+                        BusSend(&txBusMsg);
+                    }
                 }
             } else if (busRet == BUS_IF_ERROR) {
                 Print("bus interface access error - exiting\n");
@@ -268,6 +285,7 @@ static int InitBus(const char *comPort) {
 static void PrintUsage(void) {
 
    printf("\r\nUsage:\r\n");
-   printf("eventmonitor -c port -a address\n");
+   printf("eventmonitor -c port -a address [-l]\n");
+   printf("    -l: listen only, do not respond to event notifications\n");
 }
 
