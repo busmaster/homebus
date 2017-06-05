@@ -23,7 +23,7 @@
  
  
 /* todo
- * - send response on eBusDevReqActualValueEvent
+ * (- send response on eBusDevReqActualValueEvent) -> listen only
  * - eBusDevReqSetValue for do31 shader
  * - pwm4 support
  * 
@@ -106,6 +106,7 @@ static T_topic_desc     *topic_desc;
 static T_io_desc        *io_desc;
 static T_dev_desc       *dev_desc;
 static uint8_t          my_addr;
+static uint8_t          event_addr;
 static struct mosquitto *mosq;
 
 /*-----------------------------------------------------------------------------
@@ -366,7 +367,7 @@ static void serve_bus(void) {
     }
     pRxBusMsg = BusMsgBufGet();
     if ((pRxBusMsg->type != eBusDevReqActualValueEvent) ||
-        ((pRxBusMsg->msg.devBus.receiverAddr != my_addr))) {
+        ((pRxBusMsg->msg.devBus.receiverAddr != event_addr))) {
         return;
     }
     ave = &pRxBusMsg->msg.devBus.x.devReq.actualValueEvent;
@@ -475,6 +476,15 @@ printf("publish init state: DO31 at %d\n", address);
 }
 
 /*-----------------------------------------------------------------------------
+*  show help
+*/
+static void print_usage(void) {
+
+   printf("\r\nUsage:\r\n");
+   printf("mqtt -c port -a address -f yaml-cfg -e event-listen-address\n");
+}
+
+/*-----------------------------------------------------------------------------
 *  program start
 */
 int main(int argc, char *argv[]) {
@@ -489,7 +499,7 @@ int main(int argc, char *argv[]) {
     char             com_port[PATH_LEN] = "";
     char             config[PATH_LEN] = "";
     bool             my_addr_valid = false;
-
+    bool             event_addr_valid = false;
     struct timeval   tv;
     char             topic[MAX_LEN_TOPIC];
     T_topic_desc     *topic_entry;
@@ -499,41 +509,42 @@ int main(int argc, char *argv[]) {
     T_io_desc        *io_entry;
     T_io_desc        *io_tmp;
 
-    /* get com interface */
     for (i = 1; i < argc; i++) {
+        /* get com interface */
         if (strcmp(argv[i], "-c") == 0) {
             if (argc > i) {
                 snprintf(com_port, sizeof(com_port), "%s", argv[i + 1]);
             }
-            break;
         }
-    }
-
-    /* our bus address */
-    for (i = 1; i < argc; i++) {
+        /* our bus address */
         if (strcmp(argv[i], "-a") == 0) {
             if (argc > i) {
                 my_addr = (uint8_t)strtoul(argv[i + 1], 0, 0);
                 my_addr_valid = true;
             }
-            break;
         }
-    }
-
-    /* config */
-    for (i = 1; i < argc; i++) {
+        /* config file */
         if (strcmp(argv[i], "-f") == 0) {
             if (argc > i) {
                 snprintf(config, sizeof(config), "%s", argv[i + 1]);
+            }
+        }
+        /* event listen address */
+        if (strcmp(argv[i], "-e") == 0) {
+            if (argc > i) {
+                event_addr = (uint8_t)strtoul(argv[i + 1], 0, 0);
+                event_addr_valid = true;
             }
             break;
         }
     }
 
+
     if ((strlen(com_port) == 0) ||
         !my_addr_valid          ||
+        !event_addr_valid       ||
         (strlen(config) == 0)) {
-        printf("param error\n");
+        print_usage();
         return 0;
     }
 
