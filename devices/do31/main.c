@@ -849,7 +849,7 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespSetClientAddr;  
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
-            uint8_t *p = &(sTxMsg.msg.devBus.x.devReq.setClientAddr.clientAddr[i]);
+            uint8_t *p = &(spBusMsg->msg.devBus.x.devReq.setClientAddr.clientAddr[i]);
             eeprom_write_byte((uint8_t *)(CLIENT_ADDRESS_BASE + i), *p);
         }
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
