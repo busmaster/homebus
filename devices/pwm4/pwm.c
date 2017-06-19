@@ -79,13 +79,13 @@ void PwmInit(void) {
     TCCR4B = (1 << CS42);
 
     PwmSet(0, 0);
-    PwmOn(0, true);
+    PwmOn(0, false);
     PwmSet(1, 0);
-    PwmOn(1, true);
+    PwmOn(1, false);
     PwmSet(2, 0);
-    PwmOn(2, true);
+    PwmOn(2, false);
     PwmSet(3, 0);
-    PwmOn(3, true);
+    PwmOn(3, false);
 }
 
 /*-----------------------------------------------------------------------------

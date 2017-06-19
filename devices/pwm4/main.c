@@ -165,7 +165,7 @@ int main(void) {
    /* warten for full operation voltage */
    while (!POWER_GOOD);
 
-   /* enable ints beforen RestorePwm() */
+   /* enable ints before RestorePwm() */
    ENABLE_INT;
    TimerStart();
    RestorePwm();
@@ -400,26 +400,48 @@ static void BusTransceiverPowerDown(bool powerDown) {
 
 /*-----------------------------------------------------------------------------
 *  restore pwm output state
+* 
+*  restore block:
+*       byte 0: 0b0000xxxx: on/off mask: 0 off, 1 on , bit0 .. channel 0
+*                                                      bit1 .. channel 1  
+*                                                      bit2 .. channel 2  
+*                                                      bit3 .. channel 3
+*       byte 1: low byte channel 0  
+*       byte 2: high byte channel 0  
+*       byte 3: low byte channel 1  
+*       byte 4: high byte channel 1  
+*       byte 5: low byte channel 2  
+*       byte 6: high byte channel 2  
+*       byte 7: low byte channel 3  
+*       byte 8: high byte channel 3  
 */
 static void RestorePwm(void) {
 
     uint8_t     *ptrToEeprom;
     uint8_t     flags;
-    uint8_t     sizeRestore = NUM_PWM_CHANNEL * sizeof(uint16_t) + 1;
+    uint8_t     sizeRestore = 1 + NUM_PWM_CHANNEL * sizeof(uint16_t);
     uint8_t     pwmLow;
     uint8_t     pwmHigh;
+    uint8_t     pwmMask;
     uint8_t     i;
 
     /* find the newest state */
     for (ptrToEeprom = EEPROM_PWM_RESTORE_START; 
          ptrToEeprom < (EEPROM_PWM_RESTORE_END - sizeRestore);
          ptrToEeprom += sizeRestore) {
-        if (eeprom_read_byte(ptrToEeprom) == 0x00) {
+        pwmMask = eeprom_read_byte(ptrToEeprom);
+        if (pwmMask != 0xff) {
             break;
         }
     }
     if (ptrToEeprom > (EEPROM_PWM_RESTORE_END - sizeRestore)) {
-        /* not found -> no restore */
+        /* not found -> no restore
+         * set pwm[] = 0xffff, state off 
+         */
+        for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+            PwmOn(i, false);
+            PwmSet(i, 0xffff);
+        }
         spNextPtrToEeprom = EEPROM_PWM_RESTORE_START;
         return;
     }
@@ -432,6 +454,9 @@ static void RestorePwm(void) {
     /* restore pwm output */
     flags = DISABLE_INT;
     for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        if (pwmMask & (1 << i)) {
+            PwmOn(i, true);
+        }
         pwmLow  = eeprom_read_byte(ptrToEeprom + 1 + i * sizeof(uint16_t));
         pwmHigh = eeprom_read_byte(ptrToEeprom + 1 + i * sizeof(uint16_t) + 1);
         PwmSet(i, pwmLow + 256 * pwmHigh);
@@ -709,12 +734,13 @@ ISR(INT0_vect) {
     uint16_t pwm[NUM_PWM_CHANNEL];
     uint8_t  i;
     bool     on;
+    uint8_t  pwmMask = 0;
 
-    PwmGetAll(pwm, sizeof(pwm));
     for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+        PwmGet(i, &pwm[i]);
         PwmIsOn(i, &on);
-        if (!on) {
-            pwm[i] = 0;
+        if (on) {
+            pwmMask |= (1 << i);
         }
     }
     /* switch off all outputs */
@@ -723,7 +749,7 @@ ISR(INT0_vect) {
     /* save pwm state to eeprom */
     ptrToEeprom = spNextPtrToEeprom;
 
-    eeprom_write_byte(ptrToEeprom, 0);
+    eeprom_write_byte(ptrToEeprom, pwmMask);
     ptrToEeprom++;
     for (i = 0; i < NUM_PWM_CHANNEL; i++) {
         eeprom_write_byte(ptrToEeprom, pwm[i] & 0xff);
