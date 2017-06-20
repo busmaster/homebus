@@ -23,9 +23,8 @@
  
  
 /* todo
- * (- send response on eBusDevReqActualValueEvent) -> listen only
- * - eBusDevReqSetValue for do31 shader
  * - pwm4 support
+ * - evaluate eBusDevRespSetValue for quick input response (response to eBusDevReqSetValue in my_message_callback)
  * 
  * 
  * 
@@ -146,9 +145,21 @@ void my_log_callback(struct mosquitto *mq, void *obj, int level, const char *str
     printf("log: %s\n", str);
 }
 
-void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto_message *message) {
+static void do31_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
 
-    TBusTelegram    txBusMsg;
+    TBusTelegram tx_bus_msg;
+
+    tx_bus_msg.type = eBusDevReqSetValue;
+    tx_bus_msg.senderAddr = my_addr;
+    tx_bus_msg.msg.devBus.receiverAddr = addr;
+    tx_bus_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
+    memcpy(&tx_bus_msg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, digout, sizeof(tx_bus_msg.msg.devBus.x.devReq.setValue.setValue.do31.digOut));
+    memcpy(&tx_bus_msg.msg.devBus.x.devReq.setValue.setValue.do31.shader, shader, sizeof(tx_bus_msg.msg.devBus.x.devReq.setValue.setValue.do31.shader));
+    BusSend(&tx_bus_msg);
+}
+
+static void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto_message *message) {
+
     T_topic_desc    *cfg;
     int             byteIdx;
     int             bitPos;
@@ -166,24 +177,29 @@ void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto
         return;
     }
 
-    if ((cfg->devtype == eBusDevTypeDo31) && (cfg->io.do31.type == e_do31_digout)) {
-
-        txBusMsg.type = eBusDevReqSetValue;
-        txBusMsg.senderAddr = my_addr;
-        txBusMsg.msg.devBus.receiverAddr = cfg->io.do31.address;
-        txBusMsg.msg.devBus.x.devReq.setValue.devType = cfg->devtype;
-        memset(&txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, 0, sizeof(txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut));
-        memset(&txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader, 254, sizeof(txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.shader));
-
-        /* calculate the bit position (2 bits for each output) */
-        byteIdx = cfg->io.do31.output / 4;
-        bitPos = (cfg->io.do31.output % 4) * 2;
-        if (*(char *)(message->payload) == '0') {
-            txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[byteIdx] = 2 << bitPos;
-        } else {
-            txBusMsg.msg.devBus.x.devReq.setValue.setValue.do31.digOut[byteIdx] = 3 << bitPos;
-        }
-        BusSend(&txBusMsg);
+    switch(cfg->devtype) {
+    case eBusDevTypeDo31:
+		uint8_t digout[BUS_DO31_DIGOUT_SIZE_SET_VALUE];
+		uint8_t shader[BUS_DO31_SHADER_SIZE_SET_VALUE];
+	    memset(digout, 0, sizeof(digout));
+	    memset(shader, 254, sizeof(shader));
+    	if (cfg->io.do31.type == e_do31_digout) {
+    	    /* calculate the bit position (2 bits for each output) */
+    	    byteIdx = cfg->io.do31.output / 4;
+    	    bitPos = (cfg->io.do31.output % 4) * 2;
+    	    if (*(char *)(message->payload) == '0') {
+    	        digout[byteIdx] = 2 << bitPos;
+    	    } else {
+    	        digout[byteIdx] = 3 << bitPos;
+    	    }
+    	    do31_ReqSetValue(cfg->io.do31.address, digout, shader);
+    	} else if (cfg->io.do31.type == e_do31_shader) {
+            shader[cfg->io.do31.output] = (uint8_t)strtoul((char *)(message->payload), 0, 0);
+    	    do31_ReqSetValue(cfg->io.do31.address, digout, shader);
+    	}
+    	break;
+    default:
+    	break;
     }
 }
 
@@ -456,7 +472,7 @@ static int init_state(void) {
         if (rx_msg) {
             av = &rx_msg->msg.devBus.x.devResp.actualValue;
             if (dev_type != av->devType) {
-                printf("configuartion error devType of %d invalid\n", address);
+                printf("configuration error devType of %d invalid\n", address);
                 break;
             }
 
