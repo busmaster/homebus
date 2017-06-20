@@ -8,7 +8,7 @@
     type: do31
     address: 240
     digout: 8
-- topic: home/og/garage/licht
+- topic: home/eg/garage/licht
   physical:  
     type: do31
     address: 240

@@ -591,13 +591,6 @@ int main(int argc, char *argv[]) {
 
     init_state();
 
-
-    for (int i = 0; i < 100; i++) {
-       usleep(100000);
-       mosquitto_loop_misc(mosq);
-       mosquitto_loop_read(mosq, 1);
-    }
-
     /* subscribe to all configured topic extended by 'set' */
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
         snprintf(topic, sizeof(topic), "%s/set", topic_entry->topic);
