@@ -20,14 +20,14 @@
  *
  *
  */
- 
- 
+
+
 /* todo
  * - pwm4 support
  * - evaluate eBusDevRespSetValue for quick input response (response to eBusDevReqSetValue in my_message_callback)
- * 
- * 
- * 
+ *
+ *
+ *
  * */
 
 #include <stdint.h>
@@ -48,6 +48,9 @@
 
 #include "sio.h"
 #include "bus.h"
+
+
+#include <syslog.h>
 
 /*-----------------------------------------------------------------------------
 *  Macros
@@ -496,8 +499,8 @@ printf("publish init state: DO31 at %d\n", address);
 */
 static void print_usage(void) {
 
-   printf("\r\nUsage:\r\n");
-   printf("mqtt -c port -a address -f yaml-cfg -e event-listen-address\n");
+   printf("\nUsage:\n");
+   printf("mqtt -c sio-port -a bus-address -f yaml-cfg -e event-listen-bus-address -m mqtt-broker-ip [-p mqtt-port]\n");
 }
 
 /*-----------------------------------------------------------------------------
@@ -514,6 +517,8 @@ int main(int argc, char *argv[]) {
     int              i;
     char             com_port[PATH_LEN] = "";
     char             config[PATH_LEN] = "";
+    char             broker[PATH_LEN] = "";
+    int              port = 1883; /* default */
     bool             my_addr_valid = false;
     bool             event_addr_valid = false;
     struct timeval   tv;
@@ -551,43 +556,59 @@ int main(int argc, char *argv[]) {
                 event_addr = (uint8_t)strtoul(argv[i + 1], 0, 0);
                 event_addr_valid = true;
             }
-            break;
+        }
+        /* broker address */
+        if (strcmp(argv[i], "-m") == 0) {
+            if (argc > i) {
+                snprintf(broker, sizeof(broker), "%s", argv[i + 1]);
+            }
+        }
+        /* event listen address */
+        if (strcmp(argv[i], "-p") == 0) {
+            if (argc > i) {
+                port = (int)strtoul(argv[i + 1], 0, 0);
+            }
         }
     }
 
-
-    if ((strlen(com_port) == 0) ||
-        !my_addr_valid          ||
-        !event_addr_valid       ||
+    if ((strlen(com_port) == 0)  ||
+        !my_addr_valid           ||
+        !event_addr_valid        ||
+        (strlen(broker) == 0)    ||
         (strlen(config) == 0)) {
         print_usage();
         return 0;
     }
 
     if (ReadConfig(config) == 0) {
-        printf("config error\n");
-        return 0;
+        syslog(LOG_ERR, "configuration error");
+        return -1;
     }
 
     mosquitto_lib_init();
     mosq = mosquitto_new("bus-client", true, 0);
     if (!mosq) {
-        printf("mosq 0\n");
-        return 0;
+        syslog(LOG_ERR, "can't create mosquitto instance");
+        return -1;
     }
+
     mosquitto_connect_callback_set(mosq, my_connect_callback);
     mosquitto_disconnect_callback_set(mosq, my_disconnect_callback);
     mosquitto_log_callback_set(mosq, my_log_callback);
     mosquitto_message_callback_set(mosq, my_message_callback);
 
-    ret = mosquitto_connect(mosq, "10.0.0.200", 1883, 60);
-//    printf("connect ret %d\n", ret);
+    ret = mosquitto_connect(mosq, broker, port, 60);
+    if (ret != MOSQ_ERR_SUCCESS) {
+        syslog(LOG_ERR, "can't connect to broker %s:%d", broker, port);
+        return -1;
+    }
 
     busHandle = InitBus(com_port);
     if (busHandle == -1) {
-        printf("cannot open %s\n", com_port);
+        syslog(LOG_ERR, "can't open %s", com_port);
         return -1;
     }
+
     busFd = SioGetFd(busHandle);
     maxFd = busFd;
     mosqFd = mosquitto_socket(mosq);
