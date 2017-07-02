@@ -37,8 +37,10 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <mosquitto.h>
+#include <syslog.h>
+#include <errno.h>
 
+#include <mosquitto.h>
 #include <uthash.h>
 #include <yaml-cpp/yaml.h>
 #include <iostream>
@@ -48,9 +50,6 @@
 
 #include "sio.h"
 #include "bus.h"
-
-
-#include <syslog.h>
 
 /*-----------------------------------------------------------------------------
 *  Macros
@@ -518,6 +517,7 @@ int main(int argc, char *argv[]) {
     char             com_port[PATH_LEN] = "";
     char             config[PATH_LEN] = "";
     char             broker[PATH_LEN] = "";
+    int              connect_timeout = 30;
     int              port = 1883; /* default */
     bool             my_addr_valid = false;
     bool             event_addr_valid = false;
@@ -597,9 +597,20 @@ int main(int argc, char *argv[]) {
     mosquitto_log_callback_set(mosq, my_log_callback);
     mosquitto_message_callback_set(mosq, my_message_callback);
 
-    ret = mosquitto_connect(mosq, broker, port, 60);
-    if (ret != MOSQ_ERR_SUCCESS) {
-        syslog(LOG_ERR, "can't connect to broker %s:%d", broker, port);
+    do {
+        ret = mosquitto_connect(mosq, broker, port, 60);
+        sleep(1);
+        connect_timeout--;
+    } while ((ret == MOSQ_ERR_ERRNO) && (errno == ENETUNREACH) && (connect_timeout > 0));
+
+    if (ret == MOSQ_ERR_INVAL) {
+        syslog(LOG_ERR, "MOSQ_ERR_INVAL: can't connect to broker %s:%d", broker, port);
+        return -1;
+    } else if (ret == MOSQ_ERR_ERRNO) {
+        syslog(LOG_ERR, "MOSQ_ERR_INVAL: can't connect to broker %s:%d, errno %d (%s)", broker, port, errno, strerror(errno));
+        return -1;
+    } else if (ret != MOSQ_ERR_SUCCESS) {
+        syslog(LOG_ERR, "unknown error: can't connect to broker %s:%d", broker, port);
         return -1;
     }
 
