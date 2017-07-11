@@ -326,8 +326,8 @@ typedef struct {
    uint8_t digOut[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];/* 1 bit per output                                       */
    uint8_t shader[BUS_DO31_SHADER_SIZE_ACTUAL_VALUE];/* 1 byte per shader: current position 0 .. 100 (stopped) */
                                                      /*                    252:     not configured             */
-                                                     /*                    253:     opening                    */
-                                                     /*                    254:     closing                    */
+                                                     /*                    253:     closing                    */
+                                                     /*                    254:     opening                    */
                                                      /*                    255:     error                      */
 } __attribute__ ((packed)) TBusDevActualValueDo31;
 
