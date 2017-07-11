@@ -25,7 +25,7 @@
 /* todo
  * - pwm4 support
  * - evaluate eBusDevRespSetValue for quick input response (response to eBusDevReqSetValue in my_message_callback)
- *
+ * - do31_reqsetvalue: wait for response
  *
  *
  * */
@@ -57,7 +57,7 @@
 #define MAX_LEN_TOPIC        50
 #define BUS_RESPONSE_TIMEOUT 100 /* ms */
 
-#define PATH_LEN   255
+#define PATH_LEN             255
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -114,6 +114,22 @@ static struct mosquitto *mosq;
 *  Functions
 */
 
+
+/*-----------------------------------------------------------------------------
+*  get the current time in ms
+*/
+static unsigned long get_tick_count(void) {
+
+    struct timespec ts;
+    unsigned long time_ms;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    time_ms = (unsigned long)((unsigned long long)ts.tv_sec * 1000ULL +
+              (unsigned long long)ts.tv_nsec / 1000000ULL);
+
+    return time_ms;
+}
+
 /*-----------------------------------------------------------------------------
 *  sio open and bus init
 */
@@ -144,30 +160,100 @@ void my_disconnect_callback(struct mosquitto *mq, void *obj, int rc) {
 }
 
 void my_log_callback(struct mosquitto *mq, void *obj, int level, const char *str) {
-    printf("log: %s\n", str);
+//    printf("log: %s\n", str);
 }
 
-static void do31_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
+/*-----------------------------------------------------------------------------
+*  set a DO31 output using ReqSetValue telegram
+*/
+static int do31_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
 
-    TBusTelegram tx_bus_msg;
+    TBusTelegram        tx_msg;
+    TBusTelegram        *rx_msg;
+    unsigned long       start_time;
+    unsigned long       cur_time;
+    uint8_t             ret;
+    TBusDevSetValueDo31 *sv;
+    bool                response_ok = false;
+    bool                timeout = false;
 
-    tx_bus_msg.type = eBusDevReqSetValue;
-    tx_bus_msg.senderAddr = my_addr;
-    tx_bus_msg.msg.devBus.receiverAddr = addr;
-    tx_bus_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
-    memcpy(&tx_bus_msg.msg.devBus.x.devReq.setValue.setValue.do31.digOut, digout, sizeof(tx_bus_msg.msg.devBus.x.devReq.setValue.setValue.do31.digOut));
-    memcpy(&tx_bus_msg.msg.devBus.x.devReq.setValue.setValue.do31.shader, shader, sizeof(tx_bus_msg.msg.devBus.x.devReq.setValue.setValue.do31.shader));
-    BusSend(&tx_bus_msg);
+    tx_msg.type = eBusDevReqSetValue;
+    tx_msg.senderAddr = my_addr;
+    tx_msg.msg.devBus.receiverAddr = addr;
+    tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
+    sv = &tx_msg.msg.devBus.x.devReq.setValue.setValue.do31;
+    memcpy(sv->digOut, digout, sizeof(sv->digOut));
+    memcpy(sv->shader, shader, sizeof(sv->shader));
+
+    BusSend(&tx_msg);
+
+    /* response */
+    start_time = get_tick_count();
+    do {
+        cur_time = get_tick_count();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            rx_msg = BusMsgBufGet();
+            if ((rx_msg->type == eBusDevRespSetValue)     &&
+                (rx_msg->msg.devBus.receiverAddr == my_addr) &&
+                (rx_msg->senderAddr == addr)) {
+                response_ok = true;
+            }
+        } else {
+            if ((cur_time - start_time) > BUS_RESPONSE_TIMEOUT) {
+                timeout = true;
+            }
+        }
+        usleep(10000);
+    } while (!response_ok && !timeout);
+
+    return response_ok ? 0 : -1;
 }
 
+/*-----------------------------------------------------------------------------
+*  set a DO31 output
+*/
+static void do31_set_output(uint8_t address, uint8_t output, T_do31_output_type type, uint8_t value) {
+
+    int        byteIdx;
+    int        bitPos;
+    uint8_t    digout[BUS_DO31_DIGOUT_SIZE_SET_VALUE];
+    uint8_t    shader[BUS_DO31_SHADER_SIZE_SET_VALUE];
+    const char *str = "";
+
+    memset(digout, 0, sizeof(digout));
+    memset(shader, 254, sizeof(shader));
+    if (type == e_do31_digout) {
+        /* calculate the bit position (2 bits for each output) */
+        byteIdx = output / 4;
+        bitPos = (output % 4) * 2;
+        if (value == 0) {
+            digout[byteIdx] = 2 << bitPos;
+        } else {
+            digout[byteIdx] = 3 << bitPos;
+        }
+        str = "DO";
+    } else if (type == e_do31_shader) {
+        shader[output] = value;
+        str = "SH";
+    }
+    if (do31_ReqSetValue(address, digout, shader) != 0) {
+        syslog(LOG_ERR, "DO31 %d: can't set value %s%d to %d", address, str, output, value);
+    }
+}
+
+/*-----------------------------------------------------------------------------
+*  subscription callback for .../set
+*/
 static void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto_message *message) {
 
-    T_topic_desc    *cfg;
-    int             byteIdx;
-    int             bitPos;
-    char            topic[MAX_LEN_TOPIC];
-    char            *ch;
-    int             len;
+    T_topic_desc *cfg;
+    char         topic[MAX_LEN_TOPIC];
+    char         *ch;
+    int          len;
+    uint8_t      value8;
+
+printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
 
     ch = strrchr(message->topic, '/');
     len = ch - message->topic;
@@ -181,27 +267,11 @@ static void my_message_callback(struct mosquitto *mq, void *obj, const struct mo
 
     switch(cfg->devtype) {
     case eBusDevTypeDo31:
-		uint8_t digout[BUS_DO31_DIGOUT_SIZE_SET_VALUE];
-		uint8_t shader[BUS_DO31_SHADER_SIZE_SET_VALUE];
-	    memset(digout, 0, sizeof(digout));
-	    memset(shader, 254, sizeof(shader));
-    	if (cfg->io.do31.type == e_do31_digout) {
-    	    /* calculate the bit position (2 bits for each output) */
-    	    byteIdx = cfg->io.do31.output / 4;
-    	    bitPos = (cfg->io.do31.output % 4) * 2;
-    	    if (*(char *)(message->payload) == '0') {
-    	        digout[byteIdx] = 2 << bitPos;
-    	    } else {
-    	        digout[byteIdx] = 3 << bitPos;
-    	    }
-    	    do31_ReqSetValue(cfg->io.do31.address, digout, shader);
-    	} else if (cfg->io.do31.type == e_do31_shader) {
-            shader[cfg->io.do31.output] = (uint8_t)strtoul((char *)(message->payload), 0, 0);
-    	    do31_ReqSetValue(cfg->io.do31.address, digout, shader);
-    	}
-    	break;
+        value8 = (uint8_t)strtoul((char *)message->payload, 0, 0);
+        do31_set_output(cfg->io.do31.address, cfg->io.do31.output, cfg->io.do31.type, value8);
+        break;
     default:
-    	break;
+        break;
     }
 }
 
@@ -325,6 +395,7 @@ static void publish_do31(
             if (io_entry) {
                 actval8 = (av->digOut[byteIdx] & (1 << bitPos)) != 0;
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
+printf("publish %s %d\n", topic, actval8);
                 mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
             }
         }
@@ -349,10 +420,10 @@ static void publish_do31(
                         payloadlen = snprintf(payload, sizeof(payload), "not configured");
                         break;
                     case 253:
-                        payloadlen = snprintf(payload, sizeof(payload), "opening");
+                        payloadlen = snprintf(payload, sizeof(payload), "closing");
                         break;
                     case 254:
-                        payloadlen = snprintf(payload, sizeof(payload), "closing");
+                        payloadlen = snprintf(payload, sizeof(payload), "opening");
                         break;
                     case 255:
                         payloadlen = snprintf(payload, sizeof(payload), "error");
@@ -363,6 +434,7 @@ static void publish_do31(
                     }
                 }
                 if (payloadlen) {
+printf("publish %s %s\n", topic, payload);
                     mosquitto_publish(mosq, 0, topic, payloadlen, payload, 1, true);
                 }
             }
@@ -406,18 +478,6 @@ static void serve_bus(void) {
     default:
         break;
     }
-}
-
-static unsigned long get_tick_count(void) {
-
-    struct timespec ts;
-    unsigned long time_ms;
-
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    time_ms = (unsigned long)((unsigned long long)ts.tv_sec * 1000ULL +
-              (unsigned long long)ts.tv_nsec / 1000000ULL);
-
-    return time_ms;
 }
 
 static TBusTelegram *request_actval(uint8_t address) {
@@ -649,7 +709,6 @@ int main(int argc, char *argv[]) {
     for (;;) {
         FD_SET(busFd, &rfds);
         FD_SET(mosqFd, &rfds);
-        FD_SET(STDIN_FILENO, &rfds);
         tv.tv_sec = 0;
         tv.tv_usec = 100000;
         ret = select(maxFd + 1, &rfds, 0, 0, &tv);
@@ -657,10 +716,8 @@ int main(int argc, char *argv[]) {
             serve_bus();
         }
         if ((ret > 0) && FD_ISSET(mosqFd, &rfds)) {
-//printf("mosq rfds\n");
             mosquitto_loop_read(mosq, 1);
         }
-//printf("mosq loop misc\n");
         mosquitto_loop_misc(mosq);
     }
 
