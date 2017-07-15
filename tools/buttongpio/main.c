@@ -37,11 +37,12 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
-#define SIZE_COMPORT   100
-#define BUFFER_MAX     3
-#define DIRECTION_MAX  35
-#define VALUE_MAX      30
+#define SIZE_COMPORT         100
+#define BUFFER_MAX           3
+#define DIRECTION_MAX        35
+#define VALUE_MAX            30
 #define BUTTON_PRESS_TIMEOUT 2000
+#define BUS_TIMEOUT          60000
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -171,7 +172,7 @@ int main(int argc, char *argv[]) {
     fd_set        rfds;
     int           ret;
     struct timeval tv;
-    unsigned int  gpio_on_timestamp;
+    unsigned int  start_timestamp;
     unsigned int  curr_timestamp;
     bool          gpio_on = false;
 
@@ -235,7 +236,12 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    sio_handle = init_bus(com_port);
+    start_timestamp = get_tick_count();
+    do {
+        sio_handle = init_bus(com_port);
+        curr_timestamp = get_tick_count();
+        sleep(1);
+    }  while ((sio_handle == -1) && ((curr_timestamp - start_timestamp) < BUS_TIMEOUT));
     if (sio_handle == -1) {
         printf("cannot open %s\r\n", com_port);
         return -1;
@@ -260,7 +266,7 @@ int main(int argc, char *argv[]) {
                             gpio_write(gpio_output, 0);
                             gpio_on = true;
                         }
-                        gpio_on_timestamp = get_tick_count();
+                        start_timestamp = get_tick_count();
                     }
                 }
             }
@@ -268,7 +274,7 @@ int main(int argc, char *argv[]) {
             if (gpio_on) {
                 /* timeout check */
                 curr_timestamp = get_tick_count();
-                if ((curr_timestamp - gpio_on_timestamp) > BUTTON_PRESS_TIMEOUT) {
+                if ((curr_timestamp - start_timestamp) > BUTTON_PRESS_TIMEOUT) {
                     gpio_write(gpio_output, 1);
                     gpio_on = false;
                 }
