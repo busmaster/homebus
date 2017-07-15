@@ -50,13 +50,13 @@ static int gpio_export(int pin) {
     char buffer[BUFFER_MAX];
     ssize_t bytes_written;
     int fd;
- 
+
     fd = open("/sys/class/gpio/export", O_WRONLY);
     if (-1 == fd) {
         fprintf(stderr, "Failed to open export for writing!\n");
         return -1;
      }
- 
+
     bytes_written = snprintf(buffer, BUFFER_MAX, "%d", pin);
     write(fd, buffer, bytes_written);
     close(fd);
@@ -65,17 +65,16 @@ static int gpio_export(int pin) {
 }
 
 static int gpio_set_output_direction(int pin) {
-
     char path[DIRECTION_MAX];
     int fd;
- 
+
     snprintf(path, DIRECTION_MAX, "/sys/class/gpio/gpio%d/direction", pin);
     fd = open(path, O_WRONLY);
     if (-1 == fd) {
         fprintf(stderr, "Failed to open gpio direction for writing!\n");
         return -1;
     }
- 
+
     if (-1 == write(fd, "out", 3)) {
         fprintf(stderr, "Failed to set direction!\n");
         return -1;
@@ -86,22 +85,21 @@ static int gpio_set_output_direction(int pin) {
 }
 
 static int gpio_write(int pin, int value) {
- 
     char path[VALUE_MAX];
     int fd;
- 
+
     snprintf(path, VALUE_MAX, "/sys/class/gpio/gpio%d/value", pin);
     fd = open(path, O_WRONLY);
     if (-1 == fd) {
         fprintf(stderr, "Failed to open gpio value for writing!\n");
         return -1;
     }
- 
+
     if (1 != write(fd, value == 0 ? "0" : "1", 1)) {
         fprintf(stderr, "Failed to write value!\n");
         return -1;
     }
- 
+
     close(fd);
     return 0;
 }
@@ -254,15 +252,15 @@ int main(int argc, char *argv[]) {
             bus_ret = BusCheck();
             if (bus_ret == BUS_MSG_OK) {
                 rx_bus_msg = BusMsgBufGet();
-                if ((rx_bus_msg->type == eBusButtonPressed1) &&
-                    ((rx_bus_msg->msg.devBus.receiverAddr == button_addr))) {
-                    if  (!gpio_on &&
-                         (((button_input == 1) && ((rx_bus_msg->type == eBusButtonPressed1) || (rx_bus_msg->type == eBusButtonPressed1_2))) ||
-                          ((button_input == 2) && ((rx_bus_msg->type == eBusButtonPressed2) || (rx_bus_msg->type == eBusButtonPressed1_2))))) {
+                if (rx_bus_msg->senderAddr == button_addr) {
+                    if  (((button_input == 1) && ((rx_bus_msg->type == eBusButtonPressed1) || (rx_bus_msg->type == eBusButtonPressed1_2))) ||
+                         ((button_input == 2) && ((rx_bus_msg->type == eBusButtonPressed2) || (rx_bus_msg->type == eBusButtonPressed1_2)))) {
                         /* set gpio to 0 (active low) */
-                        gpio_write(gpio_output, 0);
+                        if (!gpio_on) {
+                            gpio_write(gpio_output, 0);
+                            gpio_on = true;
+                        }
                         gpio_on_timestamp = get_tick_count();
-                        gpio_on = true;
                     }
                 }
             }

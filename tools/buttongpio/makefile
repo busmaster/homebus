@@ -1,5 +1,5 @@
 OBJS = main.o
-BIN  = eventmonitor
+BIN  = buttongpio
 ARCH = $(TARGET_ARCH)
 OBJDIR = obj
 BINDIR = bin
