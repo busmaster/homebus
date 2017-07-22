@@ -223,3 +223,40 @@
     type: do31
     address: 241
     shader: 10
+
+#stiege og
+- topic: home/og/stiege/netzteil
+  physical:
+    type: do31
+    address: 240
+    digout: 0
+- topic: home/og/stiege/licht1
+  physical:
+    type: do31
+    address: 240
+    digout: 1
+- topic: home/og/stiege/licht2
+  physical:
+    type: do31
+    address: 240
+    digout: 2
+- topic: home/og/stiege/licht3
+  physical:
+    type: do31
+    address: 240
+    digout: 3
+- topic: home/og/stiege/licht4
+  physical:
+    type: do31
+    address: 240
+    digout: 4
+- topic: home/og/stiege/licht5
+  physical:
+    type: do31
+    address: 240
+    digout: 5
+- topic: home/og/stiege/licht6
+  physical:
+    type: do31
+    address: 240
+    digout: 6
