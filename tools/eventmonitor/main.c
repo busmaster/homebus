@@ -170,6 +170,15 @@ int main(int argc, char *argv[]) {
                         break;
                     case eBusDevTypePwm4:
                         Print("PWM4\n");
+                        val8 = pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.pwm4.state;
+                        for (i = 0, mask = 1; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++, mask <<= 1) {
+                            if (val8 & mask) {
+                                Print("1");
+                            } else {
+                                Print("0");
+                            }
+                        }
+                        Print("\n");
                         for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
                             val16 = pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.pwm4.pwm[i];
                             txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4.pwm[i] = val16;

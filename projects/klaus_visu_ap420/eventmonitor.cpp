@@ -49,7 +49,7 @@ void eventmonitor::readStdOut() {
             ev.type = eDevSw8;
             continue;
         } else if (qstrcmp(ev_lines[i], "event address 239 device type PWM4") == 0) {
-            evState = eEsWaitForPWM4;
+            evState = eEsWaitForPWM4_State;
             ev.srcAddr = 239;
             ev.type = eDevPwm4;
             continue;
@@ -82,7 +82,17 @@ void eventmonitor::readStdOut() {
             evState = eEsWaitForStart;
             doEmit = true;
             break;
-        case eEsWaitForPWM4:
+        case eEsWaitForPWM4_State:
+            for (j = 0; j < 4; j++) {
+                if (ev_lines[i].at(j) == '1') {
+                   ev.data.pwm4.state |= (1 << j);
+                } else {
+                   ev.data.pwm4.state &= ~(1 << j);
+                }
+            }
+            evState = eEsWaitForPWM4_Pwm;
+            break;
+        case eEsWaitForPWM4_Pwm:
             bool ok;
             field = ev_lines[i].split(' ');
             ev.data.pwm4.pwm[0] = field[0].toInt(&ok, 16);
