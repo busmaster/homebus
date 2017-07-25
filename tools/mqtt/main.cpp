@@ -24,8 +24,8 @@
 
 /* todo
  * - pwm4 support
+ * - sw8 support
  * - evaluate eBusDevRespSetValue for quick input response (response to eBusDevReqSetValue in my_message_callback)
- * - do31_reqsetvalue: wait for response
  *
  *
  * */
@@ -109,6 +109,7 @@ static T_dev_desc       *dev_desc;
 static uint8_t          my_addr;
 static uint8_t          event_addr;
 static struct mosquitto *mosq;
+static bool             mosq_connected;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -152,11 +153,15 @@ static int InitBus(const char *comPort) {
 }
 
 void my_connect_callback(struct mosquitto *mq, void *obj, int result) {
-    printf("connect\n");
+
+    mosq_connected = true;
+    printf("cb connect\n");
 }
 
 void my_disconnect_callback(struct mosquitto *mq, void *obj, int rc) {
-    printf("disconnect\n");
+
+    mosq_connected = false;
+    printf("cb disconnect\n");
 }
 
 void my_log_callback(struct mosquitto *mq, void *obj, int level, const char *str) {
@@ -577,7 +582,6 @@ int main(int argc, char *argv[]) {
     char             com_port[PATH_LEN] = "";
     char             config[PATH_LEN] = "";
     char             broker[PATH_LEN] = "";
-    int              connect_timeout = 30;
     int              port = 1883; /* default */
     bool             my_addr_valid = false;
     bool             event_addr_valid = false;
@@ -657,23 +661,6 @@ int main(int argc, char *argv[]) {
     mosquitto_log_callback_set(mosq, my_log_callback);
     mosquitto_message_callback_set(mosq, my_message_callback);
 
-    do {
-        ret = mosquitto_connect(mosq, broker, port, 60);
-        sleep(1);
-        connect_timeout--;
-    } while ((ret == MOSQ_ERR_ERRNO) && (errno == ENETUNREACH) && (connect_timeout > 0));
-
-    if (ret == MOSQ_ERR_INVAL) {
-        syslog(LOG_ERR, "MOSQ_ERR_INVAL: can't connect to broker %s:%d", broker, port);
-        return -1;
-    } else if (ret == MOSQ_ERR_ERRNO) {
-        syslog(LOG_ERR, "MOSQ_ERR_INVAL: can't connect to broker %s:%d, errno %d (%s)", broker, port, errno, strerror(errno));
-        return -1;
-    } else if (ret != MOSQ_ERR_SUCCESS) {
-        syslog(LOG_ERR, "unknown error: can't connect to broker %s:%d", broker, port);
-        return -1;
-    }
-
     busHandle = InitBus(com_port);
     if (busHandle == -1) {
         syslog(LOG_ERR, "can't open %s", com_port);
@@ -682,10 +669,6 @@ int main(int argc, char *argv[]) {
 
     busFd = SioGetFd(busHandle);
     maxFd = busFd;
-    mosqFd = mosquitto_socket(mosq);
-    if (mosqFd > busFd) {
-        maxFd = mosqFd;
-    }
 
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
         printf("topic %s %d %d %d\n", topic_entry->topic, topic_entry->devtype,  topic_entry->io.do31.address, topic_entry->io.do31.output);
@@ -697,8 +680,12 @@ int main(int argc, char *argv[]) {
         printf("io %04x %s\n", io_entry->phys_io, io_entry->topic);
     }
 
+    while (mosquitto_connect(mosq, broker, port, 60) != MOSQ_ERR_SUCCESS) {
+        sleep(30);
+    }
+    mosq_connected = true;
+    mosqFd = mosquitto_socket(mosq);
     init_state();
-
     /* subscribe to all configured topic extended by 'set' */
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
         snprintf(topic, sizeof(topic), "%s/set", topic_entry->topic);
@@ -707,10 +694,24 @@ int main(int argc, char *argv[]) {
 
     FD_ZERO(&rfds);
     for (;;) {
+        if (!mosq_connected) {
+            while (mosquitto_reconnect(mosq) != MOSQ_ERR_SUCCESS) {
+                sleep(30);
+            }
+            mosqFd = mosquitto_socket(mosq);
+            init_state();
+            /* subscribe to all configured topic extended by 'set' */
+            HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
+                snprintf(topic, sizeof(topic), "%s/set", topic_entry->topic);
+                mosquitto_subscribe(mosq, 0, topic, 1);
+            }
+        }
+
         FD_SET(busFd, &rfds);
         FD_SET(mosqFd, &rfds);
         tv.tv_sec = 0;
         tv.tv_usec = 100000;
+        maxFd = max(mosqFd, busFd);
         ret = select(maxFd + 1, &rfds, 0, 0, &tv);
         if ((ret > 0) && FD_ISSET(busFd, &rfds)) {
             serve_bus();
