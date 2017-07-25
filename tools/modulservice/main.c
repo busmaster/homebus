@@ -401,7 +401,8 @@ int main(int argc, char *argv[]) {
                     printf("\n");
                     break;
                 case eBusDevTypePwm4:
-                    printf("\npwm: ");
+                    printf("\nstate: %02x\n", actVal.actualValue.pwm4.state);
+                    printf("pwm: ");
                     for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
                         printf("%04x ", actVal.actualValue.pwm4.pwm[i]);
                     }
@@ -880,6 +881,7 @@ static bool ModuleGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) 
                    sizeof(pBuf->actualValue.rs485if.state));
             break;
         case eBusDevTypePwm4:
+            pBuf->actualValue.pwm4.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.pwm4.state;
             memcpy(pBuf->actualValue.pwm4.pwm,
                    pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.pwm4.pwm,
                    sizeof(pBuf->actualValue.pwm4.pwm));

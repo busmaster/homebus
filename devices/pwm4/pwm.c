@@ -149,11 +149,7 @@ bool PwmGetAll(uint16_t *buf, uint8_t buf_size) {
         return false;
     }
     for (i = 0; i < NUM_PWM_CHANNEL; i++) {
-        if (sState[i].on) {
-            *(buf + i) = sState[i].pwm;
-        } else {
-            *(buf + i) = 0;
-        }
+        *(buf + i) = sState[i].pwm;
     }
 
     return true;

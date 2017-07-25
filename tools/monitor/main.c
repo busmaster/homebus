@@ -728,6 +728,8 @@ static void BusMonDecoded(int sioHandle) {
                     break;
                 case eBusDevTypePwm4:
                     fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "state: %02x\r\n",
+                            pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.pwm4.state);
                     fprintf(spOutput, SPACE "pwm: ");
                     for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%04x ",
@@ -814,6 +816,8 @@ static void BusMonDecoded(int sioHandle) {
                     break;
                 case eBusDevTypePwm4:
                     fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "state: %02x\r\n",
+                            pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.pwm4.state);
                     fprintf(spOutput, SPACE "pwm: ");
                     for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%04x ",
@@ -887,6 +891,8 @@ static void BusMonDecoded(int sioHandle) {
                     break;
                 case eBusDevTypePwm4:
                     fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "state: %02x\r\n",
+                            pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4.state);
                     fprintf(spOutput, SPACE "pwm: ");
                     for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, SPACE "%04x ",

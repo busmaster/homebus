@@ -239,10 +239,10 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     } else if ((ev->srcAddr == 36) && (ev->type == eventmonitor::eDevSw8)) {
         ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
     } else if ((ev->srcAddr == 239) && (ev->type == eventmonitor::eDevPwm4)) {
-        ((ev->data.pwm4.pwm[0]) == 0)              ? io->kuecheState.detail.lightGeschirrspueler  = 0 : io->kuecheState.detail.lightGeschirrspueler = 1;
-        ((ev->data.pwm4.pwm[1]) == 0)              ? io->kuecheState.detail.lightAbwasch = 0          : io->kuecheState.detail.lightAbwasch = 1;
-        ((ev->data.pwm4.pwm[2]) == 0)              ? io->kuecheState.detail.lightKaffee = 0           : io->kuecheState.detail.lightKaffee = 1;
-        ((ev->data.pwm4.pwm[3]) == 0)              ? io->kuecheState.detail.lightDunstabzug = 0       : io->kuecheState.detail.lightDunstabzug = 1;
+        ((ev->data.pwm4.state & 0x01) == 0) ? io->kuecheState.detail.lightGeschirrspueler  = 0 : io->kuecheState.detail.lightGeschirrspueler = 1;
+        ((ev->data.pwm4.state & 0x02) == 0) ? io->kuecheState.detail.lightAbwasch = 0          : io->kuecheState.detail.lightAbwasch = 1;
+        ((ev->data.pwm4.state & 0x04) == 0) ? io->kuecheState.detail.lightKaffee = 0           : io->kuecheState.detail.lightKaffee = 1;
+        ((ev->data.pwm4.state & 0x08) == 0) ? io->kuecheState.detail.lightDunstabzug = 0       : io->kuecheState.detail.lightDunstabzug = 1;
     }
 
     if ((egSum != io->egState.sum)         ||

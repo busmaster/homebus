@@ -29,6 +29,7 @@ public:
                 quint8  digInOut;
             } sw8;
             struct {
+                quint8  state;
                 quint16 pwm[4];
             } pwm4;
         } data;
@@ -49,7 +50,8 @@ private:
         eEsWaitForDO31_Do,
         eEsWaitForDO31_Sh,
         eEsWaitForSW8,
-        eEsWaitForPWM4
+        eEsWaitForPWM4_State,
+        eEsWaitForPWM4_Pwm,
     } evState;
 
     struct eventmonitor::event ev;

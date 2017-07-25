@@ -360,7 +360,8 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValueRs485if;
 
 typedef struct {
-   uint16_t pwm[BUS_PWM4_PWM_SIZE_ACTUAL_VALUE];
+    uint8_t  state; /* 1 bit per output: 0 off, 1 on */
+    uint16_t pwm[BUS_PWM4_PWM_SIZE_ACTUAL_VALUE];
 } __attribute__ ((packed)) TBusDevActualValuePwm4;
 
 typedef struct {

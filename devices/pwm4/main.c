@@ -107,7 +107,7 @@ static TClient       sClient[BUS_MAX_CLIENT_NUM];
 static uint8_t       sNumClients;
 
 static uint16_t      sOldPwmActVal[NUM_PWM_CHANNEL];
-static uint16_t      sCurPwmActVal[NUM_PWM_CHANNEL];
+static bool          sOldPwmState[NUM_PWM_CHANNEL];
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -270,23 +270,32 @@ static void CheckEvent(void) {
     TBusDevReqActualValueEvent *pActVal;
     bool             getNextClient;
     uint8_t          nextClient;
-   
+    static uint16_t  sCurPwmActVal[NUM_PWM_CHANNEL];
+    static bool      sCurPwmState[NUM_PWM_CHANNEL];
+    uint8_t          i;
+    uint8_t          val8;
+
     if (sNumClients == 0) {
         return;
     }
-    
+
     /* do the change detection not in each cycle */
     GET_TIME_MS16(actualTime16);
     if (((uint16_t)(actualTime16 - sChangeTestTimeStamp)) >= CHANGE_DETECT_CYCLE_TIME_MS) {
         PwmGetAll(sCurPwmActVal, sizeof(sCurPwmActVal));
-        if (memcmp(sCurPwmActVal, sOldPwmActVal, sizeof(sCurPwmActVal)) == 0) {
+        for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+            PwmIsOn(i, &sCurPwmState[i]);
+        }
+        if ((memcmp(sCurPwmActVal, sOldPwmActVal, sizeof(sCurPwmActVal)) == 0) && 
+            (memcmp(sCurPwmState,  sOldPwmState,  sizeof(sCurPwmActVal)) == 0)) {
             actValChanged = false;
         } else {
             actValChanged = true;
         }
-     
+        
         if (actValChanged) {
             memcpy(sOldPwmActVal, sCurPwmActVal, sizeof(sOldPwmActVal));
+            memcpy(sOldPwmState,  sCurPwmState,  sizeof(sOldPwmState));
             sActualClient = 0;
             sNewClientCycleDelay = false;
             InitClientState();
@@ -318,6 +327,11 @@ static void CheckEvent(void) {
     
         memcpy(pActVal->actualValue.pwm4.pwm, sCurPwmActVal, 
                sizeof(pActVal->actualValue.pwm4.pwm));
+        val8 = 0;
+        for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+            val8 |= sCurPwmState[i] ? 1 << i : 0;
+        }
+        pActVal->actualValue.pwm4.state = val8;
         
         if (BusSend(&sTxBusMsg) == BUS_SEND_OK) {
             pClient->state = eEventWaitForConfirmation;
@@ -499,6 +513,8 @@ static void ProcessBus(uint8_t ret) {
     TClient                *pClient;
     static TBusTelegram    sTxMsg;
     static bool            sTxRetry = false;
+    bool                   flag;
+    bool                   val8;
 
     if (sTxRetry) {
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
@@ -577,6 +593,12 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         pActVal->devType = eBusDevTypePwm4;
         PwmGetAll(pActVal->actualValue.pwm4.pwm, sizeof(pActVal->actualValue.pwm4.pwm));
+        val8 = 0;
+        for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+            PwmIsOn(i, &flag);
+            val8 |= flag ? 1 << i: 0;
+        }
+        pActVal->actualValue.pwm4.state = val8;
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetValue:
@@ -664,9 +686,14 @@ static void ProcessBus(uint8_t ret) {
                 uint16_t buf[NUM_PWM_CHANNEL];
 
                 PwmGetAll(buf, sizeof(buf));
-
+                val8 = 0;
+                for (i = 0; i < NUM_PWM_CHANNEL; i++) {
+                    PwmIsOn(i, &val8);
+                    val8 |= flag ? 1 << i: 0;
+                }
                 p = &spBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4;
-                if (memcmp(p->pwm, buf, sizeof(buf)) == 0) {
+                if ((memcmp(p->pwm, buf, sizeof(buf)) == 0) &&
+                    (p->state == val8)) {
                     pClient->state = eEventConfirmationOK;
                 }
                 break;
