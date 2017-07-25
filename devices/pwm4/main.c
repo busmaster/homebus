@@ -514,7 +514,7 @@ static void ProcessBus(uint8_t ret) {
     static TBusTelegram    sTxMsg;
     static bool            sTxRetry = false;
     bool                   flag;
-    bool                   val8;
+    uint8_t                val8;
 
     if (sTxRetry) {
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
@@ -688,7 +688,7 @@ static void ProcessBus(uint8_t ret) {
                 PwmGetAll(buf, sizeof(buf));
                 val8 = 0;
                 for (i = 0; i < NUM_PWM_CHANNEL; i++) {
-                    PwmIsOn(i, &val8);
+                    PwmIsOn(i, &flag);
                     val8 |= flag ? 1 << i: 0;
                 }
                 p = &spBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4;
