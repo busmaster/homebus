@@ -194,6 +194,26 @@
     type: do31
     address: 241
     shader: 9
+- topic: home/eg/kueche/geschirrspueler/licht
+  physical:
+    type: pwm4
+    address: 239
+    pwmout: 0
+- topic: home/eg/kueche/abwasch/licht
+  physical:
+    type: pwm4
+    address: 239
+    pwmout: 1
+- topic: home/eg/kueche/kaffeemaschine/licht
+  physical:
+    type: pwm4
+    address: 239
+    pwmout: 2
+- topic: home/eg/kueche/dunstabzug/licht
+  physical:
+    type: pwm4
+    address: 239
+    pwmout: 3
 
 #speis
 - topic: home/eg/speis/licht
