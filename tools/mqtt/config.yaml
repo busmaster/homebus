@@ -22,13 +22,6 @@
     address: 241
     shader: 8
 
-#garage
-- topic: home/eg/garage/licht
-  physical:
-    type: do31
-    address: 240
-    digout: 9
-
 #bad
 - topic: home/og/bad/spiegel/licht
   physical:
@@ -280,3 +273,26 @@
     type: do31
     address: 240
     digout: 6
+
+
+#garage
+- topic: home/garage/licht
+  physical:
+    type: do31
+    address: 240
+    digout: 9
+- topic: home/garage/tor/status
+  physical:
+    type: sw8
+    address: 36
+    digin: 0
+#- topic: home/garage/tor/ausgang
+#  physical:
+#    type: sw8
+#    address: 36
+#    digout: 1
+- topic: home/garage/tor/puls
+  physical:
+    type: sw8
+    address: 36
+    pulseout: 1
