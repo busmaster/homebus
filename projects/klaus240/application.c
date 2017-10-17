@@ -187,6 +187,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 };
 
 static bool sDoorbellOn = true;
+static bool sBellToggle = false;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -624,10 +625,13 @@ void ApplicationPressed30_0(void) {
     }
 
     /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
-    DigOutToggle(eDigOut13);
-    DigOutToggle(eDigOut15);
-    DigOutToggle(eDigOut23);
-    DigOutToggle(eDigOut24);
+    if (!sBellToggle) {
+        sBellToggle = true;
+        DigOutToggle(eDigOut13);
+        DigOutToggle(eDigOut15);
+        DigOutToggle(eDigOut23);
+        DigOutToggle(eDigOut24);
+    }
 }
 void ApplicationReleased30_0(void) {
     /* Glocke */    
@@ -635,10 +639,13 @@ void ApplicationReleased30_0(void) {
         return;
     }
     /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
-    DigOutToggle(eDigOut13);
-    DigOutToggle(eDigOut15);
-    DigOutToggle(eDigOut23);
-    DigOutToggle(eDigOut24);
+    if (sBellToggle) {
+        sBellToggle = false;
+        DigOutToggle(eDigOut13);
+        DigOutToggle(eDigOut15);
+        DigOutToggle(eDigOut23);
+        DigOutToggle(eDigOut24);
+    }
 }
 void ApplicationPressed30_1(void) {}
 void ApplicationReleased30_1(void) {}
