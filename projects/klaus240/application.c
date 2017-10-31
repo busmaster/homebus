@@ -282,6 +282,7 @@ eDigOut26  Technik
 eDigOut27  Steckdose Netzwerkverteiler
 eDigOut28  Steckdose Netzwerkverteiler 
 eDigOut29  Küche Unterbauleuchten/Dunstabzugleuchte
+eDigOut30  Außenlampe Haustür
 */
 
 void ApplicationPressed1_0(void) {}
@@ -1048,8 +1049,12 @@ void ApplicationReleased100_0(void) {
 void ApplicationPressed100_1(void) {}
 void ApplicationReleased100_1(void) {}
 
-void ApplicationPressed101_0(void) {}
-void ApplicationReleased101_0(void) {}
+void ApplicationPressed101_0(void) {
+    DigOutOn(eDigOut30);
+}
+void ApplicationReleased101_0(void) {
+    DigOutOff(eDigOut30);
+}
 void ApplicationPressed101_1(void) {}
 void ApplicationReleased101_1(void) {}
 
