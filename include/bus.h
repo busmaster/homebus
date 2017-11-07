@@ -471,6 +471,31 @@ typedef struct {
     uint8_t     data[BUS_DIAG_SIZE];
 } __attribute__ ((packed)) TBusDevRespDiag;               /* type 0x28 */
 
+typedef struct {
+    uint16_t    year;
+    uint8_t     month;
+    uint8_t     day;
+    uint8_t     hour;
+    uint8_t     minute;
+    uint8_t     second;
+    int8_t      zoneHour;
+    uint8_t     zoneMinute;
+} __attribute__ ((packed)) TBusTime;
+
+typedef struct {
+} __attribute__ ((packed)) TBusDevReqGetTime;             /* type 0x29 */
+
+typedef struct {
+    TBusTime    time;
+} __attribute__ ((packed)) TBusDevRespGetTime;            /* type 0x2a */
+
+typedef struct {
+    TBusTime    time;
+} __attribute__ ((packed)) TBusDevReqSetTime;             /* type 0x2b */
+
+typedef struct {
+} __attribute__ ((packed)) TBusDevRespSetTime;            /* type 0x2c */
+
 
 typedef union {
    TBusDevReqReboot           reboot;
@@ -492,6 +517,8 @@ typedef union {
    TBusDevReqClockCalib       clockCalib;
    TBusDevReqDoClockCalib     doClockCalib;
    TBusDevReqDiag             diag;
+   TBusDevReqGetTime          getTime;
+   TBusDevReqSetTime          setTime;
 } __attribute__ ((packed)) TUniDevReq;
 
 typedef union {
@@ -513,6 +540,8 @@ typedef union {
    TBusDevRespClockCalib       clockCalib;
    TBusDevRespDoClockCalib     doClockCalib;
    TBusDevRespDiag             diag;
+   TBusDevRespGetTime          getTime;
+   TBusDevRespSetTime          setTime;
 } __attribute__ ((packed)) TUniDevResp;
 
 typedef struct {
@@ -571,6 +600,10 @@ typedef enum {
    eBusDevRespDoClockCalib =             0x26,
    eBusDevReqDiag =                      0x27,
    eBusDevRespDiag =                     0x28,
+   eBusDevReqGetTime =                   0x29,
+   eBusDevRespGetTime =                  0x2a,
+   eBusDevReqSetTime =                   0x2b,
+   eBusDevRespSetTime =                  0x2c,
    eBusDevStartup =                      0xff
 } __attribute__ ((packed)) TBusMsgType;
 
