@@ -35,6 +35,9 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
+#define OUTPUT_AUTO      0
+#define OUTPUT_OFF       1
+#define OUTPUT_ON        2
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -187,6 +190,8 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 };
 
 static bool sDoorbellOn = true;
+static bool sBellToggle = false;
+static uint8_t sDoorlight = OUTPUT_AUTO;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -197,7 +202,7 @@ static bool sDoorbellOn = true;
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_0.07";
+   return "Klaus2_0.08";
 }
 
 /*-----------------------------------------------------------------------------
@@ -281,6 +286,7 @@ eDigOut26  Technik
 eDigOut27  Steckdose Netzwerkverteiler
 eDigOut28  Steckdose Netzwerkverteiler 
 eDigOut29  Küche Unterbauleuchten/Dunstabzugleuchte
+eDigOut30  Außenlampe Haustür
 */
 
 void ApplicationPressed1_0(void) {}
@@ -624,10 +630,13 @@ void ApplicationPressed30_0(void) {
     }
 
     /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
-    DigOutToggle(eDigOut13);
-    DigOutToggle(eDigOut15);
-    DigOutToggle(eDigOut23);
-    DigOutToggle(eDigOut24);
+    if (!sBellToggle) {
+        sBellToggle = true;
+        DigOutToggle(eDigOut13);
+        DigOutToggle(eDigOut15);
+        DigOutToggle(eDigOut23);
+        DigOutToggle(eDigOut24);
+    }
 }
 void ApplicationReleased30_0(void) {
     /* Glocke */    
@@ -635,10 +644,13 @@ void ApplicationReleased30_0(void) {
         return;
     }
     /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
-    DigOutToggle(eDigOut13);
-    DigOutToggle(eDigOut15);
-    DigOutToggle(eDigOut23);
-    DigOutToggle(eDigOut24);
+    if (sBellToggle) {
+        sBellToggle = false;
+        DigOutToggle(eDigOut13);
+        DigOutToggle(eDigOut15);
+        DigOutToggle(eDigOut23);
+        DigOutToggle(eDigOut24);
+    }
 }
 void ApplicationPressed30_1(void) {}
 void ApplicationReleased30_1(void) {}
@@ -1041,14 +1053,31 @@ void ApplicationReleased100_0(void) {
 void ApplicationPressed100_1(void) {}
 void ApplicationReleased100_1(void) {}
 
-void ApplicationPressed101_0(void) {}
-void ApplicationReleased101_0(void) {}
-void ApplicationPressed101_1(void) {}
+void ApplicationPressed101_0(void) {
+    if (sDoorlight == OUTPUT_AUTO) {
+        DigOutOn(eDigOut30);
+    }
+}
+void ApplicationReleased101_0(void) {
+    if (sDoorlight == OUTPUT_AUTO) {
+        DigOutOff(eDigOut30);
+    }
+}
+void ApplicationPressed101_1(void) {
+    sDoorlight = OUTPUT_AUTO;
+    DigOutOff(eDigOut30);
+}
 void ApplicationReleased101_1(void) {}
 
-void ApplicationPressed102_0(void) {}
+void ApplicationPressed102_0(void) {
+    sDoorlight = OUTPUT_ON;
+    DigOutOn(eDigOut30);
+}
 void ApplicationReleased102_0(void) {}
-void ApplicationPressed102_1(void) {}
+void ApplicationPressed102_1(void) {
+    sDoorlight = OUTPUT_OFF;
+    DigOutOff(eDigOut30);
+}
 void ApplicationReleased102_1(void) {}
 
 void ApplicationPressed103_0(void) {}

@@ -260,7 +260,8 @@ int main(int argc, char *argv[]) {
                 rx_bus_msg = BusMsgBufGet();
                 if (rx_bus_msg->senderAddr == button_addr) {
                     if  (((button_input == 1) && ((rx_bus_msg->type == eBusButtonPressed1) || (rx_bus_msg->type == eBusButtonPressed1_2))) ||
-                         ((button_input == 2) && ((rx_bus_msg->type == eBusButtonPressed2) || (rx_bus_msg->type == eBusButtonPressed1_2)))) {
+                         ((button_input == 2) && ((rx_bus_msg->type == eBusButtonPressed2) || (rx_bus_msg->type == eBusButtonPressed1_2))) ||
+                         ((rx_bus_msg->type == eBusDevReqSwitchState) && (rx_bus_msg->msg.devBus.x.devReq.switchState.switchState & button_input))) {
                         /* set gpio to 0 (active low) */
                         if (!gpio_on) {
                             gpio_write(gpio_output, 0);

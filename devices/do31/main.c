@@ -141,6 +141,7 @@ static uint8_t sCurShaderActVal[BUS_DO31_SHADER_SIZE_ACTUAL_VALUE];
 
 static TClockCalib sClockCalib;
 
+static uint8_t sSw8State[256];
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -149,6 +150,7 @@ static void TimerInit(void);
 static void CheckButton(void);
 static void ButtonEvent(uint8_t address, uint8_t button);
 static void SwitchEvent(uint8_t address, uint8_t button, bool pressed);
+static void Sw8SwitchEvent(uint8_t address, uint8_t state);
 static void ProcessBus(uint8_t ret);
 static void RestoreDigOut(void);
 static void Idle(void);
@@ -544,6 +546,7 @@ static void ProcessBus(uint8_t ret) {
     TBusDevRespInfo        *pInfo;
     TBusDevRespGetState    *pGetState;
     TBusDevRespActualValue *pActVal;
+    TBusDevReqActualValueEvent *pActValEv;    
     TClient                *pClient;
     TClockCalibState       calibState;
     static TBusTelegram    sTxMsg;
@@ -570,6 +573,7 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqSetClientAddr:
         case eBusDevReqGetClientAddr:
         case eBusDevRespActualValueEvent:
+        case eBusDevReqActualValueEvent:
         case eBusDevReqClockCalib:
         case eBusDevRespDoClockCalib:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
@@ -777,18 +781,23 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
+    case eBusDevReqActualValueEvent:
+        pActValEv = &spBusMsg->msg.devBus.x.devReq.actualValueEvent;
+        if (pActValEv->devType == eBusDevTypeSw8) {
+            state = pActValEv->actualValue.sw8.state;
+            Sw8SwitchEvent(spBusMsg->senderAddr, state);
+            /* response packet */
+            sTxMsg.type = eBusDevRespActualValueEvent;
+            sTxMsg.senderAddr = MY_ADDR;
+            sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+            sTxMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeSw8;
+            sTxMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state = state;
+            sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        }
+        break;
     case eBusDevReqSwitchState:
         state = spBusMsg->msg.devBus.x.devReq.switchState.switchState;
-        if ((state & 0x01) != 0) {
-            SwitchEvent(spBusMsg->senderAddr, 1, true);
-        } else {
-            SwitchEvent(spBusMsg->senderAddr, 1, false);
-        }
-        if ((state & 0x02) != 0) {
-            SwitchEvent(spBusMsg->senderAddr, 2, true);
-        } else {
-            SwitchEvent(spBusMsg->senderAddr, 2, false);
-        }
+        Sw8SwitchEvent(spBusMsg->senderAddr, state);
         /* response packet */
         sTxMsg.type = eBusDevRespSwitchState;
         sTxMsg.senderAddr = MY_ADDR;
@@ -796,6 +805,7 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.msg.devBus.x.devResp.switchState.switchState = state;
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
+        
     case eBusDevReqSetAddr:
         sTxMsg.senderAddr = MY_ADDR; 
         sTxMsg.type = eBusDevRespSetAddr;  
@@ -1007,6 +1017,19 @@ static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) {
    buttonEventData.pressed = pressed;
    buttonEventData.buttonNr = button;
    ApplicationEventButton(&buttonEventData);
+}
+
+static void Sw8SwitchEvent(uint8_t address, uint8_t state) {
+    
+    uint8_t i;
+    uint8_t mask;
+    
+    for (mask = 1, i = 0; i < 8; i++, mask <<= 1) {
+        if ((sSw8State[address] ^ state) & mask) {
+            SwitchEvent(address, i + 1, state & mask);
+        }
+    }
+    sSw8State[address] = state;
 }
 
 

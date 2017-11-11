@@ -341,6 +341,10 @@ static TTelegramSize sTelegramSize[] = {
    { MSG_BASE_SIZE2 + sizeof(TBusDevRespDoClockCalib),  0                         }, // eBusDevRespDoClockCalib
    { MSG_BASE_SIZE2 + sizeof(TBusDevReqDiag),           0                         }, // eBusDevReqDiag
    { MSG_BASE_SIZE2 + sizeof(TBusDevRespDiag),          0                         }, // eBusDevRespDiag
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqGetTime),        0                         }, // eBusDevReqGetTime
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespGetTime),       0                         }, // eBusDevRespGetTime
+   { MSG_BASE_SIZE2 + sizeof(TBusDevReqSetTime),        0                         }, // eBusDevReqSetTime
+   { MSG_BASE_SIZE2 + sizeof(TBusDevRespSetTime),       0                         }, // eBusDevRespSetTime
 };
 
 static struct l2State {

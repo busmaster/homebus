@@ -551,8 +551,8 @@ static void PortInit(void) {
 */
 static void TimerInit(void) {
     /* configure Timer 0 */
-    /* prescaler clk/64 -> Interrupt period 256/1000000 * 64 = 16.384 ms */
-    TCCR0B = 3 << CS00;
+    /* prescaler clk/8 -> Interrupt period 256/1000000 * 8 = 2.048 ms */
+    TCCR0B = 2 << CS00;
     TIMSK0 = 1 << TOIE0;
 }
 
@@ -580,11 +580,11 @@ static void SendStartupMsg(void) {
 
 /*-----------------------------------------------------------------------------
 *  Timer 0 overflow ISR
-*  period:  16.384 ms
+*  period:  2.048 ms
 */
 ISR(TIMER0_OVF_vect) {
 
-    static uint8_t intCnt = 0;
+    static uint16_t intCnt = 0;
     static uint8_t oldSensor = 0;
     static uint8_t windCnt;
     uint8_t sensor;
@@ -595,10 +595,10 @@ ISR(TIMER0_OVF_vect) {
         windCnt++;
     }
     /* ms counter */
-    gTimeMs16 += 16;
-    gTimeMs += 16;
+    gTimeMs16 += 2;
+    gTimeMs += 2;
     intCnt++;
-    if (intCnt >= 61) { /* 16.384 ms * 61 = 1 s*/
+    if (intCnt >= 488) { /* 2.048 ms * 488 = 1 s*/
         intCnt = 0;
         gTimeS++;
         sWind = windCnt;
