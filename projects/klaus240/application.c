@@ -35,6 +35,9 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
+#define OUTPUT_AUTO      0
+#define OUTPUT_OFF       1
+#define OUTPUT_ON        2
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -188,6 +191,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 
 static bool sDoorbellOn = true;
 static bool sBellToggle = false;
+static uint8_t sDoorlight = OUTPUT_AUTO;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -198,7 +202,7 @@ static bool sBellToggle = false;
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_0.07";
+   return "Klaus2_0.08";
 }
 
 /*-----------------------------------------------------------------------------
@@ -1050,17 +1054,30 @@ void ApplicationPressed100_1(void) {}
 void ApplicationReleased100_1(void) {}
 
 void ApplicationPressed101_0(void) {
-    DigOutOn(eDigOut30);
+    if (sDoorlight == OUTPUT_AUTO) {
+        DigOutOn(eDigOut30);
+    }
 }
 void ApplicationReleased101_0(void) {
+    if (sDoorlight == OUTPUT_AUTO) {
+        DigOutOff(eDigOut30);
+    }
+}
+void ApplicationPressed101_1(void) {
+    sDoorlight = OUTPUT_AUTO;
     DigOutOff(eDigOut30);
 }
-void ApplicationPressed101_1(void) {}
 void ApplicationReleased101_1(void) {}
 
-void ApplicationPressed102_0(void) {}
+void ApplicationPressed102_0(void) {
+    sDoorlight = OUTPUT_ON;
+    DigOutOn(eDigOut30);
+}
 void ApplicationReleased102_0(void) {}
-void ApplicationPressed102_1(void) {}
+void ApplicationPressed102_1(void) {
+    sDoorlight = OUTPUT_OFF;
+    DigOutOff(eDigOut30);
+}
 void ApplicationReleased102_1(void) {}
 
 void ApplicationPressed103_0(void) {}
