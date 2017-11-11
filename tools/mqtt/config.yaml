@@ -67,17 +67,17 @@
     address: 240
     digout: 17
 
-#terrasse
-- topic: home/eg/terrasse/licht
+#glocke
+- topic: home/glocke
   physical:
     type: do31
     address: 240
-    digout: 20
-- topic: home/eg/terrasse/markise
+    digout: 18
+- topic: home/glocke/taster
   physical:
-    type: do31
-    address: 241
-    shader: 2
+    type: sw8
+    address: 30
+    digin: 0
 
 #keller
 - topic: home/ug/lager/licht
@@ -274,7 +274,6 @@
     address: 240
     digout: 6
 
-
 #garage
 - topic: home/garage/licht
   physical:
@@ -296,3 +295,22 @@
     type: sw8
     address: 36
     pulseout: 1
+
+#terrasse
+- topic: home/terrasse/licht
+  physical:
+    type: do31
+    address: 240
+    digout: 20
+- topic: home/terrasse/markise
+  physical:
+    type: do31
+    address: 241
+    shader: 2
+
+#eingang
+- topic: home/eingang/licht
+  physical:
+    type: do31
+    address: 240
+    digout: 30
