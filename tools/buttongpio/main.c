@@ -259,9 +259,12 @@ int main(int argc, char *argv[]) {
             if (bus_ret == BUS_MSG_OK) {
                 rx_bus_msg = BusMsgBufGet();
                 if (rx_bus_msg->senderAddr == button_addr) {
+                    TBusDevReqSwitchState      *ss  = &rx_bus_msg->msg.devBus.x.devReq.switchState;
+                    TBusDevReqActualValueEvent *ave = &rx_bus_msg->msg.devBus.x.devReq.actualValueEvent;
                     if  (((button_input == 1) && ((rx_bus_msg->type == eBusButtonPressed1) || (rx_bus_msg->type == eBusButtonPressed1_2))) ||
                          ((button_input == 2) && ((rx_bus_msg->type == eBusButtonPressed2) || (rx_bus_msg->type == eBusButtonPressed1_2))) ||
-                         ((rx_bus_msg->type == eBusDevReqSwitchState) && (rx_bus_msg->msg.devBus.x.devReq.switchState.switchState & button_input))) {
+                         ((rx_bus_msg->type == eBusDevReqSwitchState) && (ss->switchState & button_input))                                 ||
+                         ((rx_bus_msg->type == eBusDevReqActualValueEvent) && (ave->devType == eBusDevTypeSw8) && (ave->actualValue.sw8.state & button_input))) {
                         /* set gpio to 0 (active low) */
                         if (!gpio_on) {
                             gpio_write(gpio_output, 0);
