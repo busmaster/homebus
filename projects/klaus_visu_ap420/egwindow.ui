@@ -205,6 +205,25 @@
     <string>Lesen</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="pushButtonLightEingang">
+   <property name="geometry">
+    <rect>
+     <x>123</x>
+     <y>168</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="text">
+    <string>Eingang</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections>

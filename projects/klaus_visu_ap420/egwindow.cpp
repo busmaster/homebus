@@ -86,6 +86,12 @@ void egwindow::onIoStateChanged(void) {
     } else {
         ui->pushButtonLightWohnLese->setStyleSheet("background-color: yellow");
     }
+
+    if (io->egState.detail.lightEingang == 0) {
+        ui->pushButtonLightEingang->setStyleSheet("background-color: green");
+    } else {
+        ui->pushButtonLightEingang->setStyleSheet("background-color: yellow");
+    }
 }
 
 void egwindow::sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState) {
@@ -149,6 +155,10 @@ void egwindow::on_pushButtonLightWohnLese_pressed() {
     sendDo31Cmd(240, 14, ui->pushButtonLightWohnLese, io->egState.detail.lightWohnLese != 0);
 }
 
+void egwindow::on_pushButtonLightEingang_pressed() {
+    sendDo31Cmd(240, 30, ui->pushButtonLightEingang, io->egState.detail.lightEingang != 0);
+}
+
 void egwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
 
     if ((dialog == this) && (res->data.state == moduleservice::eCmdOk)) {
@@ -160,3 +170,4 @@ void egwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialo
 //        printf("egwindow cmdconf %d\n", res->data.state);
     }
 }
+

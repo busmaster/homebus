@@ -18,10 +18,9 @@ setupwindow::setupwindow(QWidget *parent, ioState *state) :
     connect(parent, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
             this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
 
-    doorbellState = false;
-    ui->pushButtonDoorbell->setStyleSheet("background-color: grey");
-    on_pushButtonDoorbell_pressed();
-    ui->pushButtonInternet->setStyleSheet("background-color: grey");
+//    on_pushButtonInternetEin_pressed();
+//    on_pushButtonGlockeEin_pressed();
+//    on_pushButtonLichtEingangAuto_pressed();
 }
 
 setupwindow::~setupwindow() {
@@ -44,73 +43,172 @@ void setupwindow::onIoStateChanged(void) {
     if (!isVisible) {
         return;
     }
-
     if (io->socket_1) {
-        ui->pushButtonInternet->setText(QString("Internet\nEIN"));
+        ui->pushButtonInternetEin->setStyleSheet("background-color: green");
+        ui->pushButtonInternetAus->setStyleSheet("background-color: grey");
     } else {
-        ui->pushButtonInternet->setText(QString("Internet\nAUS"));
+        ui->pushButtonInternetEin->setStyleSheet("background-color: grey");
+        ui->pushButtonInternetAus->setStyleSheet("background-color: green");
     }
 }
 
-void setupwindow::on_pushButtonDoorbell_pressed() {
+void setupwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
+
+    struct moduleservice::cmd command;
+    if ((dialog == this) && (res->data.state == moduleservice::eCmdOk)) {
+        switch (currentButton) {
+        case eCurrInternetAus:
+            ui->pushButtonInternetAus->setStyleSheet("background-color: green");
+            break;
+        case eCurrInternetEin:
+            ui->pushButtonInternetEin->setStyleSheet("background-color: green");
+            break;
+        case eCurrGlockeAus:
+            ui->pushButtonGlockeAus->setStyleSheet("background-color: green");
+            break;
+        case eCurrGlockeEin:
+            ui->pushButtonGlockeEin->setStyleSheet("background-color: green");
+            break;
+        case eCurrLichtEingangEin:
+            ui->pushButtonLichtEingangEin->setStyleSheet("background-color: green");
+            command.type = moduleservice::eSwitchstate;
+            command.destAddr = 240;
+            command.ownAddr = 102;
+            command.data.switchstate = 0;
+            currentButton = eCurrNone;
+            emit serviceCmd(&command, this);
+            break;
+        case eCurrLichtEingangAus:
+            ui->pushButtonLichtEingangAus->setStyleSheet("background-color: green");
+            command.type = moduleservice::eSwitchstate;
+            command.destAddr = 240;
+            command.ownAddr = 102;
+            command.data.switchstate = 0;
+            currentButton = eCurrNone;
+            emit serviceCmd(&command, this);
+            break;
+        case eCurrLichtEingangAuto:
+            ui->pushButtonLichtEingangAuto->setStyleSheet("background-color: green");
+            command.type = moduleservice::eSwitchstate;
+            command.destAddr = 240;
+            command.ownAddr = 101;
+            command.data.switchstate = 0;
+            currentButton = eCurrNone;
+            emit serviceCmd(&command, this);
+            break;
+        default:
+            break;
+        }
+
+//        printf("setupwindow cmdconf %d\n", res->data.state);
+    }
+}
+
+
+void setupwindow::on_pushButtonGlockeAus_pressed() {
 
     struct moduleservice::cmd command;
 
     command.type = moduleservice::eSwitchstate;
     command.destAddr = 240;
     command.ownAddr = 100;
-
-    if (doorbellState) {
-        command.data.switchstate = 0;
-    } else {
-        command.data.switchstate = 1;
-    }
-
-    ui->pushButtonDoorbell->setText(QString("Glocke\n"));
-    currentButton = ui->pushButtonDoorbell;
+    command.data.switchstate = 0;
+    ui->pushButtonGlockeAus->setStyleSheet("background-color: darkGreen");
+    ui->pushButtonGlockeEin->setStyleSheet("background-color: grey");
+    currentButton = eCurrGlockeAus;
 
     emit serviceCmd(&command, this);
 }
 
-void setupwindow::on_pushButtonInternet_clicked() {
+void setupwindow::on_pushButtonGlockeEin_pressed() {
+
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSwitchstate;
+    command.destAddr = 240;
+    command.ownAddr = 100;
+    command.data.switchstate = 1;
+    ui->pushButtonGlockeEin->setStyleSheet("background-color: darkGreen");
+    ui->pushButtonGlockeAus->setStyleSheet("background-color: grey");
+    currentButton = eCurrGlockeEin;
+
+    emit serviceCmd(&command, this);
+}
+
+void setupwindow::on_pushButtonInternetAus_pressed() {
 
     struct moduleservice::cmd command;
 
     command.type = moduleservice::eSetvaldo31_do;
     command.destAddr = 240;
-
     memset(&command.data, 0, sizeof(command.data));
-    if (io->socket_1) {
-        command.data.setvaldo31_do.setval[27] = 3; // on
-        currentButtonState = false;
-    } else {
-        command.data.setvaldo31_do.setval[27] = 2; // off
-        currentButtonState = true;
-    }
-    ui->pushButtonInternet->setText(QString("Internet\n"));
-    currentButton = ui->pushButtonInternet;
+    command.data.setvaldo31_do.setval[27] = 3; // on, relay normally closed
+    ui->pushButtonInternetAus->setStyleSheet("background-color: darkGreen");
+    ui->pushButtonInternetEin->setStyleSheet("background-color: grey");
+    currentButton = eCurrInternetAus;
 
     emit serviceCmd(&command, this);
 }
 
-void setupwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
+void setupwindow::on_pushButtonInternetEin_pressed() {
 
-    if ((dialog == this) && (res->data.state == moduleservice::eCmdOk)) {
-        if (currentButton == ui->pushButtonInternet) {
-            if (currentButtonState) {
-                currentButton->setText(QString("Internet\nEIN"));
-            } else {
-                currentButton->setText(QString("Internet\nAUS"));
-            }
-        } else if (currentButton == ui->pushButtonDoorbell) {
-            if (doorbellState) {
-                currentButton->setText(QString("Glocke\nAUS"));
-                doorbellState = false;
-            } else {
-                currentButton->setText(QString("Glocke\nEIN"));
-                doorbellState = true;
-            }
-        }
-//        printf("setupwindow cmdconf %d\n", res->data.state);
-    }
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSetvaldo31_do;
+    command.destAddr = 240;
+    memset(&command.data, 0, sizeof(command.data));
+    command.data.setvaldo31_do.setval[27] = 2; // off, relay normally closed
+    ui->pushButtonInternetEin->setStyleSheet("background-color: darkGreen");
+    ui->pushButtonInternetAus->setStyleSheet("background-color: grey");
+    currentButton = eCurrInternetEin;
+
+    emit serviceCmd(&command, this);
+}
+
+void setupwindow::on_pushButtonLichtEingangEin_pressed() {
+
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSwitchstate;
+    command.destAddr = 240;
+    command.ownAddr = 102;
+    command.data.switchstate = 1;
+    ui->pushButtonLichtEingangEin->setStyleSheet("background-color: darkGreen");
+    ui->pushButtonLichtEingangAus->setStyleSheet("background-color: grey");
+    ui->pushButtonLichtEingangAuto->setStyleSheet("background-color: grey");
+    currentButton = eCurrLichtEingangEin;
+
+    emit serviceCmd(&command, this);
+}
+
+void setupwindow::on_pushButtonLichtEingangAus_pressed() {
+
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSwitchstate;
+    command.destAddr = 240;
+    command.ownAddr = 102;
+    command.data.switchstate = 2;
+    ui->pushButtonLichtEingangAus->setStyleSheet("background-color: darkGreen");
+    ui->pushButtonLichtEingangEin->setStyleSheet("background-color: grey");
+    ui->pushButtonLichtEingangAuto->setStyleSheet("background-color: grey");
+    currentButton = eCurrLichtEingangAus;
+
+    emit serviceCmd(&command, this);
+}
+
+void setupwindow::on_pushButtonLichtEingangAuto_pressed() {
+
+    struct moduleservice::cmd command;
+
+    command.type = moduleservice::eSwitchstate;
+    command.destAddr = 240;
+    command.ownAddr = 101;
+    command.data.switchstate = 2;
+    ui->pushButtonLichtEingangAuto->setStyleSheet("background-color: darkGreen");
+    ui->pushButtonLichtEingangAus->setStyleSheet("background-color: grey");
+    ui->pushButtonLichtEingangEin->setStyleSheet("background-color: grey");
+    currentButton = eCurrLichtEingangAuto;
+
+    emit serviceCmd(&command, this);
 }

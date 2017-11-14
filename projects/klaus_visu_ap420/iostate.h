@@ -19,6 +19,7 @@ public:
             int lightArbeit     : 1;
             int lightTerrasse   : 1;
             int lightWohnLese   : 1;
+            int lightEingang    : 1;
         } detail;
     } egState;
     union {

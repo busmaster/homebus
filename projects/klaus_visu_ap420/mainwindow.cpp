@@ -224,8 +224,9 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ((ev->data.do31.digOut & 0x00400000) == 0) ? io->ugState.detail.lightStiege = 0     : io->ugState.detail.lightStiege  = 1;
         ((ev->data.do31.digOut & 0x00800000) == 0) ? io->ugState.detail.lightArbeit = 0     : io->ugState.detail.lightArbeit  = 1;
         ((ev->data.do31.digOut & 0x01000000) == 0) ? io->ugState.detail.lightFitness = 0    : io->ugState.detail.lightFitness = 1;
-        ((ev->data.do31.digOut & 0x02000000) == 0) ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum  = 1;
-        ((ev->data.do31.digOut & 0x04000000) == 0) ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik  = 1;
+        ((ev->data.do31.digOut & 0x02000000) == 0) ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum = 1;
+        ((ev->data.do31.digOut & 0x04000000) == 0) ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik = 1;
+        ((ev->data.do31.digOut & 0x40000000) == 0) ? io->egState.detail.lightEingang = 0    : io->egState.detail.lightEingang = 1;
         ((ev->data.do31.digOut & 0x08000000) == 0) ? io->socket_1 = true                    : io->socket_1 = false; // inverted connection NC
         ((ev->data.do31.digOut & 0x10000000) == 0) ? io->socket_2 = true                    : io->socket_2 = false; // inverted connection NC
     } else if ((ev->srcAddr == 241) && (ev->type == eventmonitor::eDevDo31)) {

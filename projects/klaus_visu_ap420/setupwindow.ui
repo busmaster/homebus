@@ -41,32 +41,161 @@
     <string>Zurück</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButtonDoorbell">
+  <widget class="QGroupBox" name="groupBoxLichtEingang">
    <property name="geometry">
     <rect>
-     <x>4</x>
-     <y>4</y>
-     <width>115</width>
-     <height>78</height>
+     <x>10</x>
+     <y>130</y>
+     <width>241</width>
+     <height>111</height>
     </rect>
    </property>
-   <property name="text">
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 255, 255);
+background-color: rgba(255, 255, 255, 0);</string>
+   </property>
+   <property name="title">
+    <string>Licht Eingang</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+   </property>
+   <widget class="QPushButton" name="pushButtonLichtEingangAuto">
+    <property name="geometry">
+     <rect>
+      <x>160</x>
+      <y>30</y>
+      <width>75</width>
+      <height>65</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>AUTO</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButtonLichtEingangAus">
+    <property name="geometry">
+     <rect>
+      <x>85</x>
+      <y>30</y>
+      <width>75</width>
+      <height>65</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>AUS</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButtonLichtEingangEin">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>75</width>
+      <height>65</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>EIN</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QGroupBox" name="groupBoxGlocke">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>165</width>
+     <height>111</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 255, 255);
+background-color: rgba(255, 255, 255, 0);</string>
+   </property>
+   <property name="title">
     <string>Glocke</string>
    </property>
+   <property name="alignment">
+    <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+   </property>
+   <widget class="QPushButton" name="pushButtonGlockeAus">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>75</width>
+      <height>65</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>AUS</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButtonGlockeEin">
+    <property name="geometry">
+     <rect>
+      <x>85</x>
+      <y>30</y>
+      <width>75</width>
+      <height>65</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>EIN</string>
+    </property>
+   </widget>
   </widget>
-  <widget class="QPushButton" name="pushButtonInternet">
+  <widget class="QGroupBox" name="groupBoxInternet">
    <property name="geometry">
     <rect>
-     <x>123</x>
-     <y>4</y>
-     <width>115</width>
-     <height>78</height>
+     <x>190</x>
+     <y>10</y>
+     <width>165</width>
+     <height>111</height>
     </rect>
    </property>
-   <property name="text">
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 255, 255);
+background-color: rgba(255, 255, 255, 0);</string>
+   </property>
+   <property name="title">
     <string>Internet</string>
    </property>
+   <property name="alignment">
+    <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+   </property>
+   <widget class="QPushButton" name="pushButtonInternetAus">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>75</width>
+      <height>65</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>AUS</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButtonInternetEin">
+    <property name="geometry">
+     <rect>
+      <x>85</x>
+      <y>30</y>
+      <width>75</width>
+      <height>65</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>EIN</string>
+    </property>
+   </widget>
   </widget>
+  <zorder>groupBoxGlocke</zorder>
+  <zorder>pushButtonBack</zorder>
+  <zorder>groupBoxLichtEingang</zorder>
+  <zorder>groupBoxInternet</zorder>
  </widget>
  <resources/>
  <connections>
