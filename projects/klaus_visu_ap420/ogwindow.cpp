@@ -198,3 +198,7 @@ void ogwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialo
 //        printf("ogwindow cmdconf %d\n", res->data.state);
     }
 }
+
+void ogwindow::on_pushButtonBack_clicked() {
+    hide();
+}

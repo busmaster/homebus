@@ -198,22 +198,5 @@ spüler</string>
   </widget>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>pushButtonBack</sender>
-   <signal>clicked()</signal>
-   <receiver>kuechewindow</receiver>
-   <slot>hide()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>418</x>
-     <y>206</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>239</x>
-     <y>124</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

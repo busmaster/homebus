@@ -35,6 +35,7 @@ private slots:
     void on_pushButtonLightTerrasse_pressed();
     void on_pushButtonLightWohnLese_pressed();
     void on_pushButtonLightEingang_pressed();
+    void on_pushButtonBack_clicked();
 
 private:
     void sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState);

@@ -212,3 +212,7 @@ void setupwindow::on_pushButtonLichtEingangAuto_pressed() {
 
     emit serviceCmd(&command, this);
 }
+
+void setupwindow::on_pushButtonBack_clicked() {
+    hide();
+}

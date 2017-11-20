@@ -27,6 +27,7 @@ private slots:
     void onIoStateChanged(void);
 
     void on_pushButtonLight_pressed();
+    void on_pushButtonBack_clicked();
 
 private:
     Ui::garagewindow *ui;

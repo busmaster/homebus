@@ -226,24 +226,7 @@
   </widget>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>pushButtonBack</sender>
-   <signal>clicked()</signal>
-   <receiver>egwindow</receiver>
-   <slot>hide()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>89</x>
-     <y>221</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>239</x>
-     <y>135</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
  <slots>
   <slot>ioState(ioState*)</slot>
  </slots>

@@ -84,3 +84,7 @@ void garagewindow::onCmdConf(const struct moduleservice::result *res, QDialog *d
 //        printf("garagewindow cmdconf %d\n", res->data.state);
     }
 }
+
+void garagewindow::on_pushButtonBack_clicked() {
+    hide();
+}

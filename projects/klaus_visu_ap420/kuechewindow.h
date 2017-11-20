@@ -36,6 +36,7 @@ private slots:
     void on_pushButtonLightKaffee_pressed();
     void on_pushButtonLightGeschirrspueler_pressed();
     void on_verticalSlider_valueChanged(int value);
+    void on_pushButtonBack_clicked();
 
 private:
     void sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState);

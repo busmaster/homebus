@@ -196,3 +196,7 @@ void kuechewindow::onCmdConf(const struct moduleservice::result *res, QDialog *d
 //        printf("kuechewindow cmdconf %d\n", res->data.state);
     }
 }
+
+void kuechewindow::on_pushButtonBack_clicked() {
+    hide();
+}

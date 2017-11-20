@@ -171,3 +171,7 @@ void egwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialo
     }
 }
 
+
+void egwindow::on_pushButtonBack_clicked() {
+    hide();
+}

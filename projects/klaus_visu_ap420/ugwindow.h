@@ -32,6 +32,7 @@ private slots:
     void on_pushButtonLightLager_pressed();
     void on_pushButtonLightFitness_pressed();
     void on_pushButtonLightArbeit_pressed();
+    void on_pushButtonBack_clicked();
 
 private:
     void sendDo31Cmd(quint8 destAddr, quint8 doNr, QPushButton *button, bool currState);

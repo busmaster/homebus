@@ -33,6 +33,7 @@ private slots:
     void on_pushButtonLichtEingangEin_pressed();
     void on_pushButtonLichtEingangAus_pressed();
     void on_pushButtonLichtEingangAuto_pressed();
+    void on_pushButtonBack_clicked();
 
 private:
     Ui::setupwindow *ui;

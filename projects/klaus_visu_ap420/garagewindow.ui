@@ -84,22 +84,5 @@
   </widget>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>pushButtonBack</sender>
-   <signal>clicked()</signal>
-   <receiver>garagewindow</receiver>
-   <slot>hide()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>409</x>
-     <y>226</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>239</x>
-     <y>135</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

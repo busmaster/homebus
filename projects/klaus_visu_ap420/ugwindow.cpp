@@ -138,3 +138,7 @@ void ugwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialo
 //        printf("ugwindow cmdconf %d\n", res->data.state);
     }
 }
+
+void ugwindow::on_pushButtonBack_clicked() {
+    hide();
+}
