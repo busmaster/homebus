@@ -15,6 +15,7 @@
 #include "garagewindow.h"
 #include "setupwindow.h"
 #include "smartmeterwindow.h"
+#include "kameraeingangwindow.h"
 #include "iostate.h"
 #include "moduleservice.h"
 #include "eventmonitor.h"
@@ -37,9 +38,11 @@ public:
 signals:
     void ioChanged(void);
     void cmdConf(const struct moduleservice::result *, QDialog *);
+    void screenSaverActivated(void);
 
 public slots:
     void onSendServiceCmd(const struct moduleservice::cmd *, QDialog *);
+    void onDisableScreenSaver(void);
 
 private slots:
     void scrTimerEvent();
@@ -51,10 +54,9 @@ private slots:
     void on_pushButtonGarage_clicked();
     void on_pushButtonSetup_clicked();
     void on_pushButtonSmartMeter_clicked();
-
     void onBusEvent(struct eventmonitor::event *);
     void onCmdConf(const struct moduleservice::result *, QDialog *);
-
+    void on_pushButtonKameraEingang_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -65,6 +67,7 @@ private:
     garagewindow *uiGarage;
     setupwindow *uiSetup;
     smartmeterwindow *uiSmartmeter;
+    kameraeingangwindow *uiKameraeingang;
 
     QTimer *scrTimer;
     QTimer *cycTimer;

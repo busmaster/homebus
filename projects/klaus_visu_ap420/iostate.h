@@ -77,6 +77,9 @@ public:
     /* switchable sockets Technik */
     bool socket_1;
     bool socket_2;
+
+    /* Tasterzustand Glocke */
+    bool glocke;
 };
 
 #endif // IOSTATE_H

@@ -84,6 +84,7 @@ MainWindow::MainWindow(QWidget *parent) :
     uiGarage = new garagewindow(this, io);
     uiSetup = new setupwindow(this, io);
     uiSmartmeter = new smartmeterwindow(this);
+    uiKameraeingang = new kameraeingangwindow(this, io);
 }
 
 MainWindow::~MainWindow() {
@@ -137,6 +138,7 @@ void MainWindow::scrTimerEvent() {
         fbBlank->write("4");
         fbBlank->flush();
     }
+    emit screenSaverActivated();
 }
 
 void MainWindow::cycTimerEvent() {
@@ -189,6 +191,12 @@ void MainWindow::onSendServiceCmd(const struct moduleservice::cmd *cmd, QDialog 
     mservice->command(cmd, dialog);
 }
 
+void MainWindow::onDisableScreenSaver(void) {
+
+    QEvent event(QEvent::MouseButtonPress);
+    eventFilter(0, &event);
+}
+
 void MainWindow::onBusEvent(eventmonitor::event *ev) {
 
     quint32 egSum = io->egState.sum;
@@ -198,6 +206,7 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     quint32 garageSum = io->garageState.sum;
     bool    socket_1 = io->socket_1;
     bool    socket_2 = io->socket_1;
+    bool    glocke = io->glocke;
 
     if ((ev->srcAddr == 240) && (ev->type == eventmonitor::eDevDo31)) {
         ((ev->data.do31.digOut & 0x00000001) == 0) ? io->ogState.detail.lightStiegePwr = 0  : io->ogState.detail.lightStiegePwr = 1;
@@ -239,6 +248,8 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ((ev->data.do31.digOut & 0x40000000) == 0) ? io->kuecheState.detail.lightWand = 0   : io->kuecheState.detail.lightWand = 1;
     } else if ((ev->srcAddr == 36) && (ev->type == eventmonitor::eDevSw8)) {
         ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
+    } else if ((ev->srcAddr == 30) && (ev->type == eventmonitor::eDevSw8)) {
+        ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->glocke = true                       : io->glocke = false;
     } else if ((ev->srcAddr == 239) && (ev->type == eventmonitor::eDevPwm4)) {
         ((ev->data.pwm4.state & 0x01) == 0) ? io->kuecheState.detail.lightGeschirrspueler  = 0 : io->kuecheState.detail.lightGeschirrspueler = 1;
         ((ev->data.pwm4.state & 0x02) == 0) ? io->kuecheState.detail.lightAbwasch = 0          : io->kuecheState.detail.lightAbwasch = 1;
@@ -252,7 +263,8 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         (kuecheSum != io->kuecheState.sum) ||
         (garageSum != io->garageState.sum) ||
         (socket_1 != io->socket_1)         ||
-        (socket_2 != io->socket_2)) {
+        (socket_2 != io->socket_2)         ||
+        (glocke != io->glocke)) {
         emit ioChanged();
     }
 
@@ -349,4 +361,8 @@ void MainWindow::on_pushButtonSetup_clicked() {
 
 void MainWindow::on_pushButtonSmartMeter_clicked() {
     uiSmartmeter->show();
+}
+
+void MainWindow::on_pushButtonKameraEingang_clicked() {
+    uiKameraeingang->show();
 }

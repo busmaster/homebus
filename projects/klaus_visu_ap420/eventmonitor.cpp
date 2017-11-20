@@ -48,6 +48,11 @@ void eventmonitor::readStdOut() {
             ev.srcAddr = 36;
             ev.type = eDevSw8;
             continue;
+        } else if (qstrcmp(ev_lines[i], "event address 30 device type SW8") == 0) {
+            evState = eEsWaitForSW8;
+            ev.srcAddr = 30;
+            ev.type = eDevSw8;
+            continue;
         } else if (qstrcmp(ev_lines[i], "event address 239 device type PWM4") == 0) {
             evState = eEsWaitForPWM4_State;
             ev.srcAddr = 239;

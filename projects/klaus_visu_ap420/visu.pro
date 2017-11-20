@@ -6,7 +6,7 @@
 
 QT       += core gui
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets network
 
 TARGET = visu
 TEMPLATE = app
@@ -24,7 +24,8 @@ SOURCES += main.cpp\
     eventmonitor.cpp \
     kuechewindow.cpp \
     setupwindow.cpp \
-    smartmeterwindow.cpp
+    smartmeterwindow.cpp \
+    kameraeingangwindow.cpp
 
 HEADERS  += mainwindow.h \
     egwindow.h \
@@ -37,7 +38,8 @@ HEADERS  += mainwindow.h \
     eventmonitor.h \
     kuechewindow.h \
     setupwindow.h \
-    smartmeterwindow.h
+    smartmeterwindow.h \
+    kameraeingangwindow.h
 
 FORMS    += \
     mainwindow.ui \
@@ -47,7 +49,8 @@ FORMS    += \
     garagewindow.ui \
     kuechewindow.ui \
     setupwindow.ui \
-    smartmeterwindow.ui
+    smartmeterwindow.ui \
+    kameraeingangwindow.ui
 
 target.path += /root
 INSTALLS += target

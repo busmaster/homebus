@@ -266,6 +266,23 @@ lungen</string>
 zähler</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="pushButtonKameraEingang">
+   <property name="geometry">
+    <rect>
+     <x>242</x>
+     <y>168</y>
+     <width>115</width>
+     <height>78</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 255, 255);</string>
+   </property>
+   <property name="text">
+    <string>Kamera
+Eingang</string>
+   </property>
+  </widget>
  </widget>
  <customwidgets>
   <customwidget>
