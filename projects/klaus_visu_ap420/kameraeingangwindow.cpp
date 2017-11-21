@@ -52,7 +52,7 @@ void kameraeingangwindow::onScreenSaverActivation(void) {
 }
 
 void kameraeingangwindow::onIoStateChanged(void) {
-    if ((io->glocke == 1) && !isVisible) {
+    if (io->glocke && !isVisible) {
         emit disableScreenSaver();
         show();
     }
@@ -67,6 +67,7 @@ void kameraeingangwindow::hide(void) {
 void kameraeingangwindow::show(void) {
     isVisible = true;
     rate_reduction = -1;
+    jpgState = eStateInit;
     socket->connectToHost("10.0.0.203", 8081);
     QDialog::show();
 }

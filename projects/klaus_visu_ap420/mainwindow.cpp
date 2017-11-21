@@ -249,7 +249,7 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
     } else if ((ev->srcAddr == 36) && (ev->type == eventmonitor::eDevSw8)) {
         ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
     } else if ((ev->srcAddr == 30) && (ev->type == eventmonitor::eDevSw8)) {
-        ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->glocke = true                       : io->glocke = false;
+        ((ev->data.sw8.digInOut & 0x01) == 1)      ? io->glocke = true                       : io->glocke = false;
     } else if ((ev->srcAddr == 239) && (ev->type == eventmonitor::eDevPwm4)) {
         ((ev->data.pwm4.state & 0x01) == 0) ? io->kuecheState.detail.lightGeschirrspueler  = 0 : io->kuecheState.detail.lightGeschirrspueler = 1;
         ((ev->data.pwm4.state & 0x02) == 0) ? io->kuecheState.detail.lightAbwasch = 0          : io->kuecheState.detail.lightAbwasch = 1;
