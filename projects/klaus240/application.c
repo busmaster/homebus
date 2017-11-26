@@ -191,7 +191,8 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 
 static bool sDoorbellOn = true;
 static bool sBellToggle = false;
-static uint8_t sDoorlight = OUTPUT_AUTO;
+static uint8_t sDoorlightMode = OUTPUT_AUTO;
+static bool    sDoorlightAutoState = false;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -1054,33 +1055,39 @@ void ApplicationPressed100_1(void) {}
 void ApplicationReleased100_1(void) {}
 
 void ApplicationPressed101_0(void) {
-    if (sDoorlight == OUTPUT_AUTO) {
+    if (sDoorlightMode == OUTPUT_AUTO) {
         DigOutOn(eDigOut30);
     }
+    sDoorlightAutoState = true;
 }
 void ApplicationReleased101_0(void) {
-    if (sDoorlight == OUTPUT_AUTO) {
+    if (sDoorlightMode == OUTPUT_AUTO) {
         DigOutOff(eDigOut30);
     }
+    sDoorlightAutoState = false;
 }
-void ApplicationPressed101_1(void) {
-    sDoorlight = OUTPUT_AUTO;
-    DigOutOff(eDigOut30);
-}
+void ApplicationPressed101_1(void) {}
 void ApplicationReleased101_1(void) {}
 
 void ApplicationPressed102_0(void) {
-    sDoorlight = OUTPUT_ON;
+    sDoorlightMode = OUTPUT_ON;
     DigOutOn(eDigOut30);
 }
-void ApplicationReleased102_0(void) {}
-void ApplicationPressed102_1(void) {
-    sDoorlight = OUTPUT_OFF;
+void ApplicationReleased102_0(void) {
+    sDoorlightMode = OUTPUT_OFF;
     DigOutOff(eDigOut30);
 }
+void ApplicationPressed102_1(void) {}
 void ApplicationReleased102_1(void) {}
 
-void ApplicationPressed103_0(void) {}
+void ApplicationPressed103_0(void) {
+    sDoorlightMode = OUTPUT_AUTO;
+    if (sDoorlightAutoState) {
+        DigOutOn(eDigOut30);
+    } else {
+        DigOutOff(eDigOut30);
+    }
+}
 void ApplicationReleased103_0(void) {}
 void ApplicationPressed103_1(void) {}
 void ApplicationReleased103_1(void) {}
