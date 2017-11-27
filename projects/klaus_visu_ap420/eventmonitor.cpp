@@ -110,10 +110,11 @@ void eventmonitor::readStdOut() {
         default:
             break;
         }
-    }
 
-    if (doEmit) {
-        emit busEvent(&ev);
+        if (doEmit) {
+            emit busEvent(&ev);
+            doEmit = false;
+        }
     }
 }
 
