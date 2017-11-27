@@ -28,14 +28,14 @@ void moduleservice::readStdOut() {
 
 //   std::cout << QString(modulservice->readAllStandardOutput()).toUtf8().constData() << std::endl;
 
-   int i;
+//   int i;
    bool doEmit = false;
    QByteArray output = modulservice->readAllStandardOutput();
    QList<QByteArray> lines = output.split('\n');
 
-   for (i = 0; i < lines.size(); i++) {
-       printf("%s\n", lines[i].data());
-   }
+//   for (i = 0; i < lines.size(); i++) {
+//       printf("%s\n", lines[i].data());
+//   }
 
 
    if (resultState == eRsWaitForState) {
