@@ -16,7 +16,7 @@ smartmeterwindow::smartmeterwindow(QWidget *parent) :
 
     updTimer = new QTimer(this);
     connect(updTimer, SIGNAL(timeout()), this, SLOT(updTimerEvent()));
-    updTimer->start(1100);
+    updTimer->setInterval(1000);
 }
 
 smartmeterwindow::~smartmeterwindow() {
@@ -40,16 +40,16 @@ void smartmeterwindow::updTimerEvent(void) {
 }
 
 void smartmeterwindow::show(void) {
+    updTimer->start();
     isVisible = true;
     QDialog::show();
     updTimerEvent();
-    updTimer->start();
 }
 
 void smartmeterwindow::hide(void) {
     isVisible = false;
-    updTimer->stop();
     QDialog::hide();
+    updTimer->stop();
 }
 
 void smartmeterwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
