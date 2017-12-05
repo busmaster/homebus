@@ -1,0 +1,17 @@
+*.o
+*.a
+*.d
+*.map
+*.hex
+*.bin
+*.elf
+*.sym
+*.eep
+*.aws
+*.lss
+
+bin/
+
+# eagle
+*.b\#*
+*.s\#*
