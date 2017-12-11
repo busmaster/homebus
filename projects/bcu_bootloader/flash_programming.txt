@@ -1,0 +1,4 @@
+avrdude -i 1 -p m168pb -c stk200 -U flash:w:bcu_bootloader.hex
+
+fuses
+E:00 H:D7 L:E2

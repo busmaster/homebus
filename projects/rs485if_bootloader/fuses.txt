@@ -1,0 +1,11 @@
+fuse settings for atmega1284p (see rs485if_bootloader/main.c)
+extended fuse byte:
+0xfc
+fuse byte high:
+0xd0
+fuse byte low:
+0xd7
+
+avrdude -p m1284p -c stk200 -U efuse:w:0xfc:m
+avrdude -p m1284p -c stk200 -U hfuse:w:0xd0:m
+avrdude -p m1284p -c stk200 -U lfuse:w:0xd7:m
