@@ -71,9 +71,21 @@ void setupwindow::onCmdConf(const struct moduleservice::result *res, QDialog *di
             break;
         case eCurrLichtEingangEin:
             ui->pushButtonLichtEingangEin->setStyleSheet("background-color: green");
+            command.type = moduleservice::eSwitchstate;
+            command.destAddr = 240;
+            command.ownAddr = 102;
+            command.data.switchstate = 0;
+            currentButton = eCurrNone;
+            emit serviceCmd(&command, this);
             break;
         case eCurrLichtEingangAus:
             ui->pushButtonLichtEingangAus->setStyleSheet("background-color: green");
+            command.type = moduleservice::eSwitchstate;
+            command.destAddr = 240;
+            command.ownAddr = 104;
+            command.data.switchstate = 0;
+            currentButton = eCurrNone;
+            emit serviceCmd(&command, this);
             break;
         case eCurrLichtEingangAuto:
             ui->pushButtonLichtEingangAuto->setStyleSheet("background-color: green");
@@ -175,8 +187,8 @@ void setupwindow::on_pushButtonLichtEingangAus_pressed() {
 
     command.type = moduleservice::eSwitchstate;
     command.destAddr = 240;
-    command.ownAddr = 102;
-    command.data.switchstate = 0;
+    command.ownAddr = 104;
+    command.data.switchstate = 1;
     ui->pushButtonLichtEingangAus->setStyleSheet("background-color: darkGreen");
     ui->pushButtonLichtEingangEin->setStyleSheet("background-color: grey");
     ui->pushButtonLichtEingangAuto->setStyleSheet("background-color: grey");

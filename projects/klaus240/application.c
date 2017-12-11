@@ -1054,6 +1054,7 @@ void ApplicationReleased100_0(void) {
 void ApplicationPressed100_1(void) {}
 void ApplicationReleased100_1(void) {}
 
+/* 101.0: Motion detector */
 void ApplicationPressed101_0(void) {
     if (sDoorlightMode == OUTPUT_AUTO) {
         DigOutOn(eDigOut30);
@@ -1069,17 +1070,16 @@ void ApplicationReleased101_0(void) {
 void ApplicationPressed101_1(void) {}
 void ApplicationReleased101_1(void) {}
 
+/* 102.0: ON mode */
 void ApplicationPressed102_0(void) {
     sDoorlightMode = OUTPUT_ON;
     DigOutOn(eDigOut30);
 }
-void ApplicationReleased102_0(void) {
-    sDoorlightMode = OUTPUT_OFF;
-    DigOutOff(eDigOut30);
-}
+void ApplicationReleased102_0(void) {}
 void ApplicationPressed102_1(void) {}
 void ApplicationReleased102_1(void) {}
 
+/* 103.0: AUTO mode */
 void ApplicationPressed103_0(void) {
     sDoorlightMode = OUTPUT_AUTO;
     if (sDoorlightAutoState) {
@@ -1092,7 +1092,11 @@ void ApplicationReleased103_0(void) {}
 void ApplicationPressed103_1(void) {}
 void ApplicationReleased103_1(void) {}
 
-void ApplicationPressed104_0(void) {}
+/* 104.0: OFF mode */
+void ApplicationPressed104_0(void) {
+    sDoorlightMode = OUTPUT_OFF;
+    DigOutOff(eDigOut30);
+}
 void ApplicationReleased104_0(void) {}
 void ApplicationPressed104_1(void) {}
 void ApplicationReleased104_1(void) {}
