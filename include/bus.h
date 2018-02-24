@@ -60,6 +60,8 @@ extern "C" {
 #define BUS_MAX_CLIENT_NUM         16   /* size of list for setting client addresses */
 #define BUS_CLIENT_ADDRESS_INVALID 0xff
 
+#define BUS_MAX_VAR_SIZE                   32
+
 /* return codes for function BusCheck */
 #define BUS_NO_MSG     0
 #define BUS_MSG_OK     1
@@ -156,6 +158,7 @@ typedef enum {
    eBusDevTypeRs485If = 0x07,
    eBusDevTypePwm4    = 0x08,
    eBusDevTypeSmIf    = 0x09,
+   eBusDevTypeInv     = 0xff    
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {
@@ -496,6 +499,26 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevRespSetTime;            /* type 0x2c */
 
+typedef struct {
+    uint16_t index;
+} __attribute__ ((packed)) TBusDevReqGetVar;              /* type 0x2d */
+
+typedef struct {
+    uint16_t index;
+    uint8_t  length;
+    uint8_t  data[BUS_MAX_VAR_SIZE];
+} __attribute__ ((packed)) TBusDevRespGetVar;             /* type 0x2e */
+
+typedef struct {
+    uint16_t index;
+    uint8_t  length;
+    uint8_t  data[BUS_MAX_VAR_SIZE];
+} __attribute__ ((packed)) TBusDevReqSetVar;              /* type 0x2f */
+
+typedef struct {
+    uint16_t index;
+} __attribute__ ((packed)) TBusDevRespSetVar;             /* type 0x30 */
+
 
 typedef union {
    TBusDevReqReboot           reboot;
@@ -519,6 +542,8 @@ typedef union {
    TBusDevReqDiag             diag;
    TBusDevReqGetTime          getTime;
    TBusDevReqSetTime          setTime;
+   TBusDevReqGetVar           getVar;
+   TBusDevReqSetVar           setVar;   
 } __attribute__ ((packed)) TUniDevReq;
 
 typedef union {
@@ -542,6 +567,8 @@ typedef union {
    TBusDevRespDiag             diag;
    TBusDevRespGetTime          getTime;
    TBusDevRespSetTime          setTime;
+   TBusDevRespGetVar           getVar;
+   TBusDevRespSetVar           setVar;
 } __attribute__ ((packed)) TUniDevResp;
 
 typedef struct {
@@ -604,6 +631,10 @@ typedef enum {
    eBusDevRespGetTime =                  0x2a,
    eBusDevReqSetTime =                   0x2b,
    eBusDevRespSetTime =                  0x2c,
+   eBusDevReqGetVar =                    0x2d,
+   eBusDevRespGetVar =                   0x2e,
+   eBusDevReqSetVar =                    0x2f,
+   eBusDevRespSetVar =                   0x30,
    eBusDevStartup =                      0xff
 } __attribute__ ((packed)) TBusMsgType;
 
