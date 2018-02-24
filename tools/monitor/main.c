@@ -391,6 +391,9 @@ static void BusMonDecoded(int sioHandle) {
                 case eBusDevTypePwm4:
                     fprintf(spOutput, SPACE "device PWM4\r\n");
                     break;
+                case eBusDevTypeSmIf:
+                    fprintf(spOutput, SPACE "device SMIF\r\n");
+                    break;
                 default:
                     fprintf(spOutput, SPACE "device unknown\r\n");
                     break;
