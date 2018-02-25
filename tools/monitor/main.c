@@ -931,6 +931,38 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "state %d ", pBusMsg->msg.devBus.x.devResp.doClockCalib.state);
                 break;
+            case eBusDevReqGetTime:
+                fprintf(spOutput, "request get time ");
+                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
+                break;
+            case eBusDevRespGetTime:
+                fprintf(spOutput, "response get time ");
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "year:       %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.year);
+                fprintf(spOutput, SPACE "month:      %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.month);
+                fprintf(spOutput, SPACE "day:        %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.day);
+                fprintf(spOutput, SPACE "hour:       %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.hour);
+                fprintf(spOutput, SPACE "minute:     %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.minute);
+                fprintf(spOutput, SPACE "second:     %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.second);
+                fprintf(spOutput, SPACE "zoneHour:   %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.zoneHour);
+                fprintf(spOutput, SPACE "zoneMinute: %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.zoneMinute);
+                break;
+            case eBusDevReqSetTime:
+                fprintf(spOutput, "request set time ");
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "year:       %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.year);
+                fprintf(spOutput, SPACE "month:      %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.month);
+                fprintf(spOutput, SPACE "day:        %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.day);
+                fprintf(spOutput, SPACE "hour:       %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.hour);
+                fprintf(spOutput, SPACE "minute:     %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.minute);
+                fprintf(spOutput, SPACE "second:     %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.second);
+                fprintf(spOutput, SPACE "zoneHour:   %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.zoneHour);
+                fprintf(spOutput, SPACE "zoneMinute: %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.zoneMinute);
+                break;
+            case eBusDevRespSetTime:
+                fprintf(spOutput, "response set time ");
+                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
+                break;
             case eBusDevStartup:
                 fprintf(spOutput, "device startup ");
                 break;
