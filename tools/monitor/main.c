@@ -945,7 +945,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, SPACE "minute:     %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.minute);
                 fprintf(spOutput, SPACE "second:     %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.second);
                 fprintf(spOutput, SPACE "zoneHour:   %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.zoneHour);
-                fprintf(spOutput, SPACE "zoneMinute: %d\r\n", pBusMsg->msg.devBus.x.devResp.getTime.time.zoneMinute);
+                fprintf(spOutput, SPACE "zoneMinute: %d", pBusMsg->msg.devBus.x.devResp.getTime.time.zoneMinute);
                 break;
             case eBusDevReqSetTime:
                 fprintf(spOutput, "request set time ");
@@ -957,11 +957,39 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, SPACE "minute:     %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.minute);
                 fprintf(spOutput, SPACE "second:     %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.second);
                 fprintf(spOutput, SPACE "zoneHour:   %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.zoneHour);
-                fprintf(spOutput, SPACE "zoneMinute: %d\r\n", pBusMsg->msg.devBus.x.devReq.setTime.time.zoneMinute);
+                fprintf(spOutput, SPACE "zoneMinute: %d", pBusMsg->msg.devBus.x.devReq.setTime.time.zoneMinute);
                 break;
             case eBusDevRespSetTime:
                 fprintf(spOutput, "response set time ");
                 fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
+                break;
+            case eBusDevReqGetVar:
+                fprintf(spOutput, "request get var ");
+                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, "index: %d", pBusMsg->msg.devBus.x.devReq.getVar.index);
+                break;
+            case eBusDevRespGetVar:
+                fprintf(spOutput, "response get var ");
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "index: %d ", pBusMsg->msg.devBus.x.devResp.getVar.index);
+                fprintf(spOutput, "data:");
+                for (i = 0; i < pBusMsg->msg.devBus.x.devResp.getVar.length; i++) {
+                    fprintf(spOutput, " %02x", pBusMsg->msg.devBus.x.devResp.getVar.data[i]);
+                }
+                break;
+            case eBusDevReqSetVar:
+                fprintf(spOutput, "request set var ");
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "index: %d ", pBusMsg->msg.devBus.x.devReq.setVar.index);
+                fprintf(spOutput, "data:");
+                for (i = 0; i < pBusMsg->msg.devBus.x.devReq.setVar.length; i++) {
+                    fprintf(spOutput, " %02x", pBusMsg->msg.devBus.x.devReq.setVar.data[i]);
+                }
+                break;
+            case eBusDevRespSetVar:
+                fprintf(spOutput, "response set var ");
+                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, "index: %d", pBusMsg->msg.devBus.x.devResp.setVar.index);
                 break;
             case eBusDevStartup:
                 fprintf(spOutput, "device startup ");
