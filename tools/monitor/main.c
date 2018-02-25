@@ -300,17 +300,17 @@ static void BusMonDecoded(int sioHandle) {
                 break;
             case eBusDevReqUpdData:
                 fprintf(spOutput, "request update data ");
-                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, "wordaddr %x ", pBusMsg->msg.devBus.x.devReq.updData.wordAddr);
-                fprintf(spOutput, "data: ");
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "wordaddr: %04x\r\n", pBusMsg->msg.devBus.x.devReq.updData.wordAddr);
+                fprintf(spOutput, SPACE "data: ");
                 for (i = 0; i < BUS_FWU_PACKET_SIZE / 2; i++) {
                     fprintf(spOutput, "%04x ", pBusMsg->msg.devBus.x.devReq.updData.data[i]);
                 }
                 break;
             case eBusDevRespUpdData:
                 fprintf(spOutput, "response update data ");
-                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, "wordaddr %x ", pBusMsg->msg.devBus.x.devResp.updData.wordAddr);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "wordaddr: %x ", pBusMsg->msg.devBus.x.devResp.updData.wordAddr);
                 break;
             case eBusDevReqUpdTerm:
                 fprintf(spOutput, "request update terminate ");
@@ -318,8 +318,8 @@ static void BusMonDecoded(int sioHandle) {
                 break;
             case eBusDevRespUpdTerm:
                 fprintf(spOutput, "response update terminate ");
-                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, "success %d ", pBusMsg->msg.devBus.x.devResp.updTerm.success);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "success: %d ", pBusMsg->msg.devBus.x.devResp.updTerm.success);
                 break;
             case eBusDevReqDiag:
                 fprintf(spOutput, "request diag ");
@@ -330,7 +330,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devResp.diag.devType) {
                 case eBusDevTypeSmIf:
-                    fprintf(spOutput, SPACE "device SMIF\r\n");
+                    fprintf(spOutput, SPACE "device: SMIF\r\n");
                     break;
                 default:
                     break;
@@ -349,7 +349,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devResp.info.devType) {
                 case eBusDevTypeDo31:
-                    fprintf(spOutput, SPACE "device DO31\r\n");
+                    fprintf(spOutput, SPACE "device: DO31\r\n");
                     fprintf(spOutput, SPACE "shader configuration:\r\n");
                     for (i = 0; i < BUS_DO31_NUM_SHADER; i++) {
                         uint8_t onSw = pBusMsg->msg.devBus.x.devResp.info.devInfo.do31.onSwitch[i];
@@ -368,34 +368,34 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypeSw8:
-                    fprintf(spOutput, SPACE "device SW8\r\n");
+                    fprintf(spOutput, SPACE "device: SW8\r\n");
                     break;
                 case eBusDevTypeSw16:
-                    fprintf(spOutput, SPACE "device SW16\r\n");
+                    fprintf(spOutput, SPACE "device: SW16\r\n");
                     break;
                 case eBusDevTypeLum:
-                    fprintf(spOutput, SPACE "device LUM\r\n");
+                    fprintf(spOutput, SPACE "device: LUM\r\n");
                     break;
                 case eBusDevTypeLed:
-                    fprintf(spOutput, SPACE "device LED\r\n");
+                    fprintf(spOutput, SPACE "device: LED\r\n");
                     break;
                 case eBusDevTypeWind:
-                    fprintf(spOutput, SPACE "device WIND\r\n");
+                    fprintf(spOutput, SPACE "device: WIND\r\n");
                     break;
                 case eBusDevTypeSw8Cal:
-                    fprintf(spOutput, SPACE "device SW8CAL\r\n");
+                    fprintf(spOutput, SPACE "device: SW8CAL\r\n");
                     break;
                 case eBusDevTypeRs485If:
-                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "device: RS485IF\r\n");
                     break;
                 case eBusDevTypePwm4:
-                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "device: PWM4\r\n");
                     break;
                 case eBusDevTypeSmIf:
-                    fprintf(spOutput, SPACE "device SMIF\r\n");
+                    fprintf(spOutput, SPACE "device: SMIF\r\n");
                     break;
                 default:
-                    fprintf(spOutput, SPACE "device unknown\r\n");
+                    fprintf(spOutput, SPACE "device: unknown\r\n");
                     break;
                 }
                 fprintf(spOutput, SPACE "version: %s", pBusMsg->msg.devBus.x.devResp.info.version);
@@ -405,7 +405,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devReq.setState.devType) {
                 case eBusDevTypeDo31:
-                    fprintf(spOutput, SPACE "device DO31\r\n");
+                    fprintf(spOutput, SPACE "device: DO31\r\n");
                     fprintf(spOutput, SPACE "output state:\r\n");
                     for (i = 0; i < 31 /* 31 DO's */; i++) {
                         uint8_t state = (pBusMsg->msg.devBus.x.devReq.setState.state.do31.digOut[i / 4] >> ((i % 4) * 2)) & 0x3;
@@ -446,14 +446,16 @@ static void BusMonDecoded(int sioHandle) {
                                 fprintf(spOutput, "invalid state");
                                 break;
                             }
-                            fprintf(spOutput, "\r\n");
+                            if (i != (BUS_DO31_NUM_SHADER - 1)) {                            
+                                fprintf(spOutput, "\r\n");
+                            }
                         } else {
                             continue;
                         }
                     }
                     break;
                 default:
-                    fprintf(spOutput, SPACE "device unknown");
+                    fprintf(spOutput, SPACE "device: unknown");
                     break;
                 }
                 break;
@@ -470,7 +472,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devResp.getState.devType) {
                 case eBusDevTypeDo31:
-                    fprintf(spOutput, SPACE "device DO31\r\n");
+                    fprintf(spOutput, SPACE "device: DO31\r\n");
                     fprintf(spOutput, SPACE "output state: ");
                     for (i = 0; i < 31 /* 31 DO's */; i++) {
                         uint8_t state = (pBusMsg->msg.devBus.x.devResp.getState.state.do31.digOut[i / 8] >> (i % 8)) & 0x1;
@@ -500,14 +502,16 @@ static void BusMonDecoded(int sioHandle) {
                                 fprintf(spOutput, "invalid state");
                                 break;
                             }
-                            fprintf(spOutput, "\r\n");
+                            if (i != (BUS_DO31_NUM_SHADER - 1)) {
+                                fprintf(spOutput, "\r\n");
+                            }
                         } else {
                             continue;
                         }
                     }
                     break;
                 case eBusDevTypeSw8:
-                    fprintf(spOutput, SPACE "device SW8\r\n");
+                    fprintf(spOutput, SPACE "device: SW8\r\n");
                     fprintf(spOutput, SPACE "switch state: ");
                     for (i = 0; i < 8 /* 8 Switches */; i++) {
                         uint8_t state = (pBusMsg->msg.devBus.x.devResp.getState.state.sw8.switchState >> i) & 0x1;
@@ -517,16 +521,15 @@ static void BusMonDecoded(int sioHandle) {
                             fprintf(spOutput, "1");
                         }
                     }
-                    fprintf(spOutput, "\r\n");
                     break;
                 default:
-                    fprintf(spOutput, SPACE "device unknown");
+                    fprintf(spOutput, SPACE "device: unknown");
                     break;
                 }
                 break;
             case eBusDevReqSwitchState:
                 fprintf(spOutput, "request switch state ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "switch state: ");
                 for (i = 0; i < 8 /* 8 Switches */; i++) {
                     uint8_t state = (pBusMsg->msg.devBus.x.devReq.switchState.switchState >> i) & 0x1;
@@ -539,7 +542,7 @@ static void BusMonDecoded(int sioHandle) {
                 break;
             case eBusDevRespSwitchState:
                 fprintf(spOutput, "response switch state ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "switch state: ");
                 for (i = 0; i < 8 /* 8 Switches */; i++) {
                     uint8_t state = (pBusMsg->msg.devBus.x.devResp.switchState.switchState >> i) & 0x1;
@@ -552,7 +555,7 @@ static void BusMonDecoded(int sioHandle) {
                 break;
             case eBusDevReqSetClientAddr:
                 fprintf(spOutput, "request set client address ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "client addresses: ");
                 for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
                     uint8_t address = pBusMsg->msg.devBus.x.devReq.setClientAddr.clientAddr[i];
@@ -569,7 +572,7 @@ static void BusMonDecoded(int sioHandle) {
                 break;
             case eBusDevRespGetClientAddr:
                 fprintf(spOutput, "response get client address ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "client addresses: ");
                 for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
                     uint8_t address = pBusMsg->msg.devBus.x.devResp.getClientAddr.clientAddr[i];
@@ -578,7 +581,7 @@ static void BusMonDecoded(int sioHandle) {
                 break;
             case eBusDevReqSetAddr:
                 fprintf(spOutput, "request set address ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "address: ");
                 {
                     uint8_t address = pBusMsg->msg.devBus.x.devReq.setAddr.addr;
@@ -591,18 +594,18 @@ static void BusMonDecoded(int sioHandle) {
                 break;
             case eBusDevReqEepromRead:
                 fprintf(spOutput, "request read eeprom ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "address %04x", pBusMsg->msg.devBus.x.devReq.readEeprom.addr);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "address: %04x", pBusMsg->msg.devBus.x.devReq.readEeprom.addr);
                 break;
             case eBusDevRespEepromRead:
                 fprintf(spOutput, "request read eeprom ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "data %02x", pBusMsg->msg.devBus.x.devResp.readEeprom.data);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "data: %02x", pBusMsg->msg.devBus.x.devResp.readEeprom.data);
                 break;
             case eBusDevReqEepromWrite:
                 fprintf(spOutput, "request write eeprom ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "address %04x, data %02x",
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "address: %04x data: %02x",
                         pBusMsg->msg.devBus.x.devReq.writeEeprom.addr,
                         pBusMsg->msg.devBus.x.devReq.writeEeprom.data);
                 break;
@@ -615,7 +618,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devReq.setValue.devType) {
                 case eBusDevTypeDo31:
-                    fprintf(spOutput, SPACE "device DO31\r\n");
+                    fprintf(spOutput, SPACE "device: DO31\r\n");
                     fprintf(spOutput, SPACE "DO: ");
                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.digOut[i]);
@@ -627,14 +630,14 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypeSw8:
-                    fprintf(spOutput, SPACE "device SW8\r\n");
+                    fprintf(spOutput, SPACE "device: SW8\r\n");
                     fprintf(spOutput, SPACE "DO: ");
                     for (i = 0; i < BUS_SW8_DIGOUT_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.sw8.digOut[i]);
                     }
                     break;
                 case eBusDevTypeSw16:
-                    fprintf(spOutput, SPACE "device SW16\r\n");
+                    fprintf(spOutput, SPACE "device: SW16\r\n");
                     fprintf(spOutput, SPACE "led_state:   ");
                     for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, "%02x ",
@@ -642,14 +645,14 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypeRs485If:
-                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "device: RS485IF\r\n");
                     fprintf(spOutput, SPACE "state: ");
                     for (i = 0; i < BUS_RS485IF_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.rs485if.state[i]);
                     }
                     break;
                 case eBusDevTypePwm4:
-                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "device: PWM4\r\n");
                     fprintf(spOutput, SPACE "set: %02x\n", pBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.set);
                     fprintf(spOutput, SPACE "pwm: ");
                     for (i = 0; i < BUS_PWM4_PWM_SIZE_SET_VALUE; i++) {
@@ -657,7 +660,7 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                   default:
-                    fprintf(spOutput, SPACE "device unknown");
+                    fprintf(spOutput, SPACE "device: unknown");
                     break;
                 }
                 break;
@@ -674,7 +677,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devResp.actualValue.devType) {
                 case eBusDevTypeDo31:
-                    fprintf(spOutput, SPACE "device DO31\r\n");
+                    fprintf(spOutput, SPACE "device: DO31\r\n");
                     fprintf(spOutput, SPACE "DO: ");
                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do31.digOut[i]);
@@ -686,12 +689,12 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypeSw8:
-                    fprintf(spOutput, SPACE "device SW8\r\n");
+                    fprintf(spOutput, SPACE "device: SW8\r\n");
                     fprintf(spOutput, SPACE "state: %02x",
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw8.state);
                     break;
                 case eBusDevTypeLum:
-                    fprintf(spOutput, SPACE "device LUM\r\n");
+                    fprintf(spOutput, SPACE "device: LUM\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.state);
                     fprintf(spOutput, SPACE "adc:   %04x",
@@ -699,12 +702,12 @@ static void BusMonDecoded(int sioHandle) {
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.lum.lum_high * 256);
                     break;
                 case eBusDevTypeLed:
-                    fprintf(spOutput, SPACE "device LED\r\n");
+                    fprintf(spOutput, SPACE "device: LED\r\n");
                     fprintf(spOutput, SPACE "state: %02x",
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.led.state);
                     break;
                 case eBusDevTypeSw16:
-                    fprintf(spOutput, SPACE "device SW16\r\n");
+                    fprintf(spOutput, SPACE "device: SW16\r\n");
                     fprintf(spOutput, SPACE "led_state:   ");
                     for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, "%02x ",
@@ -715,14 +718,14 @@ static void BusMonDecoded(int sioHandle) {
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw16.input_state);
                     break;
                 case eBusDevTypeWind:
-                    fprintf(spOutput, SPACE "device WIND\r\n");
+                    fprintf(spOutput, SPACE "device: WIND\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.state);
                     fprintf(spOutput, SPACE "wind:  %02x",
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.wind.wind);
                     break;
                 case eBusDevTypeRs485If:
-                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "device: RS485IF\r\n");
                     fprintf(spOutput, SPACE "state: ");
                     for (i = 0; i < BUS_RS485IF_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%02x ",
@@ -730,7 +733,7 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypePwm4:
-                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "device: PWM4\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.pwm4.state);
                     fprintf(spOutput, SPACE "pwm: ");
@@ -740,7 +743,7 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypeSmIf:
-                    fprintf(spOutput, SPACE "device SMIF\r\n");
+                    fprintf(spOutput, SPACE "device: SMIF\r\n");
                     fprintf(spOutput, SPACE "A+: %d Wh\r\n",   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countA_plus);
                     fprintf(spOutput, SPACE "A-: %d Wh\r\n",   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countA_minus);
                     fprintf(spOutput, SPACE "R+: %d varh\r\n", pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countR_plus);
@@ -751,7 +754,7 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, SPACE "Q-: %d var",      pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.reactivePower_minus);
                     break;
                 default:
-                    fprintf(spOutput, SPACE "device unknown");
+                    fprintf(spOutput, SPACE "device: unknown");
                     break;
                 }
                 break;
@@ -760,7 +763,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devReq.actualValueEvent.devType) {
                 case eBusDevTypeDo31:
-                    fprintf(spOutput, SPACE "device DO31\r\n");
+                    fprintf(spOutput, SPACE "device: DO31\r\n");
                     fprintf(spOutput, SPACE "DO: ");
                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%02x ",
@@ -774,12 +777,12 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypeSw8:
-                    fprintf(spOutput, SPACE "device SW8\r\n");
+                    fprintf(spOutput, SPACE "device: SW8\r\n");
                     fprintf(spOutput, SPACE "state: %02x",
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.sw8.state);
                     break;
                 case eBusDevTypeLum:
-                    fprintf(spOutput, SPACE "device LUM\r\n");
+                    fprintf(spOutput, SPACE "device: LUM\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.lum.state);
                     fprintf(spOutput, SPACE "adc:   %04x",
@@ -787,12 +790,12 @@ static void BusMonDecoded(int sioHandle) {
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.lum.lum_high * 256);
                     break;
                 case eBusDevTypeLed:
-                    fprintf(spOutput, SPACE "device LED\r\n");
+                    fprintf(spOutput, SPACE "device: LED\r\n");
                     fprintf(spOutput, SPACE "state: %02x",
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.led.state);
                     break;
                 case eBusDevTypeSw16:
-                    fprintf(spOutput, SPACE "device SW16\r\n");
+                    fprintf(spOutput, SPACE "device: SW16\r\n");
                     fprintf(spOutput, SPACE "led_state:   ");
                     for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, "%02x ",
@@ -803,14 +806,14 @@ static void BusMonDecoded(int sioHandle) {
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.sw16.input_state);
                     break;
                 case eBusDevTypeWind:
-                    fprintf(spOutput, SPACE "device WIND\r\n");
+                    fprintf(spOutput, SPACE "device: WIND\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.wind.state);
                     fprintf(spOutput, SPACE "wind:  %02x",
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.wind.wind);
                     break;
                 case eBusDevTypeRs485If:
-                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "device: RS485IF\r\n");
                     fprintf(spOutput, SPACE "state: ");
                     for (i = 0; i < BUS_RS485IF_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%02x ",
@@ -818,7 +821,7 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypePwm4:
-                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "device: PWM4\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.pwm4.state);
                     fprintf(spOutput, SPACE "pwm: ");
@@ -828,7 +831,7 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 default:
-                    fprintf(spOutput, SPACE "device unknown");
+                    fprintf(spOutput, SPACE "device: unknown");
                     break;
                 }
                 break;
@@ -837,7 +840,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 switch (pBusMsg->msg.devBus.x.devResp.actualValueEvent.devType) {
                 case eBusDevTypeDo31:
-                    fprintf(spOutput, SPACE "device DO31\r\n");
+                    fprintf(spOutput, SPACE "device: DO31\r\n");
                     fprintf(spOutput, SPACE "DO: ");
                     for (i = 0; i < BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do31.digOut[i]);
@@ -849,12 +852,12 @@ static void BusMonDecoded(int sioHandle) {
                     }
                     break;
                 case eBusDevTypeSw8:
-                    fprintf(spOutput, SPACE "device SW8\r\n");
+                    fprintf(spOutput, SPACE "device: SW8\r\n");
                     fprintf(spOutput, SPACE "state: %02x",
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state);
                     break;
                 case eBusDevTypeLum:
-                    fprintf(spOutput, SPACE "device LUM\r\n");
+                    fprintf(spOutput, SPACE "device: LUM\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.lum.state);
                     fprintf(spOutput, SPACE "adc:   %04x",
@@ -862,12 +865,12 @@ static void BusMonDecoded(int sioHandle) {
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.lum.lum_high * 256);
                     break;
                 case eBusDevTypeLed:
-                    fprintf(spOutput, SPACE "device LED\r\n");
+                    fprintf(spOutput, SPACE "device: LED\r\n");
                     fprintf(spOutput, SPACE "state: %02x",
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.led.state);
                     break;
                 case eBusDevTypeSw16:
-                    fprintf(spOutput, SPACE "device SW16\r\n");
+                    fprintf(spOutput, SPACE "device: SW16\r\n");
                     fprintf(spOutput, SPACE "led_state:   ");
                     for (i = 0; i < BUS_SW16_LED_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, SPACE "%02x ",
@@ -878,58 +881,57 @@ static void BusMonDecoded(int sioHandle) {
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.sw16.input_state);
                     break;
                 case eBusDevTypeWind:
-                    fprintf(spOutput, SPACE "device WIND\r\n");
+                    fprintf(spOutput, SPACE "device: WIND\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.wind.state);
                     fprintf(spOutput, SPACE "wind:  %02x",
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.wind.wind);
                     break;
                 case eBusDevTypeRs485If:
-                    fprintf(spOutput, SPACE "device RS485IF\r\n");
+                    fprintf(spOutput, SPACE "device: RS485IF\r\n");
                     fprintf(spOutput, SPACE "state: ");
                     for (i = 0; i < BUS_RS485IF_SIZE_ACTUAL_VALUE; i++) {
-                        fprintf(spOutput, SPACE "%02x ",
+                        fprintf(spOutput, "%02x ",
                                 pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.rs485if.state[i]);
                     }
                     break;
                 case eBusDevTypePwm4:
-                    fprintf(spOutput, SPACE "device PWM4\r\n");
+                    fprintf(spOutput, SPACE "device: PWM4\r\n");
                     fprintf(spOutput, SPACE "state: %02x\r\n",
                             pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4.state);
                     fprintf(spOutput, SPACE "pwm: ");
                     for (i = 0; i < BUS_PWM4_PWM_SIZE_ACTUAL_VALUE; i++) {
-                        fprintf(spOutput, SPACE "%04x ",
+                        fprintf(spOutput, "%04x ",
                                 pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4.pwm[i]);
                     }
-                    fprintf(spOutput, "\r\n");
                     break;
                 default:
-                    fprintf(spOutput, SPACE "device unknown");
+                    fprintf(spOutput, SPACE "device: unknown");
                     break;
                 }
                 break;
             case eBusDevReqClockCalib:
                 fprintf(spOutput, "request clock calibration ");
-                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "command %d ", pBusMsg->msg.devBus.x.devReq.clockCalib.command);
-                fprintf(spOutput, "address %d ", pBusMsg->msg.devBus.x.devReq.clockCalib.address);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "command: %d ", pBusMsg->msg.devBus.x.devReq.clockCalib.command);
+                fprintf(spOutput, "address: %d ", pBusMsg->msg.devBus.x.devReq.clockCalib.address);
                 break;
             case eBusDevRespClockCalib:
                 fprintf(spOutput, "response clock calibration ");
-                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "state %d ", pBusMsg->msg.devBus.x.devResp.clockCalib.state);
-                fprintf(spOutput, "address %d ", pBusMsg->msg.devBus.x.devResp.clockCalib.address);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "state: %d ", pBusMsg->msg.devBus.x.devResp.clockCalib.state);
+                fprintf(spOutput, "address: %d ", pBusMsg->msg.devBus.x.devResp.clockCalib.address);
                 break;
             case eBusDevReqDoClockCalib:
                 fprintf(spOutput, "request do clock calibration ");
-                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "state %d ", pBusMsg->msg.devBus.x.devReq.doClockCalib.command);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "state: %d ", pBusMsg->msg.devBus.x.devReq.doClockCalib.command);
                 skipError = true;
                 break;
             case eBusDevRespDoClockCalib:
                 fprintf(spOutput, "response do clock calibration ");
-                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "state %d ", pBusMsg->msg.devBus.x.devResp.doClockCalib.state);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "state: %d ", pBusMsg->msg.devBus.x.devResp.doClockCalib.state);
                 break;
             case eBusDevReqGetTime:
                 fprintf(spOutput, "request get time ");
@@ -965,14 +967,14 @@ static void BusMonDecoded(int sioHandle) {
                 break;
             case eBusDevReqGetVar:
                 fprintf(spOutput, "request get var ");
-                fprintf(spOutput, "receiver %d ", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, "index: %d", pBusMsg->msg.devBus.x.devReq.getVar.index);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "index: %d", pBusMsg->msg.devBus.x.devReq.getVar.index);
                 break;
             case eBusDevRespGetVar:
                 fprintf(spOutput, "response get var ");
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "index: %d ", pBusMsg->msg.devBus.x.devResp.getVar.index);
-                fprintf(spOutput, "data:");
+                fprintf(spOutput, SPACE "index: %d\r\n", pBusMsg->msg.devBus.x.devResp.getVar.index);
+                fprintf(spOutput, SPACE "data:");
                 for (i = 0; i < pBusMsg->msg.devBus.x.devResp.getVar.length; i++) {
                     fprintf(spOutput, " %02x", pBusMsg->msg.devBus.x.devResp.getVar.data[i]);
                 }
@@ -980,22 +982,22 @@ static void BusMonDecoded(int sioHandle) {
             case eBusDevReqSetVar:
                 fprintf(spOutput, "request set var ");
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "index: %d ", pBusMsg->msg.devBus.x.devReq.setVar.index);
-                fprintf(spOutput, "data:");
+                fprintf(spOutput, SPACE "index: %d\r\n", pBusMsg->msg.devBus.x.devReq.setVar.index);
+                fprintf(spOutput, SPACE "data:");
                 for (i = 0; i < pBusMsg->msg.devBus.x.devReq.setVar.length; i++) {
                     fprintf(spOutput, " %02x", pBusMsg->msg.devBus.x.devReq.setVar.data[i]);
                 }
                 break;
             case eBusDevRespSetVar:
                 fprintf(spOutput, "response set var ");
-                fprintf(spOutput, "receiver %d", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, "index: %d", pBusMsg->msg.devBus.x.devResp.setVar.index);
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "index: %d", pBusMsg->msg.devBus.x.devResp.setVar.index);
                 break;
             case eBusDevStartup:
-                fprintf(spOutput, "device startup ");
+                fprintf(spOutput, "device startup");
                 break;
             default:
-                fprintf(spOutput, "unknown frame type %x ", pBusMsg->type);
+                fprintf(spOutput, "unknown frame type %x", pBusMsg->type);
                 break;
             }
             fprintf(spOutput, "\r\n");
