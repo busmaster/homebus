@@ -69,6 +69,8 @@
 #define OP_HELP                             19
 #define OP_GET_INFO_RANGE                   20
 #define OP_DIAG                             21
+#define OP_SET_VAR                          22
+#define OP_GET_VAR                          23
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -101,6 +103,8 @@ static bool ModuleInfo(uint8_t address, TBusDevRespInfo *pBuf, uint16_t resp_tim
 static bool ModuleDiag(uint8_t address, TBusDevRespDiag *pBuf, uint16_t resp_timeout);
 static bool ModuleClockCalib(uint8_t address, uint8_t calibAddress);
 static bool SwitchEvent(uint8_t clientAddr, uint8_t state);
+static bool SetVar(uint8_t clientAddr, TBusDevReqSetVar *pBuf);
+static bool GetVar(uint8_t clientAddr, uint8_t index, TBusDevRespGetVar *pBuf);
 static int  GetOperation(int argc, char *argv[], int *pArgi);
 
 #ifndef WIN32
@@ -130,6 +134,8 @@ int main(int argc, char *argv[]) {
     TBusDevReqSetValue     setVal;
     TBusDevRespInfo        info;
     TBusDevRespDiag        diag;
+    TBusDevReqSetVar       setVar;
+    TBusDevRespGetVar      getVar;
     bool                   server_run = false;
     uint8_t                len;
     int                    argi;
@@ -144,15 +150,18 @@ int main(int argc, char *argv[]) {
             if (argc > i) {
                 strncpy(comPort, argv[i + 1], sizeof(comPort) - 1);
                 comPort[sizeof(comPort) - 1] = '\0';
+                i++;
             }
         } else if (strcmp(argv[i], "-a") == 0) {
             if (argc > i) {
                 moduleAddr = atoi(argv[i + 1]);
+                i++;
             }
         } else if (strcmp(argv[i], "-o") == 0) {
             if (argc > i) {
                 myAddr = atoi(argv[i + 1]);
                 defaultMyAddr = myAddr;
+                i++;
             }
         } else if (strcmp(argv[i], "-s") == 0) {
             server_run = true;
@@ -552,7 +561,7 @@ int main(int argc, char *argv[]) {
             }
             break;
         case OP_GET_INFO_RANGE:
-            if((argc - argi) > 1 ) {
+            if ((argc - argi) > 1 ) {
                 for (moduleAddr = atoi(argv[argi]); ; moduleAddr++) {
                     ret = ModuleInfo(moduleAddr, &info, 100);
                     if (ret) {
@@ -598,6 +607,31 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 printf("OK\n");
+            }
+            break;
+        case OP_SET_VAR:
+            if ((argc - argi) > 1) {
+                setVar.index = atoi(argv[argi]);
+                for (j = argi + 1, k = 0; (j < argc) && (k < (int)(sizeof(setVar.data))); j++, k++) {
+                    setVar.data[k] = (uint8_t)atoi(argv[j]);
+                }
+                setVar.length = k;
+                ret = SetVar(moduleAddr, &setVar);
+                if (ret) {
+                    printf("OK\n");
+                }
+            }
+            break;
+        case OP_GET_VAR:
+            if ((argc - argi) == 1) {
+                ret = GetVar(moduleAddr, atoi(argv[argi]), &getVar);
+                if (ret) {
+                    printf("index %d\n", getVar.index);
+                    for (i = 0; i < getVar.length; i++) {
+                        printf("%02x", getVar.data[i]);
+                    }
+                    printf("\nOK\n");
+                }
             }
             break;
         case OP_HELP:
@@ -1274,7 +1308,7 @@ static bool ModuleClockCalib(
             return false;
         }
     }
-    
+
     if (!ClockCalib(moduleAddress, calibAddress, eBusClockCalibCommandCalibrate, &clockCalibState, &stateAddress)) {
         printf("command calibrate error\n");
         return false;
@@ -1301,7 +1335,7 @@ static bool ModuleClockCalib(
 }
 
 /*-----------------------------------------------------------------------------
-*  set new bus module address
+*  generate switch event
 */
 static bool SwitchEvent(uint8_t clientAddr, uint8_t state) {
 
@@ -1328,6 +1362,101 @@ static bool SwitchEvent(uint8_t clientAddr, uint8_t state) {
                 (pBusMsg->msg.devBus.receiverAddr == MY_ADDR)                  &&
                 (pBusMsg->senderAddr == clientAddr)                            &&
                 (pBusMsg->msg.devBus.x.devResp.switchState.switchState == state)) {
+                responseOk = true;
+            }
+        } else {
+            if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+                timeOut = true;
+            }
+        }
+    } while (!responseOk && !timeOut);
+
+    if (responseOk) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+/*-----------------------------------------------------------------------------
+*  generate switch event
+*/
+static bool GetVar(uint8_t clientAddr, uint8_t index, TBusDevRespGetVar *pGetVar) {
+
+    TBusTelegram    txBusMsg;
+    uint8_t         ret;
+    unsigned long   startTimeMs;
+    unsigned long   actualTimeMs;
+    TBusTelegram    *pBusMsg;
+    bool            responseOk = false;
+    bool            timeOut = false;
+    int             i;
+    uint8_t         len;
+
+    txBusMsg.type = eBusDevReqGetVar;
+    txBusMsg.senderAddr = MY_ADDR;
+    txBusMsg.msg.devBus.receiverAddr = clientAddr;
+    txBusMsg.msg.devBus.x.devReq.getVar.index = index;
+    BusSend(&txBusMsg);
+    startTimeMs = GetTickCount();
+    do {
+        actualTimeMs = GetTickCount();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            pBusMsg = BusMsgBufGet();
+            if ((pBusMsg->type == eBusDevRespGetVar)              &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR)     &&
+                (pBusMsg->senderAddr == clientAddr)               &&
+                (pBusMsg->msg.devBus.x.devResp.getVar.index == index)) {
+                responseOk = true;
+                pGetVar->index = index;
+                len = pBusMsg->msg.devBus.x.devResp.getVar.length;
+                pGetVar->length = len;
+                for (i = 0; i < len; i++) {
+                    pGetVar->data[i] = pBusMsg->msg.devBus.x.devResp.getVar.data[i];
+                }
+            }
+        } else {
+            if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+                timeOut = true;
+            }
+        }
+    } while (!responseOk && !timeOut);
+
+    if (responseOk) {
+        return true;
+    } else {
+        return false;
+    }
+}
+/*-----------------------------------------------------------------------------
+*  generate switch event
+*/
+static bool SetVar(uint8_t clientAddr, TBusDevReqSetVar *pSetVar) {
+
+    TBusTelegram    txBusMsg;
+    uint8_t         ret;
+    unsigned long   startTimeMs;
+    unsigned long   actualTimeMs;
+    TBusTelegram    *pBusMsg;
+    bool            responseOk = false;
+    bool            timeOut = false;
+
+    txBusMsg.type = eBusDevReqSetVar;
+    txBusMsg.senderAddr = MY_ADDR;
+    txBusMsg.msg.devBus.receiverAddr = clientAddr;
+    memcpy(&txBusMsg.msg.devBus.x.devReq.setVar, pSetVar, sizeof(*pSetVar));
+    BusSend(&txBusMsg);
+    startTimeMs = GetTickCount();
+    do {
+        actualTimeMs = GetTickCount();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            pBusMsg = BusMsgBufGet();
+            if ((pBusMsg->type == eBusDevRespSetVar)                           &&
+                (pBusMsg->msg.devBus.receiverAddr == MY_ADDR)                  &&
+                (pBusMsg->senderAddr == clientAddr)                            &&
+                (pBusMsg->msg.devBus.x.devResp.setVar.index == pSetVar->index)) {
                 responseOk = true;
             }
         } else {
@@ -1470,6 +1599,20 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             }
         } else if (strcmp(argv[i], "-diag") == 0) {
             operation = OP_DIAG;
+        } else if (strcmp(argv[i], "-setvar") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SET_VAR;
+            } else {
+                break;
+            }
+        } else if (strcmp(argv[i], "-getvar") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_GET_VAR;
+            } else {
+                break;
+            }
         } else if (strcmp(argv[i], "-help") == 0) {
             operation = OP_HELP;
         } else if (strcmp(argv[i], "-exit") == 0) {
@@ -1504,6 +1647,8 @@ static void PrintUsage(void) {
     printf("                              -inforange start stopp             |\n");
     printf("                              -clockcalib addr                   |\n");
     printf("                              -switchstate data                  |\n");
+    printf("                              -setvar index data1 .. dataN       |\n");
+    printf("                              -getvar index                      |\n");
     printf("                              -help                              |\n");
     printf("                              -exit)                             \n");
     printf("-c port: com1 com2 ..\n");
@@ -1527,6 +1672,8 @@ static void PrintUsage(void) {
     printf("-inforange start stopp: read type and version string from modul start to stopp address\n");	
     printf("-clockcalib: clock calibration\n");
     printf("-switchstate: generate a switch pressed or released event (ReqSwitchState, -a addr is the client)\n");
+    printf("-setvar: write device variable\n");
+    printf("-getvar: read device variable\n");
     printf("-help: print this help\n");
     printf("-exit: nop operation, exit server\n");
 }
