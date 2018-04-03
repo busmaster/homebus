@@ -974,9 +974,12 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "response get var ");
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "index: %d\r\n", pBusMsg->msg.devBus.x.devResp.getVar.index);
-                fprintf(spOutput, SPACE "data:");
-                for (i = 0; i < pBusMsg->msg.devBus.x.devResp.getVar.length; i++) {
-                    fprintf(spOutput, " %02x", pBusMsg->msg.devBus.x.devResp.getVar.data[i]);
+                fprintf(spOutput, SPACE "result: %d\r\n", pBusMsg->msg.devBus.x.devResp.getVar.result);
+                if (pBusMsg->msg.devBus.x.devResp.getVar.length > 0) {
+                    fprintf(spOutput, SPACE "data:");
+                    for (i = 0; i < pBusMsg->msg.devBus.x.devResp.getVar.length; i++) {
+                        fprintf(spOutput, " %02x", pBusMsg->msg.devBus.x.devResp.getVar.data[i]);
+                    }
                 }
                 break;
             case eBusDevReqSetVar:
@@ -992,6 +995,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "response set var ");
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "index: %d", pBusMsg->msg.devBus.x.devResp.setVar.index);
+                fprintf(spOutput, SPACE "result: %d\r\n", pBusMsg->msg.devBus.x.devResp.setVar.result);
                 break;
             case eBusDevStartup:
                 fprintf(spOutput, "device startup");
