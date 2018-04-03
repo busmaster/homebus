@@ -1,8 +1,10 @@
-OBJS = bus.o
+OBJS = bus.o busvar.o
 BIN  = libbus.a
 ARCH = $(TARGET_ARCH)
 OBJDIR = obj
 BINDIR = bin
+
+CFLAGS=-g -c -Wall -DBUSVAR -DBUSVAR_MEMSIZE=256 -DBUSVAR_NUMVAR=32
 
 SYS = $(shell gcc -dumpmachine)
 ifneq (, $(findstring linux, $(SYS)))
@@ -29,16 +31,17 @@ endif
 GCC = $(GCC_PREFIX)gcc
 AR = ar
 
-INC_PATH=$(foreach d, $(INCLUDE_PATH), -I$d)
+INC_PATH = $(foreach d,$(INCLUDE_PATH),-I$d)
+OBJ_LIST = $(foreach o,$(OBJS),$(OBJDIR)/$o)
 
 %.o : %.c
 	@mkdir -p $(OBJDIR)
-	$(GCC) -c -Wall $(INC_PATH) $< -o $(OBJDIR)/$@
+	$(GCC) $(CFLAGS) $(INC_PATH) $< -o $(OBJDIR)/$@
 
 .PHONY: all
 all: $(OBJS)
 	@mkdir -p $(BINDIR)
-	$(AR) rcs $(BINDIR)/$(BIN) $(OBJDIR)/$(OBJS)
+	$(AR) rcs $(BINDIR)/$(BIN) $(OBJ_LIST)
 
 .PHONY: clean
 clean:

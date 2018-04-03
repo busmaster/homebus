@@ -503,10 +503,17 @@ typedef struct {
     uint16_t index;
 } __attribute__ ((packed)) TBusDevReqGetVar;              /* type 0x2d */
 
+typedef enum {
+    eBusVarSuccess = 0,
+    eBusVarLengthError = 1,
+    eBusVarIndexError = 2
+} __attribute__ ((packed)) TBusVarResult;
+
 typedef struct {
-    uint16_t index;
-    uint8_t  length;
-    uint8_t  data[BUS_MAX_VAR_SIZE];
+    TBusVarResult result;
+    uint16_t      index;
+    uint8_t       length;
+    uint8_t       data[BUS_MAX_VAR_SIZE];
 } __attribute__ ((packed)) TBusDevRespGetVar;             /* type 0x2e */
 
 typedef struct {
@@ -516,9 +523,9 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevReqSetVar;              /* type 0x2f */
 
 typedef struct {
-    uint16_t index;
+    TBusVarResult result;
+    uint16_t      index;
 } __attribute__ ((packed)) TBusDevRespSetVar;             /* type 0x30 */
-
 
 typedef union {
    TBusDevReqReboot           reboot;
@@ -644,11 +651,6 @@ typedef struct {
    TBusUniTelegram  msg;
 } __attribute__ ((packed)) TBusTelegram;
 
-
-/*-----------------------------------------------------------------------------
-*  Variables
-*/
-
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -660,6 +662,51 @@ uint8_t        BusSend(TBusTelegram *pMsg);
 uint8_t        BusSendToBuf(TBusTelegram *pMsg);
 uint8_t        BusSendToBufRaw(uint8_t *pRawData, uint8_t len);
 uint8_t        BusSendBuf(void);
+
+/*
+*  BusVar
+*/
+typedef enum {
+    eBusVarState_Error     = 0x01,
+    eBusVarState_Timeout   = 0x02,
+    eBusVarState_Ready     = 0x04,
+    eBusVarState_Scheduled = 0x08,
+    eBusVarState_Waiting   = 0x10,
+    eBusVarState_TxRetry   = 0x20,
+    eBusVarState_TxError   = 0x40,
+    eBusVarState_Invalid   = 0x80
+} __attribute__ ((packed)) TBusVarState;
+
+typedef enum {
+    eBusVarType_uint8,
+    eBusVarType_uint16,
+    eBusVarType_uint32,
+    eBusVarType_sint8,
+    eBusVarType_sint16,
+    eBusVarType_sint32,
+    eBusVarType_char16,
+} __attribute__ ((packed)) TBusVarType;
+
+typedef void *TBusVarHdl;
+#define BUSVAR_HDL_INVALID     (TBusVarHdl)-1
+
+void    BusVarInit(uint8_t myAddr);
+bool    BusVarAdd(uint8_t size, uint8_t *idx);
+bool    BusVarSetInfo(uint8_t *idx, const char *name, TBusVarType type);
+uint8_t BusVarRead(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
+bool    BusVarWrite(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
+
+typedef enum {
+    eBusVarRead,
+    eBusVarWrite
+} __attribute__ ((packed)) TBusVarDir;
+
+TBusVarHdl BusVarTransactionOpen(uint8_t busAddr, uint8_t varIdx, void *buf, uint8_t bufSize, TBusVarDir dir);
+TBusVarState BusVarTransactionState(TBusVarHdl varHdl);
+void BusVarTransactionClose(TBusVarHdl varHdl);
+void BusVarRespGet(uint8_t addr, TBusDevRespGetVar *respSet);
+void BusVarRespSet(uint8_t addr, TBusDevRespSetVar *respGet);
+void BusVarProcess(void);
 
 #ifdef __cplusplus
 }

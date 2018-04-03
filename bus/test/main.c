@@ -75,6 +75,8 @@ static int TestTelegram(TBusTelegram *pTxMsg, uint8_t msgSize) {
         if (memcmp((uint8_t *)pRxMsg + msgSize, zerobuf, sizeof(TBusTelegram) - msgSize) != 0) {
         	return -1;
         }
+    } else {
+    	return -1;
     }
     return 0;
 }
@@ -495,12 +497,23 @@ static int Test(void) {
     txMsg.msg.devBus.receiverAddr = 67;
     txMsg.msg.devBus.x.devResp.getVar.index = 0x1234;
     txMsg.msg.devBus.x.devResp.getVar.length = 5;
+    txMsg.msg.devBus.x.devResp.getVar.result = eBusVarSuccess; // 0
     txMsg.msg.devBus.x.devResp.getVar.data[0] = 0;
     txMsg.msg.devBus.x.devResp.getVar.data[1] = 1;
     txMsg.msg.devBus.x.devResp.getVar.data[2] = 2;
     txMsg.msg.devBus.x.devResp.getVar.data[3] = 3;
     txMsg.msg.devBus.x.devResp.getVar.data[4] = 4;
-	if (TestTelegram(&txMsg, MSG_SIZE2 + 2 + 1 + 5) != 0) {
+	if (TestTelegram(&txMsg, MSG_SIZE2 + 2 + 1 + 1 + 5) != 0) {
+		return -1;
+	}
+
+	txMsg.type = eBusDevRespGetVar;
+    txMsg.senderAddr = 66;
+    txMsg.msg.devBus.receiverAddr = 67;
+    txMsg.msg.devBus.x.devResp.getVar.index = 0x1234;
+    txMsg.msg.devBus.x.devResp.getVar.length = 0;
+    txMsg.msg.devBus.x.devResp.getVar.result = eBusVarIndexError; // 2
+	if (TestTelegram(&txMsg, MSG_SIZE2 + 2 + 1 + 1) != 0) {
 		return -1;
 	}
 
@@ -519,7 +532,8 @@ static int Test(void) {
     txMsg.senderAddr = 66;
     txMsg.msg.devBus.receiverAddr = 67;
     txMsg.msg.devBus.x.devResp.setVar.index = 0x1234;
-	if (TestTelegram(&txMsg, MSG_SIZE2 + 2) != 0) {
+    txMsg.msg.devBus.x.devResp.setVar.result = eBusVarSuccess;
+	if (TestTelegram(&txMsg, MSG_SIZE2 + 2 + 1) != 0) {
 		return -1;
 	}
 
@@ -567,6 +581,56 @@ int main(int argc, char *argv[]) {
     }
 
     BusInit(handle);
+#if 0
+    BusVarInit(67);
+
+    {
+    	uint8_t idx1;
+    	uint8_t idx2;
+
+    	uint8_t var1 = 1;
+    	uint16_t var2 = 0x1234;
+
+    	bool rc;
+    	uint8_t len;
+
+    	TBusVarHdl hdl1;
+    	TBusVarHdl hdl2;
+    	TBusTelegram *msg;
+    	TBusVarResult result;
+
+
+    	BusVarAdd(sizeof(var1), &idx1);
+    	BusVarAdd(sizeof(var2), &idx2);
+
+    	rc = BusVarWrite(idx2, &var2, sizeof(var2), &result);
+    	rc = BusVarWrite(idx1, &var1, sizeof(var1), &result);
+
+    	var1 = 0;
+    	var2 = 0;
+
+    	len = BusVarRead(idx2, &var2, sizeof(var2), &result);
+    	printf("len %d var2 %x\n", len, var2);
+    	len = BusVarRead(idx1, &var1, sizeof(var1), &result);
+    	printf("len %d var1 %x\n", len, var1);
+
+    	BusVarTransactionOpen(242, 0, &var2, sizeof(var2), eBusVarWrite);
+
+    	for (i = 0; i < 10; i++) {
+    		BusVarProcess();
+    		sleep(1);
+    		if (i == 3) {
+    			if (BusCheck() == BUS_MSG_OK) {
+    				msg = BusMsgBufGet();
+        	        BusVarRespSet(msg->senderAddr, &msg->msg.devBus.x.devResp.setVar);
+
+    			}
+    		}
+    	}
+
+    }
+    return 0;
+#endif
 
     if (Test() == 0) {
     	printf("OK\n");

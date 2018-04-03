@@ -103,7 +103,7 @@ static bool ModuleInfo(uint8_t address, TBusDevRespInfo *pBuf, uint16_t resp_tim
 static bool ModuleDiag(uint8_t address, TBusDevRespDiag *pBuf, uint16_t resp_timeout);
 static bool ModuleClockCalib(uint8_t address, uint8_t calibAddress);
 static bool SwitchEvent(uint8_t clientAddr, uint8_t state);
-static bool SetVar(uint8_t clientAddr, TBusDevReqSetVar *pBuf);
+static bool SetVar(uint8_t clientAddr, TBusDevReqSetVar *pBuf, TBusVarResult *result);
 static bool GetVar(uint8_t clientAddr, uint8_t index, TBusDevRespGetVar *pBuf);
 static int  GetOperation(int argc, char *argv[], int *pArgi);
 
@@ -136,6 +136,7 @@ int main(int argc, char *argv[]) {
     TBusDevRespDiag        diag;
     TBusDevReqSetVar       setVar;
     TBusDevRespGetVar      getVar;
+    TBusVarResult          varResult;
     bool                   server_run = false;
     uint8_t                len;
     int                    argi;
@@ -616,9 +617,20 @@ int main(int argc, char *argv[]) {
                     setVar.data[k] = (uint8_t)atoi(argv[j]);
                 }
                 setVar.length = k;
-                ret = SetVar(moduleAddr, &setVar);
+                ret = SetVar(moduleAddr, &setVar, &varResult);
                 if (ret) {
-                    printf("OK\n");
+                    if (varResult == eBusVarSuccess) {
+                        printf("OK\n");
+                    } else {
+                        if (varResult == eBusVarLengthError) {
+                            printf("LengthError");
+                        } else if (varResult == eBusVarIndexError) {
+                            printf("IndexError");
+                        } else {
+                            printf("unknown error number (%d)", varResult);
+                        }
+                        printf("\nERROR\n");
+                    }
                 }
             }
             break;
@@ -627,10 +639,21 @@ int main(int argc, char *argv[]) {
                 ret = GetVar(moduleAddr, atoi(argv[argi]), &getVar);
                 if (ret) {
                     printf("index %d\n", getVar.index);
-                    for (i = 0; i < getVar.length; i++) {
-                        printf("%02x", getVar.data[i]);
+                    if (getVar.result == eBusVarSuccess) {
+                        for (i = 0; i < getVar.length; i++) {
+                            printf("%02x ", getVar.data[i]);
+                        }
+                        printf("\nOK\n");
+                    } else {
+                        if (getVar.result == eBusVarLengthError) {
+                            printf("LengthError");
+                        } else if (getVar.result == eBusVarIndexError) {
+                            printf("IndexError");
+                        } else {
+                            printf("unknown error number (%d)", getVar.result);
+                        }
+                        printf("\nERROR\n");
                     }
-                    printf("\nOK\n");
                 }
             }
             break;
@@ -1410,10 +1433,13 @@ static bool GetVar(uint8_t clientAddr, uint8_t index, TBusDevRespGetVar *pGetVar
                 (pBusMsg->msg.devBus.x.devResp.getVar.index == index)) {
                 responseOk = true;
                 pGetVar->index = index;
-                len = pBusMsg->msg.devBus.x.devResp.getVar.length;
-                pGetVar->length = len;
-                for (i = 0; i < len; i++) {
-                    pGetVar->data[i] = pBusMsg->msg.devBus.x.devResp.getVar.data[i];
+                pGetVar->result = pBusMsg->msg.devBus.x.devResp.getVar.result;
+                if (pGetVar->result == eBusVarSuccess) {
+                    len = pBusMsg->msg.devBus.x.devResp.getVar.length;
+                    pGetVar->length = len;
+                    for (i = 0; i < len; i++) {
+                        pGetVar->data[i] = pBusMsg->msg.devBus.x.devResp.getVar.data[i];
+                    }
                 }
             }
         } else {
@@ -1432,7 +1458,7 @@ static bool GetVar(uint8_t clientAddr, uint8_t index, TBusDevRespGetVar *pGetVar
 /*-----------------------------------------------------------------------------
 *  generate switch event
 */
-static bool SetVar(uint8_t clientAddr, TBusDevReqSetVar *pSetVar) {
+static bool SetVar(uint8_t clientAddr, TBusDevReqSetVar *pSetVar, TBusVarResult *result) {
 
     TBusTelegram    txBusMsg;
     uint8_t         ret;
@@ -1458,6 +1484,7 @@ static bool SetVar(uint8_t clientAddr, TBusDevReqSetVar *pSetVar) {
                 (pBusMsg->senderAddr == clientAddr)                            &&
                 (pBusMsg->msg.devBus.x.devResp.setVar.index == pSetVar->index)) {
                 responseOk = true;
+                *result = pBusMsg->msg.devBus.x.devResp.setVar.result;
             }
         } else {
             if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {

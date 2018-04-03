@@ -211,11 +211,19 @@ static TBusLenDevType sRespActualValueEventSize = {
 #define LD len.direct
 #define LT len.pDevType
 
-#define LEN_RESP_GET_VAR_OFFS  LD.offsetLen = MSG_BASE_SIZE2 + member_sizeof(TBusDevRespGetVar, index)
-#define LEN_RESP_GET_VAR_ADD   LD.add = MSG_BASE_SIZE2 + member_sizeof(TBusDevRespGetVar, index) + member_sizeof(TBusDevRespGetVar, length)
+#define LEN_RESP_GET_VAR_OFFS   LD.offsetLen = MSG_BASE_SIZE2 +                \
+                                member_sizeof(TBusDevRespGetVar, index) +      \
+                                member_sizeof(TBusDevRespGetVar, result)
+#define LEN_RESP_GET_VAR_ADD    LD.add = MSG_BASE_SIZE2 +                      \
+                                member_sizeof(TBusDevRespGetVar, index) +      \
+                                member_sizeof(TBusDevRespGetVar, length) +     \
+                                member_sizeof(TBusDevRespGetVar, result)
 
-#define LEN_REQ_SET_VAR_OFFS   LD.offsetLen = MSG_BASE_SIZE2 + member_sizeof(TBusDevReqSetVar, index)
-#define LEN_REQ_SET_VAR_ADD    LD.add = MSG_BASE_SIZE2 + member_sizeof(TBusDevReqSetVar, index) + member_sizeof(TBusDevReqSetVar, length)
+#define LEN_REQ_SET_VAR_OFFS    LD.offsetLen = MSG_BASE_SIZE2 +                \
+                                member_sizeof(TBusDevReqSetVar, index)
+#define LEN_REQ_SET_VAR_ADD     LD.add = MSG_BASE_SIZE2 +                      \
+                                member_sizeof(TBusDevReqSetVar, index) +       \
+                                member_sizeof(TBusDevReqSetVar, length)
 
 // telegram sizes without STX and checksum
 // array index = telegram type (eBusDevStartup is 255 -> set to index 0)
@@ -441,7 +449,12 @@ static uint8_t L2StateMachine(uint8_t ch) {
             }
         } else if (pL2State->chIdx == pL2State->lengthIdx) {
             pL2State->lastMsgIdx = ch + pL2State->lengthAdd - 1;
-            rc = L2_IN_PROGRESS;
+            if (pL2State->chIdx == pL2State->lastMsgIdx) {
+                rc = L2_COMPLETE;
+                pL2State->protoState = L2_WAIT_FOR_SENDER_ADDR;
+            } else {
+                rc = L2_IN_PROGRESS;
+            }
         } else {
             rc = L2_IN_PROGRESS;
         }
