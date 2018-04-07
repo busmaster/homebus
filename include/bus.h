@@ -500,7 +500,7 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevRespSetTime;            /* type 0x2c */
 
 typedef struct {
-    uint16_t index;
+    uint8_t index;
 } __attribute__ ((packed)) TBusDevReqGetVar;              /* type 0x2d */
 
 typedef enum {
@@ -511,20 +511,20 @@ typedef enum {
 
 typedef struct {
     TBusVarResult result;
-    uint16_t      index;
+    uint8_t       index;
     uint8_t       length;
     uint8_t       data[BUS_MAX_VAR_SIZE];
 } __attribute__ ((packed)) TBusDevRespGetVar;             /* type 0x2e */
 
 typedef struct {
-    uint16_t index;
+    uint8_t  index;
     uint8_t  length;
     uint8_t  data[BUS_MAX_VAR_SIZE];
 } __attribute__ ((packed)) TBusDevReqSetVar;              /* type 0x2f */
 
 typedef struct {
     TBusVarResult result;
-    uint16_t      index;
+    uint8_t       index;
 } __attribute__ ((packed)) TBusDevRespSetVar;             /* type 0x30 */
 
 typedef union {
