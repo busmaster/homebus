@@ -974,7 +974,21 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, "response get var ");
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "index: %d\r\n", pBusMsg->msg.devBus.x.devResp.getVar.index);
-                fprintf(spOutput, SPACE "result: %d\r\n", pBusMsg->msg.devBus.x.devResp.getVar.result);
+                fprintf(spOutput, SPACE "result: ");
+                switch (pBusMsg->msg.devBus.x.devResp.getVar.result) {
+                case eBusVarSuccess:
+                    fprintf(spOutput, "success\r\n");
+                    break;
+                case eBusVarLengthError:
+                    fprintf(spOutput, "length error\r\n");
+                    break;
+                case eBusVarIndexError:
+                    fprintf(spOutput, "index error\r\n");
+                    break;
+                default:
+                    fprintf(spOutput, "unknown error code (%d)\r\n", pBusMsg->msg.devBus.x.devResp.getVar.result);
+                    break;
+		}
                 if (pBusMsg->msg.devBus.x.devResp.getVar.length > 0) {
                     fprintf(spOutput, SPACE "data:");
                     for (i = 0; i < pBusMsg->msg.devBus.x.devResp.getVar.length; i++) {
@@ -994,8 +1008,22 @@ static void BusMonDecoded(int sioHandle) {
             case eBusDevRespSetVar:
                 fprintf(spOutput, "response set var ");
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
-                fprintf(spOutput, SPACE "index: %d", pBusMsg->msg.devBus.x.devResp.setVar.index);
-                fprintf(spOutput, SPACE "result: %d\r\n", pBusMsg->msg.devBus.x.devResp.setVar.result);
+                fprintf(spOutput, SPACE "index: %d\r\n", pBusMsg->msg.devBus.x.devResp.setVar.index);
+                fprintf(spOutput, SPACE "result: ");
+                switch (pBusMsg->msg.devBus.x.devResp.setVar.result) {
+                case eBusVarSuccess:
+                    fprintf(spOutput, "success\r\n");
+                    break;
+                case eBusVarLengthError:
+                    fprintf(spOutput, "length error\r\n");
+                    break;
+                case eBusVarIndexError:
+                    fprintf(spOutput, "index error\r\n");
+                    break;
+                default:
+                    fprintf(spOutput, "unknown error code (%d)\r\n", pBusMsg->msg.devBus.x.devResp.setVar.result);
+                    break;
+		}
                 break;
             case eBusDevStartup:
                 fprintf(spOutput, "device startup");
