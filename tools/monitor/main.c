@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
 static void PrintUsage(void) {
 
     printf("\r\nUsage:");
-    printf("monitor -c port [-l file] [-raw]\r\n");
+    printf("monitor -c port [-f file] [-raw]\r\n");
     printf("port: com1 com2 ..\r\n");
     printf("file, if no logfile: log to console\r\n");
     printf("-raw: log hex data\r\n");
