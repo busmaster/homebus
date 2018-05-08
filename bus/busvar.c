@@ -53,12 +53,10 @@ typedef struct {
     uint16_t txTime;
 } TVarTransactionDesc;
 
-
-static TVarTab sVarTable[BUSVAR_NUMVAR];
+static TVarTab  sVarTable[BUSVAR_NUMVAR];
 
 static uint8_t  sHeap[BUSVAR_MEMSIZE];
 static uint16_t sHeapCurr = 0;
-static uint8_t  sVarIdx = 0;
 
 static TVarTransactionDesc sVarTransactionFifo[TRANSACTION_FIFO_LEN];
 static uint8_t sVarFifoWrIdx;
@@ -66,225 +64,226 @@ static uint8_t sVarFifoRdIdx;
 static uint8_t sMyAddr;
 
 void BusVarInit(uint8_t addr) {
-    
-	TVarTransactionDesc *vtd = sVarTransactionFifo;
-	uint8_t i;
+    TVarTransactionDesc *vtd = sVarTransactionFifo;
+    TVarTab *vt = sVarTable;
+    int i;
 
-	sMyAddr = addr;
-	sVarFifoWrIdx = 0;
-	sVarFifoRdIdx = 0;
+    sMyAddr = addr;
 
-	for (i = 0; i < TRANSACTION_FIFO_LEN; i++) {
-	    vtd->state = eBusVarState_Invalid;
-	    vtd++;
-	}
+    for (i = 0; i < BUSVAR_NUMVAR; i++, vt++) {
+        vt->size = 0;
+        vt->mem = 0;
+    }
+
+    sVarFifoWrIdx = 0;
+    sVarFifoRdIdx = 0;
+    for (i = 0; i < TRANSACTION_FIFO_LEN; i++, vtd++) {
+        vtd->state = eBusVarState_Invalid;
+    }
 }
 
 /* local access */
 
-bool BusVarAdd(uint8_t size, uint8_t *idx) {
-    
-    if (sVarIdx >= (BUSVAR_NUMVAR - 1)) {
+bool BusVarAdd(uint8_t size, uint8_t idx) {
+    TVarTab *vt;
+
+    if (idx >= (BUSVAR_NUMVAR - 1)) {
         return false;
     }
     if ((sHeapCurr + size) > BUSVAR_MEMSIZE) {
         return false;
     }
-    sVarTable[sVarIdx].size = size;
-    sVarTable[sVarIdx].mem = &sHeap[sHeapCurr];
-    
-    *idx = sVarIdx;
-
-    sVarIdx++;
+    vt = &sVarTable[idx];
+    /* in use? */
+    if (vt->mem != 0) {
+        return false;
+    }
+    vt->size = size;
+    vt->mem = &sHeap[sHeapCurr];
     sHeapCurr += size;
-    
     return true;
 }
 
 uint8_t BusVarRead(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result) {
+    TVarTab *vt;
 
-    TVarTab *tab;
-
-    if (idx >= sVarIdx) {
+    if (idx >= (BUSVAR_NUMVAR - 1)) {
         *result = eBusVarIndexError;
         return 0;
     }
-    tab = &sVarTable[idx];
-    if (bufSize < tab->size) {
+    vt = &sVarTable[idx];
+    if (bufSize < vt->size) {
         *result = eBusVarLengthError;
         return 0;
     }
-    memcpy(buf, tab->mem, tab->size);
+    memcpy(buf, vt->mem, vt->size);
     *result = eBusVarSuccess;
-
-    return tab->size;
+    return vt->size;
 }
 
 bool BusVarWrite(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result) {
+    TVarTab *vt;
 
-    TVarTab *tab;
-
-    if (idx >= sVarIdx) {
+    if (idx >= (BUSVAR_NUMVAR - 1)) {
         *result = eBusVarIndexError;
         return false;
     }
-    tab = &sVarTable[idx];
-    if (bufSize != tab->size) {
+    vt = &sVarTable[idx];
+    if (bufSize != vt->size) {
         *result = eBusVarLengthError;
         return false;
     }
-    memcpy(tab->mem, buf, tab->size);
+    memcpy(vt->mem, buf, vt->size);
     *result = eBusVarSuccess;
-
     return true;
 }
 
-/* remote access */
-
+/*
+ * remote access
+ */
 TBusVarHdl BusVarTransactionOpen(uint8_t addr, uint8_t idx, void *buf, uint8_t size, TBusVarDir dir) {
+    TVarTransactionDesc *vtd;
 
-	TVarTransactionDesc *vtd;
-
-	if (NUM_FIFO_FREE == 0) {
-		return BUSVAR_HDL_INVALID;
-	}
-
-	vtd = &sVarTransactionFifo[sVarFifoWrIdx];
-	vtd->addr = addr;
-	vtd->idx = idx;
-	vtd->dir = dir;
-	vtd->buf = buf;
-	vtd->size = size;
-	vtd->state = eBusVarState_Scheduled;
-	vtd->txRetryCnt = 5;
-
-	IDX_INC(sVarFifoWrIdx);
-
+    if (NUM_FIFO_FREE == 0) {
+        return BUSVAR_HDL_INVALID;
+    }
+    vtd = &sVarTransactionFifo[sVarFifoWrIdx];
+    vtd->addr = addr;
+    vtd->idx = idx;
+    vtd->dir = dir;
+    vtd->buf = buf;
+    vtd->size = size;
+    vtd->state = eBusVarState_Scheduled;
+    vtd->txRetryCnt = 5;
+    IDX_INC(sVarFifoWrIdx);
     return (TBusVarHdl)vtd;
 }
 
 TBusVarState BusVarTransactionState(TBusVarHdl varHdl) {
-    
+
     TVarTransactionDesc *vtd = (TVarTransactionDesc *)varHdl;
 
     return vtd->state;
 }
 void BusVarTransactionClose(TBusVarHdl varHdl) {
 
-	uint8_t rdIdx = sVarFifoRdIdx;
     TVarTransactionDesc *vtd = (TVarTransactionDesc *)varHdl;
 
     vtd->state = eBusVarState_Invalid;
 
-    do {
-    	IDX_INC(rdIdx);
-        vtd = &sVarTransactionFifo[rdIdx];
-    } while (vtd->state == eBusVarState_Invalid);
-
-    sVarFifoRdIdx = rdIdx;
+    while (sVarFifoRdIdx != sVarFifoWrIdx) {
+    	vtd = &sVarTransactionFifo[sVarFifoRdIdx];
+        if (vtd->state == eBusVarState_Invalid) {
+            IDX_INC(sVarFifoRdIdx);
+        } else {
+        	break;
+        }
+    }
 }
 
 void BusVarRespSet(uint8_t addr, TBusDevRespSetVar *respSet) {
+    TVarTransactionDesc *vtd;
 
-	TVarTransactionDesc *vtd;
-
-	if (sVarFifoRdIdx == sVarFifoWrIdx) {
-		// no response expected
-		return;
-	}
-	vtd = &sVarTransactionFifo[sVarFifoRdIdx];
-	if (respSet->index == vtd->idx) {
-		vtd->state = eBusVarState_Ready;
-	} else {
-		vtd->state = eBusVarState_Error;
-	}
+    if (sVarFifoRdIdx == sVarFifoWrIdx) {
+        // no response expected
+        return;
+    }
+    vtd = &sVarTransactionFifo[sVarFifoRdIdx];
+    if (respSet->index == vtd->idx) {
+        vtd->state = eBusVarState_Ready;
+    } else {
+        vtd->state = eBusVarState_Error;
+    }
 }
 
 void BusVarRespGet(uint8_t addr, TBusDevRespGetVar *respGet) {
+    TVarTransactionDesc *vtd;
+    uint8_t i;
 
-	TVarTransactionDesc *vtd;
-	uint8_t i;
-
-	if (sVarFifoRdIdx == sVarFifoWrIdx) {
-		// no response expected
-		return;
-	}
-	vtd = &sVarTransactionFifo[sVarFifoRdIdx];
-	if ((respGet->index == vtd->idx) &&
-		(respGet->length <= vtd->size)) {
-		vtd->size = respGet->length;
-		for (i = 0; i < vtd->size; i++) {
-			*((uint8_t *)vtd->buf + i) = respGet->data[i];
-		}
-		vtd->state = eBusVarState_Ready;
-	} else {
-		vtd->state = eBusVarState_Error;
-	}
+    if (sVarFifoRdIdx == sVarFifoWrIdx) {
+        // no response expected
+        return;
+    }
+    vtd = &sVarTransactionFifo[sVarFifoRdIdx];
+    if ((respGet->index == vtd->idx) &&
+        (respGet->length == vtd->size)) {
+        for (i = 0; i < vtd->size; i++) {
+            *((uint8_t *)vtd->buf + i) = respGet->data[i];
+        }
+        vtd->state = eBusVarState_Ready;
+    } else {
+        vtd->state = eBusVarState_Error;
+    }
 }
 
 void BusVarProcess(void) {
 
-	TVarTransactionDesc *vtd;
-	uint8_t rdIdx = sVarFifoRdIdx;
+    TVarTransactionDesc *vtd;
+    uint8_t rdIdx;
     static TBusTelegram  sTxMsg;
     uint16_t actualTime16;
     uint8_t i;
 
-	if (sVarFifoRdIdx == sVarFifoWrIdx) {
-		return;
-	}
-	vtd = &sVarTransactionFifo[rdIdx];
+    if (sVarFifoRdIdx == sVarFifoWrIdx) {
+        return;
+    }
+    rdIdx = sVarFifoRdIdx;
+    vtd = &sVarTransactionFifo[rdIdx];
 
     GET_TIME_MS16(actualTime16);
 
-	switch (vtd->state) {
-	case eBusVarState_Scheduled:
-	    sTxMsg.senderAddr = sMyAddr;
-	    sTxMsg.msg.devBus.receiverAddr = vtd->addr;
-	    if (vtd->dir == eBusVarRead) {
-	        sTxMsg.type = eBusDevReqGetVar;
-	        sTxMsg.msg.devBus.x.devReq.getVar.index = vtd->idx;
-	    } else {
-	        sTxMsg.type = eBusDevReqSetVar;
-	        sTxMsg.msg.devBus.x.devReq.setVar.index = vtd->idx;
-	        sTxMsg.msg.devBus.x.devReq.setVar.length = vtd->size;
-	        for (i = 0; i < vtd->size; i++) {
-	        	sTxMsg.msg.devBus.x.devReq.setVar.data[i] = *((uint8_t *)vtd->buf + i);
-	        }
-	    }
-	    if (BusSend(&sTxMsg) == BUS_SEND_OK) {
-	    	vtd->state = eBusVarState_Waiting;
-	    } else {
-	    	vtd->state = eBusVarState_TxRetry;
-	    }
-    	vtd->txTime = actualTime16;
-		break;
-	case eBusVarState_Waiting:
-		if ((vtd->txTime - actualTime16) > RESPONSE_TIMEOUT) {
-			vtd->state = eBusVarState_Timeout;
-		}
-		break;
-	case eBusVarState_TxRetry:
-		if ((vtd->txTime - actualTime16) > TX_RETRY_TIMEOUT) {
-			if (vtd->txRetryCnt > 0) {
-				if (BusSend(&sTxMsg) == BUS_SEND_OK) {
-					vtd->state = eBusVarState_Waiting;
-				} else {
-					vtd->state = eBusVarState_TxRetry;
-				}
-				vtd->txTime = actualTime16;
-				vtd->txRetryCnt--;
-			} else {
-				vtd->state = eBusVarState_TxError;
-			}
-		}
-		break;
-	case eBusVarState_Timeout:
-	case eBusVarState_TxError:
-	case eBusVarState_Ready:
-		// do nothing - transaction shall be closed by user
-		break;
-	default:
-		break;
-	}
+    switch (vtd->state) {
+    case eBusVarState_Scheduled:
+        sTxMsg.senderAddr = sMyAddr;
+        sTxMsg.msg.devBus.receiverAddr = vtd->addr;
+        if (vtd->dir == eBusVarRead) {
+            sTxMsg.type = eBusDevReqGetVar;
+            sTxMsg.msg.devBus.x.devReq.getVar.index = vtd->idx;
+        } else {
+            sTxMsg.type = eBusDevReqSetVar;
+            sTxMsg.msg.devBus.x.devReq.setVar.index = vtd->idx;
+            sTxMsg.msg.devBus.x.devReq.setVar.length = vtd->size;
+            for (i = 0; i < vtd->size; i++) {
+                sTxMsg.msg.devBus.x.devReq.setVar.data[i] = *((uint8_t *)vtd->buf + i);
+            }
+        }
+        if (BusSend(&sTxMsg) == BUS_SEND_OK) {
+            vtd->state = eBusVarState_Waiting;
+        } else {
+            vtd->state = eBusVarState_TxRetry;
+        }
+        vtd->txTime = actualTime16;
+	break;
+    case eBusVarState_Waiting:
+        if ((actualTime16 - vtd->txTime) > RESPONSE_TIMEOUT) {
+            vtd->state = eBusVarState_Timeout;
+        }
+        break;
+    case eBusVarState_TxRetry:
+        if ((actualTime16 - vtd->txTime) > TX_RETRY_TIMEOUT) {
+            if (vtd->txRetryCnt > 0) {
+                if (BusSend(&sTxMsg) == BUS_SEND_OK) {
+                    vtd->state = eBusVarState_Waiting;
+                } else {
+                    vtd->state = eBusVarState_TxRetry;
+                    vtd->txRetryCnt--;
+                }
+                vtd->txTime = actualTime16;
+            } else {
+                vtd->state = eBusVarState_TxError;
+            }
+        }
+        break;
+    case eBusVarState_Timeout:
+    case eBusVarState_TxError:
+    case eBusVarState_Ready:
+        // do nothing - transaction shall be closed by user
+        break;
+    default:
+        break;
+    }
+}
+
+bool BusVarSetInfo(uint8_t idx, const char *name, TBusVarType type, TBusVarMode mode) {
+    return true;
 }

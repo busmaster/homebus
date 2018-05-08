@@ -163,8 +163,6 @@ static void ClockCalibTask(void);
 /*-----------------------------------------------------------------------------
 *  main
 */
-
-
 int main(void) {
 
    uint8_t ret;
@@ -195,11 +193,14 @@ int main(void) {
 
    BusInit(sioHdl);
    spBusMsg = BusMsgBufGet();
+#ifdef BUSVAR
+   BusVarInit(sMyAddr);
+#endif
 
-   /* warten bis Betriebsspannung auf 24 V-Seite volle Höhe erreicht hat */
+   /* wait for full supply voltage */
    while (!POWER_GOOD);
 
-   /* für Delay wird timer-Interrupt benötigt (DigOutAll() in RestoreDigOut()) */
+   /* for delay in RestoreDigout the timer interruot is required */
    ENABLE_INT;
 
    RestoreDigOut();
@@ -1041,13 +1042,12 @@ static void ButtonEvent(uint8_t address, uint8_t button) {
    TButtonEvent buttonEventData;
 
    if (ButtonNew(address, button) == true) {
-      buttonEventData.address = spBusMsg->senderAddr;
+      buttonEventData.address = address;
       buttonEventData.pressed = true;
       buttonEventData.buttonNr = button;
       ApplicationEventButton(&buttonEventData);
    }
 }
-
 
 /*-----------------------------------------------------------------------------
 *  create switch event for application
@@ -1055,7 +1055,7 @@ static void ButtonEvent(uint8_t address, uint8_t button) {
 static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) {
    TButtonEvent buttonEventData;
 
-   buttonEventData.address = spBusMsg->senderAddr;
+   buttonEventData.address = address;
    buttonEventData.pressed = pressed;
    buttonEventData.buttonNr = button;
    ApplicationEventButton(&buttonEventData);

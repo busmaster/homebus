@@ -4,7 +4,13 @@ ARCH = $(TARGET_ARCH)
 OBJDIR = obj
 BINDIR = bin
 
-CFLAGS=-g -c -Wall -DBUSVAR -DBUSVAR_MEMSIZE=256 -DBUSVAR_NUMVAR=32
+ifndef BUSVAR_MEMSIZE
+BUSVAR_MEMSIZE = 256
+endif
+ifndef BUSVAR_NUMVAR
+BUSVAR_NUMVAR = 32
+endif
+CFLAGS=-g -c -Wall -DBUSVAR -DBUSVAR_MEMSIZE=$(BUSVAR_MEMSIZE) -DBUSVAR_NUMVAR=$(BUSVAR_NUMVAR)
 
 SYS = $(shell gcc -dumpmachine)
 ifneq (, $(findstring linux, $(SYS)))

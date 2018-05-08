@@ -487,15 +487,15 @@ static int Test(void) {
     txMsg.type = eBusDevReqGetVar;
     txMsg.senderAddr = 66;
     txMsg.msg.devBus.receiverAddr = 67;
-    txMsg.msg.devBus.x.devReq.getVar.index = 0x1234;
-	if (TestTelegram(&txMsg, MSG_SIZE2 + 2) != 0) {
+    txMsg.msg.devBus.x.devReq.getVar.index = 0x12;
+	if (TestTelegram(&txMsg, MSG_SIZE2 + 1) != 0) {
 		return -1;
 	}
 
 	txMsg.type = eBusDevRespGetVar;
     txMsg.senderAddr = 66;
     txMsg.msg.devBus.receiverAddr = 67;
-    txMsg.msg.devBus.x.devResp.getVar.index = 0x1234;
+    txMsg.msg.devBus.x.devResp.getVar.index = 0x34;
     txMsg.msg.devBus.x.devResp.getVar.length = 5;
     txMsg.msg.devBus.x.devResp.getVar.result = eBusVarSuccess; // 0
     txMsg.msg.devBus.x.devResp.getVar.data[0] = 0;
@@ -503,37 +503,37 @@ static int Test(void) {
     txMsg.msg.devBus.x.devResp.getVar.data[2] = 2;
     txMsg.msg.devBus.x.devResp.getVar.data[3] = 3;
     txMsg.msg.devBus.x.devResp.getVar.data[4] = 4;
-	if (TestTelegram(&txMsg, MSG_SIZE2 + 2 + 1 + 1 + 5) != 0) {
+	if (TestTelegram(&txMsg, MSG_SIZE2 + 1 + 1 + 1 + 5) != 0) {
 		return -1;
 	}
 
 	txMsg.type = eBusDevRespGetVar;
     txMsg.senderAddr = 66;
     txMsg.msg.devBus.receiverAddr = 67;
-    txMsg.msg.devBus.x.devResp.getVar.index = 0x1234;
+    txMsg.msg.devBus.x.devResp.getVar.index = 0x56;
     txMsg.msg.devBus.x.devResp.getVar.length = 0;
     txMsg.msg.devBus.x.devResp.getVar.result = eBusVarIndexError; // 2
-	if (TestTelegram(&txMsg, MSG_SIZE2 + 2 + 1 + 1) != 0) {
+	if (TestTelegram(&txMsg, MSG_SIZE2 + 1 + 1 + 1) != 0) {
 		return -1;
 	}
 
     txMsg.type = eBusDevReqSetVar;
     txMsg.senderAddr = 66;
     txMsg.msg.devBus.receiverAddr = 67;
-    txMsg.msg.devBus.x.devReq.setVar.index = 0x1234;
+    txMsg.msg.devBus.x.devReq.setVar.index = 0x78;
     txMsg.msg.devBus.x.devReq.setVar.length = 2;
     txMsg.msg.devBus.x.devReq.setVar.data[0] = 0;
     txMsg.msg.devBus.x.devReq.setVar.data[1] = 1;
-	if (TestTelegram(&txMsg, MSG_SIZE2 + 2 + 1 + 2) != 0) {
+	if (TestTelegram(&txMsg, MSG_SIZE2 + 1 + 1 + 2) != 0) {
 		return -1;
 	}
 
     txMsg.type = eBusDevRespSetVar;
     txMsg.senderAddr = 66;
     txMsg.msg.devBus.receiverAddr = 67;
-    txMsg.msg.devBus.x.devResp.setVar.index = 0x1234;
+    txMsg.msg.devBus.x.devResp.setVar.index = 0xab;
     txMsg.msg.devBus.x.devResp.setVar.result = eBusVarSuccess;
-	if (TestTelegram(&txMsg, MSG_SIZE2 + 2 + 1) != 0) {
+	if (TestTelegram(&txMsg, MSG_SIZE2 + 1 + 1) != 0) {
 		return -1;
 	}
 
@@ -581,13 +581,10 @@ int main(int argc, char *argv[]) {
     }
 
     BusInit(handle);
-#if 0
+#if 1
     BusVarInit(67);
 
     {
-    	uint8_t idx1;
-    	uint8_t idx2;
-
     	uint8_t var1 = 1;
     	uint16_t var2 = 0x1234;
 
@@ -597,35 +594,48 @@ int main(int argc, char *argv[]) {
     	TBusVarHdl hdl1;
     	TBusVarHdl hdl2;
     	TBusTelegram *msg;
+
     	TBusVarResult result;
+    	TBusVarState  state;
 
 
-    	BusVarAdd(sizeof(var1), &idx1);
-    	BusVarAdd(sizeof(var2), &idx2);
+    	BusVarAdd(sizeof(var1), 0);
+    	BusVarAdd(sizeof(var2), 1);
 
-    	rc = BusVarWrite(idx2, &var2, sizeof(var2), &result);
-    	rc = BusVarWrite(idx1, &var1, sizeof(var1), &result);
+    	rc = BusVarWrite(1, &var2, sizeof(var2), &result);
+    	rc = BusVarWrite(0, &var1, sizeof(var1), &result);
 
     	var1 = 0;
     	var2 = 0;
 
-    	len = BusVarRead(idx2, &var2, sizeof(var2), &result);
+    	len = BusVarRead(1, &var2, sizeof(var2), &result);
     	printf("len %d var2 %x\n", len, var2);
-    	len = BusVarRead(idx1, &var1, sizeof(var1), &result);
+    	len = BusVarRead(0, &var1, sizeof(var1), &result);
     	printf("len %d var1 %x\n", len, var1);
 
-    	BusVarTransactionOpen(242, 0, &var2, sizeof(var2), eBusVarWrite);
+    	hdl1 = BusVarTransactionOpen(242, 0, &var1, sizeof(var1), eBusVarRead);
 
-    	for (i = 0; i < 10; i++) {
+    	for (i = 0; i < 100; i++) {
     		BusVarProcess();
-    		sleep(1);
-    		if (i == 3) {
-    			if (BusCheck() == BUS_MSG_OK) {
-    				msg = BusMsgBufGet();
-        	        BusVarRespSet(msg->senderAddr, &msg->msg.devBus.x.devResp.setVar);
+    		usleep(10000);
+   			if (BusCheck() == BUS_MSG_OK) {
+  				msg = BusMsgBufGet();
+   				if ((msg->type == eBusDevRespGetVar) &&
+   					(msg->msg.devBus.receiverAddr == 67)) {
+         	        BusVarRespSet(msg->senderAddr, &msg->msg.devBus.x.devResp.setVar);
+   				}
+  			}
 
-    			}
-    		}
+   			if (hdl1 != BUSVAR_HDL_INVALID) {
+   		        state = BusVarTransactionState(hdl1);
+   		        if (state & BUSVAR_STATE_FINAL) {
+   		            if (state == eBusVarState_Ready) {
+   		            	printf("var1 %d\n", var1);
+   		            }
+   		            BusVarTransactionClose(hdl1);
+   		            hdl1 = BUSVAR_HDL_INVALID;
+   		        }
+   		    }
     	}
 
     }

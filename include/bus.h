@@ -158,7 +158,7 @@ typedef enum {
    eBusDevTypeRs485If = 0x07,
    eBusDevTypePwm4    = 0x08,
    eBusDevTypeSmIf    = 0x09,
-   eBusDevTypeInv     = 0xff    
+   eBusDevTypeInv     = 0xff
 } __attribute__ ((packed)) TBusDevType;
 
 typedef struct {
@@ -302,7 +302,7 @@ typedef struct {
     uint8_t  set; /* 2 bits per output                                        */
                   /* 00: no change, ignore pwm[] field                        */
                   /* 01: on: set to current pwm value, ignore pwm[] field     */
-                  /* 10: on: set to value from pwm[] field                    */ 
+                  /* 10: on: set to value from pwm[] field                    */
                   /* 11: off, ignore pwm[] field                              */
     uint16_t pwm[BUS_PWM4_PWM_SIZE_SET_VALUE];
 } __attribute__ ((packed)) TBusDevSetValuePwm4;
@@ -550,7 +550,7 @@ typedef union {
    TBusDevReqGetTime          getTime;
    TBusDevReqSetTime          setTime;
    TBusDevReqGetVar           getVar;
-   TBusDevReqSetVar           setVar;   
+   TBusDevReqSetVar           setVar;
 } __attribute__ ((packed)) TUniDevReq;
 
 typedef union {
@@ -667,32 +667,81 @@ uint8_t        BusSendBuf(void);
 *  BusVar
 */
 typedef enum {
+    /* final states */
     eBusVarState_Error     = 0x01,
     eBusVarState_Timeout   = 0x02,
     eBusVarState_Ready     = 0x04,
-    eBusVarState_Scheduled = 0x08,
-    eBusVarState_Waiting   = 0x10,
-    eBusVarState_TxRetry   = 0x20,
-    eBusVarState_TxError   = 0x40,
-    eBusVarState_Invalid   = 0x80
+    eBusVarState_TxError   = 0x08,
+    eBusVarState_Invalid   = 0x10,
+    /* transient states */
+    eBusVarState_Scheduled = 0x20,
+    eBusVarState_Waiting   = 0x40,
+    eBusVarState_TxRetry   = 0x80,
 } __attribute__ ((packed)) TBusVarState;
 
+#define BUSVAR_STATE_FINAL (eBusVarState_Error   | \
+                            eBusVarState_Timeout | \
+                            eBusVarState_Ready   | \
+                            eBusVarState_TxError | \
+                            eBusVarState_Invalid)
+
 typedef enum {
-    eBusVarType_uint8,
-    eBusVarType_uint16,
-    eBusVarType_uint32,
-    eBusVarType_sint8,
-    eBusVarType_sint16,
-    eBusVarType_sint32,
-    eBusVarType_char16,
+    eBusVarType_uint8    = 0,
+    eBusVarType_uint16   = 1,
+    eBusVarType_uint32   = 2,
+    eBusVarType_uint64   = 3,
+    eBusVarType_int8     = 4,
+    eBusVarType_int16    = 5,
+    eBusVarType_int32    = 6,
+    eBusVarType_int64    = 7,
+    eBusVarType_string   = 8,
+    eBusVarType_invalid  = 9
 } __attribute__ ((packed)) TBusVarType;
+
+static inline int BusVarTypeToSize(TBusVarType type) {
+
+    int size;
+
+    switch(type) {
+    case eBusVarType_uint8:
+    case eBusVarType_int8:
+        size = 1;
+        break;
+    case eBusVarType_uint16:
+    case eBusVarType_int16:
+        size = 2;
+        break;
+    case eBusVarType_uint32:
+    case eBusVarType_int32:
+        size = 4;
+        break;
+    case eBusVarType_uint64:
+    case eBusVarType_int64:
+        size = 8;
+        break;
+    case eBusVarType_string:
+        size = 0;
+        break;
+    default:
+        size = -1;
+        break;
+    }
+    return size;
+}
+
+typedef enum {
+    eBusVarMode_ro,
+    eBusVarMode_rw,
+    eBusVarMode_const,
+    eBusVarMode_invalid
+} __attribute__ ((packed)) TBusVarMode;
 
 typedef void *TBusVarHdl;
 #define BUSVAR_HDL_INVALID     (TBusVarHdl)-1
 
 void    BusVarInit(uint8_t myAddr);
-bool    BusVarAdd(uint8_t size, uint8_t *idx);
-bool    BusVarSetInfo(uint8_t *idx, const char *name, TBusVarType type);
+bool    BusVarAdd(uint8_t size, uint8_t idx);
+bool    BusVarSetInfo(uint8_t idx, const char *name, TBusVarType type, TBusVarMode mode);
 uint8_t BusVarRead(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
 bool    BusVarWrite(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
 

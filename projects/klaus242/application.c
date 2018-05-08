@@ -237,21 +237,19 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
 
 void ApplicationInit(void) {
 
-    uint8_t idx0;
-    uint8_t idx1;
     uint8_t var0;
     uint16_t var1;
     TBusVarResult res;
 
     ShaderSetConfig(eShader0,  eDigOut1,  eDigOut2, 10000, 10000);
-    BusVarAdd(sizeof(uint8_t), &idx0);
-    BusVarAdd(sizeof(uint16_t), &idx1);
+    BusVarAdd(sizeof(uint8_t), 0);
+    BusVarAdd(sizeof(uint16_t), 1);
 
     var0 = 0x12;
-    BusVarWrite(idx0, &var0, sizeof(var0), &res);
+    BusVarWrite(0, &var0, sizeof(var0), &res);
 
     var1 = 0x3456;
-    BusVarWrite(idx1, &var1, sizeof(var1), &res);
+    BusVarWrite(1, &var1, sizeof(var1), &res);
 
 }
 
@@ -259,15 +257,33 @@ void ApplicationStart(void) {
     
 }
 
+
+uint8_t var0_123;
+TBusVarHdl varhdl = BUSVAR_HDL_INVALID;
+
 void ApplicationCheck(void) {
 
+    TBusVarState state;
+
+    if (varhdl != BUSVAR_HDL_INVALID) {
+        state = BusVarTransactionState(varhdl);
+        if (state & BUSVAR_STATE_FINAL) {
+            if (state == eBusVarState_Ready) {
+                if (var0_123 == 1) {
+                    DigOutToggle(eDigOut10);
+                }
+            }
+            BusVarTransactionClose(varhdl);
+            varhdl = BUSVAR_HDL_INVALID;
+        }
+    }
 }
 
 void ApplicationPressed1_0(void) {
-    DigOutToggle(eDigOut10);
+
+    varhdl = BusVarTransactionOpen(123, 0, &var0_123, sizeof(var0_123), eBusVarRead);
 }
 void ApplicationReleased1_0(void) {
-    DigOutToggle(eDigOut10);
 }
 void ApplicationPressed1_1(void) {
     DigOutToggle(eDigOut11);
