@@ -740,7 +740,7 @@ typedef void *TBusVarHdl;
 #define BUSVAR_HDL_INVALID     (TBusVarHdl)-1
 
 void    BusVarInit(uint8_t myAddr);
-bool    BusVarAdd(uint8_t size, uint8_t idx);
+bool    BusVarAdd(uint8_t idx, uint8_t size);
 bool    BusVarSetInfo(uint8_t idx, const char *name, TBusVarType type, TBusVarMode mode);
 uint8_t BusVarRead(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
 bool    BusVarWrite(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
@@ -753,8 +753,8 @@ typedef enum {
 TBusVarHdl BusVarTransactionOpen(uint8_t busAddr, uint8_t varIdx, void *buf, uint8_t bufSize, TBusVarDir dir);
 TBusVarState BusVarTransactionState(TBusVarHdl varHdl);
 void BusVarTransactionClose(TBusVarHdl varHdl);
-void BusVarRespGet(uint8_t addr, TBusDevRespGetVar *respSet);
-void BusVarRespSet(uint8_t addr, TBusDevRespSetVar *respGet);
+void BusVarRespGet(uint8_t addr, TBusDevRespGetVar *respGet);
+void BusVarRespSet(uint8_t addr, TBusDevRespSetVar *respSet);
 void BusVarProcess(void);
 
 #ifdef __cplusplus

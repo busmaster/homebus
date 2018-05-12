@@ -599,8 +599,8 @@ int main(int argc, char *argv[]) {
     	TBusVarState  state;
 
 
-    	BusVarAdd(sizeof(var1), 0);
-    	BusVarAdd(sizeof(var2), 1);
+    	BusVarAdd(0, sizeof(var1));
+    	BusVarAdd(1, sizeof(var2));
 
     	rc = BusVarWrite(1, &var2, sizeof(var2), &result);
     	rc = BusVarWrite(0, &var1, sizeof(var1), &result);
@@ -613,16 +613,17 @@ int main(int argc, char *argv[]) {
     	len = BusVarRead(0, &var1, sizeof(var1), &result);
     	printf("len %d var1 %x\n", len, var1);
 
+    	hdl2 = BusVarTransactionOpen(242, 1, &var2, sizeof(var2), eBusVarRead);
     	hdl1 = BusVarTransactionOpen(242, 0, &var1, sizeof(var1), eBusVarRead);
 
-    	for (i = 0; i < 100; i++) {
+    	for (i = 0; i < 1000; i++) {
     		BusVarProcess();
     		usleep(10000);
    			if (BusCheck() == BUS_MSG_OK) {
   				msg = BusMsgBufGet();
    				if ((msg->type == eBusDevRespGetVar) &&
    					(msg->msg.devBus.receiverAddr == 67)) {
-         	        BusVarRespSet(msg->senderAddr, &msg->msg.devBus.x.devResp.setVar);
+         	        BusVarRespGet(msg->senderAddr, &msg->msg.devBus.x.devResp.getVar);
    				}
   			}
 
@@ -630,10 +631,20 @@ int main(int argc, char *argv[]) {
    		        state = BusVarTransactionState(hdl1);
    		        if (state & BUSVAR_STATE_FINAL) {
    		            if (state == eBusVarState_Ready) {
-   		            	printf("var1 %d\n", var1);
+   		            	printf("var1 %02x\n", var1);
    		            }
    		            BusVarTransactionClose(hdl1);
    		            hdl1 = BUSVAR_HDL_INVALID;
+   		        }
+   		    }
+   			if (hdl2 != BUSVAR_HDL_INVALID) {
+   		        state = BusVarTransactionState(hdl2);
+   		        if (state & BUSVAR_STATE_FINAL) {
+   		            if (state == eBusVarState_Ready) {
+   		            	printf("var2 %04x\n", var2);
+   		            }
+   		            BusVarTransactionClose(hdl2);
+   		            hdl2 = BUSVAR_HDL_INVALID;
    		        }
    		    }
     	}

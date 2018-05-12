@@ -178,6 +178,10 @@ int main(void) {
    ButtonInit();
    DigOutInit();
    ShaderInit();
+#ifdef BUSVAR
+   // ApplicationInit might use BusVar
+   BusVarInit(sMyAddr);
+#endif
    ApplicationInit();
 
    SioInit();
@@ -193,9 +197,6 @@ int main(void) {
 
    BusInit(sioHdl);
    spBusMsg = BusMsgBufGet();
-#ifdef BUSVAR
-   BusVarInit(sMyAddr);
-#endif
 
    /* wait for full supply voltage */
    while (!POWER_GOOD);

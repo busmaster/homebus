@@ -84,7 +84,7 @@ void BusVarInit(uint8_t addr) {
 
 /* local access */
 
-bool BusVarAdd(uint8_t size, uint8_t idx) {
+bool BusVarAdd(uint8_t idx, uint8_t size) {
     TVarTab *vt;
 
     if (idx >= (BUSVAR_NUMVAR - 1)) {
@@ -183,52 +183,59 @@ void BusVarTransactionClose(TBusVarHdl varHdl) {
 
 void BusVarRespSet(uint8_t addr, TBusDevRespSetVar *respSet) {
     TVarTransactionDesc *vtd;
+    uint8_t rdIdx;
 
     if (sVarFifoRdIdx == sVarFifoWrIdx) {
         // no response expected
         return;
     }
-    vtd = &sVarTransactionFifo[sVarFifoRdIdx];
-    if (respSet->index == vtd->idx) {
+
+    rdIdx = sVarFifoRdIdx;
+    do {
+    	vtd = &sVarTransactionFifo[rdIdx];
+    	if ((addr == vtd->addr) && (vtd->idx != respSet->index)) {
+    		break;
+    	}
+    	IDX_INC(rdIdx);
+    } while (rdIdx != sVarFifoWrIdx);
+
+    if (rdIdx != sVarFifoWrIdx) {
         vtd->state = eBusVarState_Ready;
-    } else {
-        vtd->state = eBusVarState_Error;
     }
 }
 
 void BusVarRespGet(uint8_t addr, TBusDevRespGetVar *respGet) {
     TVarTransactionDesc *vtd;
     uint8_t i;
+    uint8_t rdIdx;
 
     if (sVarFifoRdIdx == sVarFifoWrIdx) {
         // no response expected
         return;
     }
-    vtd = &sVarTransactionFifo[sVarFifoRdIdx];
-    if ((respGet->index == vtd->idx) &&
-        (respGet->length == vtd->size)) {
+
+    rdIdx = sVarFifoRdIdx;
+    do {
+    	vtd = &sVarTransactionFifo[rdIdx];
+    	if ((addr == vtd->addr) && (vtd->idx == respGet->index) && (respGet->length == vtd->size)) {
+    		break;
+    	}
+    	IDX_INC(rdIdx);
+    } while (rdIdx != sVarFifoWrIdx);
+
+    if (rdIdx != sVarFifoWrIdx) {
         for (i = 0; i < vtd->size; i++) {
             *((uint8_t *)vtd->buf + i) = respGet->data[i];
         }
         vtd->state = eBusVarState_Ready;
-    } else {
-        vtd->state = eBusVarState_Error;
     }
 }
 
-void BusVarProcess(void) {
+static void Process(TVarTransactionDesc *vtd) {
 
-    TVarTransactionDesc *vtd;
-    uint8_t rdIdx;
     static TBusTelegram  sTxMsg;
     uint16_t actualTime16;
     uint8_t i;
-
-    if (sVarFifoRdIdx == sVarFifoWrIdx) {
-        return;
-    }
-    rdIdx = sVarFifoRdIdx;
-    vtd = &sVarTransactionFifo[rdIdx];
 
     GET_TIME_MS16(actualTime16);
 
@@ -281,6 +288,22 @@ void BusVarProcess(void) {
         break;
     default:
         break;
+    }
+}
+
+void BusVarProcess(void) {
+    uint8_t rdIdx;
+    TVarTransactionDesc *vtd;
+
+    if (sVarFifoRdIdx == sVarFifoWrIdx) {
+        return;
+    }
+    for (rdIdx = sVarFifoRdIdx; rdIdx != sVarFifoWrIdx; ) {
+    	vtd = &sVarTransactionFifo[rdIdx];
+    	if (vtd->state != eBusVarState_Invalid) {
+    	    Process(vtd);
+    	}
+        IDX_INC(rdIdx);
     }
 }
 
