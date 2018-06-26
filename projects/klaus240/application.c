@@ -31,6 +31,7 @@
 #include "application.h"
 #include "digout.h"
 #include "shader.h"
+#include "bus.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros
@@ -203,7 +204,7 @@ static bool    sDoorlightAutoState = false;
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_0.08";
+   return "Klaus2_1.00";
 }
 
 /*-----------------------------------------------------------------------------
@@ -244,6 +245,9 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
 
 void ApplicationInit(void) {
 
+    /* Helligkeitsautomatik Licht Vorraum UG */
+    BusVarAdd(0, sizeof(uint8_t), true);
+
 }
 
 void ApplicationStart(void) {
@@ -256,6 +260,11 @@ void ApplicationCheck(void) {
 
 
 /*
+  
+busvar:
+index 0: type byte, persistent, 0: Helligkeitsautomatik Keller Vorraum AUS
+                                1: EIN
+                                sonst: reserviert
 
 eDigOut0   Netzteil Stiege
 eDigOut1   Stiege Leuchte 1 (1. Lampe von unten)
@@ -709,8 +718,32 @@ void ApplicationReleased36_0(void) {}
 void ApplicationPressed36_1(void) {}
 void ApplicationReleased36_1(void) {}
 
-void ApplicationPressed37_0(void) {}
-void ApplicationReleased37_0(void) {}
+void ApplicationPressed37_0(void) {
+    
+    uint8_t enable;
+    TBusVarResult result;
+    
+    if (BusVarRead(0, &enable, sizeof(enable), &result) != sizeof(enable)) {
+        return;
+    }
+    if (enable == 1) {
+        /* Licht Vorraum UG helligkeitssteuert */
+        DigOutOff(eDigOut25);
+    }
+}
+void ApplicationReleased37_0(void) {
+
+    uint8_t enable;
+    TBusVarResult result;
+    
+    if (BusVarRead(0, &enable, sizeof(enable), &result) != sizeof(enable)) {
+        return;
+    }
+    if (enable == 1) {
+        /* Licht Vorraum UG helligkeitssteuert */
+        DigOutOn(eDigOut25);
+    }
+}
 void ApplicationPressed37_1(void) {}
 void ApplicationReleased37_1(void) {}
 

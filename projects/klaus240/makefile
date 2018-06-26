@@ -15,8 +15,8 @@ COMMON = -mmcu=$(MCU)
 
 ## Compile options common for all C compilation units.
 CFLAGS = $(COMMON)
-CFLAGS += -Wall -gdwarf-2                                                             -DF_CPU=3686400UL -O2 -fsigned-char -funsigned-bitfields -fshort-enums
-CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d 
+CFLAGS += -Wall -gdwarf-2 -DF_CPU=3686400UL -O2 -fsigned-char -funsigned-bitfields -fshort-enums
+CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d -DBUSVAR -DBUSVAR_MEMSIZE=256 -DBUSVAR_NUMVAR=32
 
 ## Assembly specific flags
 ASMFLAGS = $(COMMON)
@@ -40,7 +40,7 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 INCLUDES = -I . -I ../../include -I ../../include/avr -I ../../include/devices/do31 -I ../../include/devices/common
 
 ## Objects that must be built in order to link
-OBJECTS = application.o bus.o main.o button.o digout.o shader.o led.o siotype2.o 
+OBJECTS = application.o bus.o busvar.o main.o button.o digout.o shader.o led.o siosingle.o 
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
@@ -53,6 +53,9 @@ application.o: application.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 bus.o: ../../bus/bus.c
+	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
+
+busvar.o: ../../bus/busvar.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 main.o: ../../devices/do31/main.c
@@ -70,7 +73,7 @@ shader.o: ../../devices/common/shader.c
 led.o: ../../devices/do31/led.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-siotype2.o: ../../sio/avr/siotype2.c
+siosingle.o: ../../sio/avr/siosingle.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
