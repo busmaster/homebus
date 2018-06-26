@@ -27,7 +27,6 @@
 
 #include "bus.h"
 
-
 #define TX_RETRY_TIMEOUT 50  /* ms */
 #define RESPONSE_TIMEOUT 100 /* ms */
 
@@ -36,10 +35,10 @@
 #define NUM_FIFO_FREE     ((sVarFifoRdIdx - sVarFifoWrIdx - 1) & (TRANSACTION_FIFO_LEN - 1))
 #define IDX_INC(__idx__)   __idx__++; __idx__ &= (TRANSACTION_FIFO_LEN - 1)
 
-
 typedef struct {
-    uint8_t     size;
-    void        *mem;
+    uint8_t  size;
+    void     *mem;
+    uint16_t nvAddr;
 } TVarTab;
 
 typedef struct {
@@ -57,22 +56,26 @@ static TVarTab  sVarTable[BUSVAR_NUMVAR];
 
 static uint8_t  sHeap[BUSVAR_MEMSIZE];
 static uint16_t sHeapCurr = 0;
+static uint16_t sNvCurr = 0;
 
 static TVarTransactionDesc sVarTransactionFifo[TRANSACTION_FIFO_LEN];
 static uint8_t sVarFifoWrIdx;
 static uint8_t sVarFifoRdIdx;
 static uint8_t sMyAddr;
+static TBusBarNvFunc sNvFunc;
 
-void BusVarInit(uint8_t addr) {
+void BusVarInit(uint8_t addr, TBusBarNvFunc func) {
     TVarTransactionDesc *vtd = sVarTransactionFifo;
     TVarTab *vt = sVarTable;
     int i;
 
     sMyAddr = addr;
+    sNvFunc = func;
 
     for (i = 0; i < BUSVAR_NUMVAR; i++, vt++) {
         vt->size = 0;
         vt->mem = 0;
+        vt->nvAddr = 0xffff;
     }
 
     sVarFifoWrIdx = 0;
@@ -84,13 +87,16 @@ void BusVarInit(uint8_t addr) {
 
 /* local access */
 
-bool BusVarAdd(uint8_t idx, uint8_t size) {
+bool BusVarAdd(uint8_t idx, uint8_t size, bool persistent) {
     TVarTab *vt;
 
     if (idx >= (BUSVAR_NUMVAR - 1)) {
         return false;
     }
     if ((sHeapCurr + size) > BUSVAR_MEMSIZE) {
+        return false;
+    }
+    if (persistent && (sNvFunc == 0)) {
         return false;
     }
     vt = &sVarTable[idx];
@@ -101,6 +107,16 @@ bool BusVarAdd(uint8_t idx, uint8_t size) {
     vt->size = size;
     vt->mem = &sHeap[sHeapCurr];
     sHeapCurr += size;
+    
+    /* init from NV memory */
+    if (persistent) {
+        vt->nvAddr = sNvCurr;
+        sNvCurr += size;
+        if (!sNvFunc(vt->nvAddr, vt->mem, size, eBusVarRead)) {
+            return false;
+        }
+    }
+    
     return true;
 }
 
@@ -133,7 +149,14 @@ bool BusVarWrite(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result)
         *result = eBusVarLengthError;
         return false;
     }
+    if (vt->nvAddr != 0xffff)  {
+        if (!sNvFunc(vt->nvAddr, buf, vt->size, eBusVarWrite)) {
+            *result = eBusVarNvError;
+            return false;
+        }
+    }
     memcpy(vt->mem, buf, vt->size);
+    
     *result = eBusVarSuccess;
     return true;
 }

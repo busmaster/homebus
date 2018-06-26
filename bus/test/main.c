@@ -541,6 +541,30 @@ static int Test(void) {
 }
 
 /*-----------------------------------------------------------------------------
+*  NV memory for persist bus variables
+*/
+
+static uint8_t nvmem[512];
+
+static bool BusVarNv(uint16_t address, void *buf, uint8_t bufSize, TBusVarDir dir) {
+
+	void *mem;
+
+    // range check
+    if ((address + bufSize) > sizeof(nvmem)) {
+        return false;
+    }
+
+    mem = (void *)(nvmem + address);
+    if (dir == eBusVarRead) {
+        memcpy(buf, mem, bufSize);
+    } else {
+        memcpy(mem, buf, bufSize);
+    }
+    return true;
+}
+
+/*-----------------------------------------------------------------------------
 *  main
 */
 int main(int argc, char *argv[]) {
@@ -582,7 +606,7 @@ int main(int argc, char *argv[]) {
 
     BusInit(handle);
 #if 1
-    BusVarInit(67);
+    BusVarInit(67, BusVarNv);
 
     {
     	uint8_t var1 = 1;
@@ -599,8 +623,8 @@ int main(int argc, char *argv[]) {
     	TBusVarState  state;
 
 
-    	BusVarAdd(0, sizeof(var1));
-    	BusVarAdd(1, sizeof(var2));
+    	BusVarAdd(0, sizeof(var1), true);
+    	BusVarAdd(1, sizeof(var2), false);
 
     	rc = BusVarWrite(1, &var2, sizeof(var2), &result);
     	rc = BusVarWrite(0, &var1, sizeof(var1), &result);

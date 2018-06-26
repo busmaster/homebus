@@ -242,11 +242,11 @@ void ApplicationInit(void) {
     TBusVarResult res;
 
     ShaderSetConfig(eShader0,  eDigOut1,  eDigOut2, 10000, 10000);
-    BusVarAdd(sizeof(uint8_t), 0);
-    BusVarAdd(sizeof(uint16_t), 1);
+    BusVarAdd(0, sizeof(uint8_t), true);
+    BusVarAdd(1, sizeof(uint16_t), false);
 
-    var0 = 0x12;
-    BusVarWrite(0, &var0, sizeof(var0), &res);
+//    var0 = 0x12;
+//    BusVarWrite(0, &var0, sizeof(var0), &res);
 
     var1 = 0x3456;
     BusVarWrite(1, &var1, sizeof(var1), &res);

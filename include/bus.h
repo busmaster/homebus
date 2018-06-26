@@ -506,7 +506,8 @@ typedef struct {
 typedef enum {
     eBusVarSuccess = 0,
     eBusVarLengthError = 1,
-    eBusVarIndexError = 2
+    eBusVarIndexError = 2,
+    eBusVarNvError = 3
 } __attribute__ ((packed)) TBusVarResult;
 
 typedef struct {
@@ -739,16 +740,19 @@ typedef enum {
 typedef void *TBusVarHdl;
 #define BUSVAR_HDL_INVALID     (TBusVarHdl)-1
 
-void    BusVarInit(uint8_t myAddr);
-bool    BusVarAdd(uint8_t idx, uint8_t size);
-bool    BusVarSetInfo(uint8_t idx, const char *name, TBusVarType type, TBusVarMode mode);
-uint8_t BusVarRead(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
-bool    BusVarWrite(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
 
 typedef enum {
     eBusVarRead,
     eBusVarWrite
 } __attribute__ ((packed)) TBusVarDir;
+
+typedef bool (* TBusBarNvFunc)(uint16_t address, void *buf, uint8_t bufSize, TBusVarDir dir);
+
+void    BusVarInit(uint8_t myAddr, TBusBarNvFunc func);
+bool    BusVarAdd(uint8_t idx, uint8_t size, bool persistent);
+bool    BusVarSetInfo(uint8_t idx, const char *name, TBusVarType type, TBusVarMode mode);
+uint8_t BusVarRead(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
+bool    BusVarWrite(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result);
 
 TBusVarHdl BusVarTransactionOpen(uint8_t busAddr, uint8_t varIdx, void *buf, uint8_t bufSize, TBusVarDir dir);
 TBusVarState BusVarTransactionState(TBusVarHdl varHdl);

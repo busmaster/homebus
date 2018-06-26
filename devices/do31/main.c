@@ -68,6 +68,10 @@
 #define CLIENT_ADDRESS_BASE     1  /* BUS_MAX_CLIENT_NUM from bus.h (16 byte) */
 #define CLIENT_RETRY_CNT        17 /* size: 16 byte (BUS_MAX_CLIENT_NUM)      */
 
+/* non volatile bus variables memory */
+#define BUSVAR_NV_START         0x100
+#define BUSVAR_NV_END           0x2ff
+
 /* DO restore after power fail */
 #define EEPROM_DO_RESTORE_START  (uint8_t *)3072
 #define EEPROM_DO_RESTORE_END    (uint8_t *)4095
@@ -159,6 +163,7 @@ static void BusTransceiverPowerDown(bool powerDown);
 static void CheckEvent(void);
 static void GetClientListFromEeprom(void);
 static void ClockCalibTask(void);
+static bool BusVarNv(uint16_t address, void *buf, uint8_t bufSize, TBusVarDir dir);
 
 /*-----------------------------------------------------------------------------
 *  main
@@ -180,7 +185,7 @@ int main(void) {
    ShaderInit();
 #ifdef BUSVAR
    // ApplicationInit might use BusVar
-   BusVarInit(sMyAddr);
+   BusVarInit(sMyAddr, BusVarNv);
 #endif
    ApplicationInit();
 
@@ -233,6 +238,27 @@ int main(void) {
 #endif
    }
    return 0;
+}
+
+/*-----------------------------------------------------------------------------
+*  NV memory for persist bus variables
+*/
+static bool BusVarNv(uint16_t address, void *buf, uint8_t bufSize, TBusVarDir dir) {
+    
+    void *eeprom;
+
+    // range check
+    if ((address + bufSize) > (BUSVAR_NV_END - BUSVAR_NV_START + 1)) {
+        return false;
+    }
+
+    eeprom = (void *)(BUSVAR_NV_START + address);
+    if (dir == eBusVarRead) {
+        eeprom_read_block(buf, eeprom, bufSize);
+    } else {
+        eeprom_update_block(buf, eeprom, bufSize);
+    }
+    return true;
 }
 
 /*-----------------------------------------------------------------------------
