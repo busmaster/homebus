@@ -1,0 +1,15 @@
+- name: var1
+  type: uint8
+  init: 17
+  index: 0
+  mode: rw
+- name: var2
+  type: uint16
+  init: 0x1234
+  index: 1
+  mode: ro
+- name: var3
+  type: string
+  init: "hallo"
+  index: 21
+  mode: ro
