@@ -1,0 +1,12 @@
+[Unit]
+Description=MQTT Hausbus Client
+Wants=network.target portserver.service
+After=network.target portserver.service
+ 
+[Service]
+Type=simple
+ 
+ExecStart=/usr/bin/mqtt -c /dev/hausbus12 -a 251 -f /home/pi/config.yaml -e 250 -m 10.0.0.200 -p 1883
+ 
+[Install]
+WantedBy=multi-user.target
