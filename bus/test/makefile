@@ -32,7 +32,7 @@ else ifeq ($(OS),linux)
 LIBRARY_PATH += ../../sio/linux/bin
 endif
 
-LIBRARY = sio bus
+LIBRARY = bus sio
 ifeq ($(OS),linux)
 LIBRARY += rt
 endif
