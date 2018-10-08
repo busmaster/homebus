@@ -116,6 +116,7 @@ static TBusLenDevType sRespInfoSize = {
         {eBusDevTypeRs485If, BASE_SIZE + sizeof(TBusDevInfoRs485If)},
         {eBusDevTypePwm4,    BASE_SIZE + sizeof(TBusDevInfoPwm4)},
         {eBusDevTypeSmIf,    BASE_SIZE + sizeof(TBusDevInfoSmIf)},
+        {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevInfoPwm16)},
         {eBusDevTypeInv,     0}
     }
 };
@@ -151,6 +152,7 @@ static TBusLenDevType sReqSetValueSize = {
         {eBusDevTypeSw16,    BASE_SIZE + sizeof(TBusDevSetValueSw16)},
         {eBusDevTypeRs485If, BASE_SIZE + sizeof(TBusDevSetValueRs485if)},
         {eBusDevTypePwm4,    BASE_SIZE + sizeof(TBusDevSetValuePwm4)},
+        {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevSetValuePwm16)},		
         {eBusDevTypeInv,     0}
     }
 };
@@ -169,6 +171,7 @@ static TBusLenDevType sRespActualValueSize = {
         {eBusDevTypeRs485If, BASE_SIZE + sizeof(TBusDevActualValueRs485if)},
         {eBusDevTypePwm4,    BASE_SIZE + sizeof(TBusDevActualValuePwm4)},
         {eBusDevTypeSmIf,    BASE_SIZE + sizeof(TBusDevActualValueSmif)},
+        {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevActualValuePwm16)},		
         {eBusDevTypeInv,     0}
     }
 };
@@ -186,6 +189,7 @@ static TBusLenDevType sReqActualValueEventSize = {
         {eBusDevTypeWind,    BASE_SIZE + sizeof(TBusDevActualValueWind)},
         {eBusDevTypeRs485If, BASE_SIZE + sizeof(TBusDevActualValueRs485if)},
         {eBusDevTypePwm4,    BASE_SIZE + sizeof(TBusDevActualValuePwm4)},
+        {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevActualValuePwm16)},		
         {eBusDevTypeInv,     0}
     }
 };
@@ -203,6 +207,7 @@ static TBusLenDevType sRespActualValueEventSize = {
         {eBusDevTypeWind,    BASE_SIZE + sizeof(TBusDevActualValueWind)},
         {eBusDevTypeRs485If, BASE_SIZE + sizeof(TBusDevActualValueRs485if)},
         {eBusDevTypePwm4,    BASE_SIZE + sizeof(TBusDevActualValuePwm4)},
+        {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevActualValuePwm16)},		
         {eBusDevTypeInv,     0}
     }
 };

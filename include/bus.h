@@ -55,6 +55,9 @@ extern "C" {
 #define BUS_PWM4_PWM_SIZE_SET_VALUE        4    /* 4 uint16 for pwm outs */
 #define BUS_PWM4_PWM_SIZE_ACTUAL_VALUE     4    /* 4 uint16 for pwm outs */
 
+#define BUS_PWM16_PWM_SIZE_SET_VALUE       16   /* 16 uint16 for pwm outs */
+#define BUS_PWM16_PWM_SIZE_ACTUAL_VALUE    16   /* 16 uint16 for pwm outs */
+
 #define BUS_DIAG_SIZE                      32
 
 #define BUS_MAX_CLIENT_NUM         16   /* size of list for setting client addresses */
@@ -145,6 +148,9 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevInfoPwm4;
 
 typedef struct {
+} __attribute__ ((packed)) TBusDevInfoPwm16;
+
+typedef struct {
 } __attribute__ ((packed)) TBusDevInfoSmIf;
 
 typedef enum {
@@ -158,6 +164,7 @@ typedef enum {
    eBusDevTypeRs485If = 0x07,
    eBusDevTypePwm4    = 0x08,
    eBusDevTypeSmIf    = 0x09,
+   eBusDevTypePwm16   = 0x0a,   
    eBusDevTypeInv     = 0xff
 } __attribute__ ((packed)) TBusDevType;
 
@@ -175,6 +182,7 @@ typedef struct {
       TBusDevInfoRs485If rs485if;
       TBusDevInfoPwm4    pwm4;
       TBusDevInfoSmIf    smif;
+      TBusDevInfoPwm16   pwm16;	  
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
 
@@ -308,6 +316,15 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevSetValuePwm4;
 
 typedef struct {
+    uint32_t set; /* 2 bits per output                                        */
+                  /* 00: no change, ignore pwm[] field                        */
+                  /* 01: on: set to current pwm value, ignore pwm[] field     */
+                  /* 10: on: set to value from pwm[] field                    */
+                  /* 11: off, ignore pwm[] field                              */
+    uint16_t pwm[BUS_PWM16_PWM_SIZE_SET_VALUE];
+} __attribute__ ((packed)) TBusDevSetValuePwm16;
+
+typedef struct {
    TBusDevType devType;
    union {
       TBusDevSetValueSw8     sw8;
@@ -315,6 +332,7 @@ typedef struct {
       TBusDevSetValueSw16    sw16;
       TBusDevSetValueRs485if rs485if;
       TBusDevSetValuePwm4    pwm4;
+      TBusDevSetValuePwm16   pwm16;	  
    } setValue;
 } __attribute__ ((packed)) TBusDevReqSetValue;   /* Type 0x1d */
 
@@ -368,6 +386,11 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValuePwm4;
 
 typedef struct {
+    uint16_t state; /* 1 bit per output: 0 off, 1 on */
+    uint16_t pwm[BUS_PWM16_PWM_SIZE_ACTUAL_VALUE];
+} __attribute__ ((packed)) TBusDevActualValuePwm16;
+
+typedef struct {
    uint32_t countA_plus;
    uint32_t countA_minus;
    uint32_t countR_plus;
@@ -390,6 +413,7 @@ typedef struct {
       TBusDevActualValueRs485if rs485if;
       TBusDevActualValuePwm4    pwm4;
       TBusDevActualValueSmif    smif;
+      TBusDevActualValuePwm16   pwm16;	  
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
@@ -405,6 +429,7 @@ typedef struct {
       TBusDevActualValueWind    wind;
       TBusDevActualValueRs485if rs485if;
       TBusDevActualValuePwm4    pwm4;
+      TBusDevActualValuePwm16   pwm16;	  
    } actualValue;
 } __attribute__ ((packed)) TBusDevReqActualValueEvent;  /* Type 0x21 */
 
@@ -419,6 +444,7 @@ typedef struct {
       TBusDevActualValueWind    wind;
       TBusDevActualValueRs485if rs485if;
       TBusDevActualValuePwm4    pwm4;
+      TBusDevActualValuePwm16   pwm16;	  
    } actualValue; /* same as request */
 } __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
 
