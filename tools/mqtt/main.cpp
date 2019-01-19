@@ -52,7 +52,8 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
-#define MAX_LEN_TOPIC        50
+#define MAX_LEN_TOPIC        60
+#define MAX_LEN_TOPIC_DESC   50
 #define BUS_RESPONSE_TIMEOUT 100 /* ms */
 
 #define PATH_LEN             255
@@ -72,7 +73,7 @@ typedef enum {
 } T_sw8_port_type;
 
 typedef struct {
-    char topic[MAX_LEN_TOPIC];  /* the key */
+    char topic[MAX_LEN_TOPIC_DESC];  /* the key */
     TBusDevType devtype;
     union {
         struct {
@@ -98,7 +99,7 @@ typedef struct {
                         *                      device address (8 bit),
                         *                      device specific data e.g. port number (16 bit)
                         */
-    char topic[MAX_LEN_TOPIC];
+    char topic[MAX_LEN_TOPIC_DESC];
     UT_hash_handle hh;
 } T_io_desc;
 
@@ -591,7 +592,7 @@ static int ReadConfig(const char *pFile)  {
     return num_topics;
 }
 
-#define MAX_LEN_PAYLOAD 10
+#define MAX_LEN_PAYLOAD 20
 
 static void publish_do31(
     T_dev_desc             *dev_entry,
