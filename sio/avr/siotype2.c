@@ -164,11 +164,13 @@ typedef struct {
 */
 static uint8_t sRx0Buffer[SIO_RX0_BUF_SIZE];
 static uint8_t sTx0Buffer[SIO_TX0_BUF_SIZE];
-static uint8_t sTx0BufferBuffered[SIO_TX0_BUF_SIZE];
+/* interrupt buffer sTxBuffer can be filled up to (SIO_TX0_BUF_SIZE - 1) only */
+static uint8_t sTx0BufferBuffered[SIO_TX0_BUF_SIZE - 1];
 
 static uint8_t sRx1Buffer[SIO_RX1_BUF_SIZE];
 static uint8_t sTx1Buffer[SIO_TX1_BUF_SIZE];
-static uint8_t sTx1BufferBuffered[SIO_TX1_BUF_SIZE];
+/* interrupt buffer sTxBuffer can be filled up to (SIO_TX1_BUF_SIZE - 1) only */
+static uint8_t sTx1BufferBuffered[SIO_TX1_BUF_SIZE - 1];
 
 static TChanDesc sChan[NUM_CHANNELS];
 
@@ -185,6 +187,7 @@ static void TimerInit(void);
 static void TimerStart(TChanDesc *pChan, uint16_t delayTicks);
 static void TimerStop(TChanDesc *pChan);
 static void RxStartDetectionInit(void);
+static uint8_t Write(int handle, uint8_t *pBuf, uint8_t bufSize);
 
 /*-----------------------------------------------------------------------------
 *  init sio module
@@ -310,7 +313,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
         pChan->extIntEIFRVal  = USART0_EIFR_VAL;
 #else
         pChan->extIntEIMSK    = 0;
-#endif        
+#endif
     } else if (strcmp(pPortName, "USART1") == 0) {
         hdl = 1;
         pChan = &sChan[hdl];
@@ -336,7 +339,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
         pChan->extIntEIFRVal  = USART1_EIFR_VAL;
 #else
         pChan->extIntEIMSK    = 0;
-#endif      
+#endif
     } else {
         error = true;
     }
@@ -361,7 +364,7 @@ int SioOpen(const char *pPortName,   /* is ignored */
 
     pChan->valid = true;
     pChan->rxBufWrIdx = 0;
-    pChan->rxBufRdIdx = pChan->rxBufSize - 1; /* last index read */
+    pChan->rxBufRdIdx = 0;
     pChan->txBufWrIdx = 0;
     pChan->txBufBufferedPos = 0;
     pChan->txBufRdIdx = 0;
@@ -404,7 +407,7 @@ void SioSetTransceiverPowerDownFunc(int handle, TBusTransceiverPowerDownFunc btp
 /*-----------------------------------------------------------------------------
 *  write to sio channel tx buffer
 */
-uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
+static uint8_t Write(int handle, uint8_t *pBuf, uint8_t bufSize) {
     uint8_t *pStart;
     uint8_t i;
     uint8_t txFree;
@@ -415,7 +418,7 @@ uint8_t SioWrite(int handle, uint8_t *pBuf, uint8_t bufSize) {
 
     if (bufSize == 0) {
         return 0;
-    } 
+    }
 
     RETURN_0_ON_INVALID_HDL(handle);
     pChan = &sChan[handle];
@@ -487,10 +490,10 @@ uint8_t SioWriteBuffered(int handle, uint8_t *pBuf, uint8_t bufSize) {
 *  trigger tx of buffer
 */
 bool SioSendBuffer(int handle) {
-    unsigned long bytesWritten;
-    bool          rc;
-    TChanDesc     *pChan;
-    bool          flag;
+    uint8_t   bytesWritten;
+    bool      rc;
+    TChanDesc *pChan;
+    bool      flag;
 
     RETURN_0_ON_INVALID_HDL(handle);
     pChan = &sChan[handle];
@@ -499,7 +502,7 @@ bool SioSendBuffer(int handle) {
 
     if (pChan->comm.state == eIdle) {
         pChan->comm.txRxComparePos = 0;
-        bytesWritten = SioWrite(handle, pChan->pTxBufBuffered, pChan->txBufBufferedPos);
+        bytesWritten = Write(handle, pChan->pTxBufBuffered, pChan->txBufBufferedPos);
         if (bytesWritten == pChan->txBufBufferedPos) {
             rc = true;
         } else {
@@ -637,6 +640,13 @@ uint8_t SioUnRead(int handle, uint8_t *pBuf, uint8_t bufSize) {
 }
 
 /*-----------------------------------------------------------------------------
+*  check handle
+*/
+bool SioHandleValid(int handle) {
+    return true;
+}
+
+/*-----------------------------------------------------------------------------
 *  USART0 tx interrupt (data register empty)
 */
 ISR(USART0_UDRE_vect) {
@@ -663,7 +673,7 @@ static void UdreInt(int handle) {
         } else {
             // stop jamming
             lastChar = true;
-        } 
+        }
     } else if (pChan->txBufWrIdx != rdIdx) {
         if (pChan->comm.state == eRxing) {
             pChan->comm.txDelayTicks = INTERCHAR_TIMEOUT;
@@ -943,8 +953,6 @@ static void RxStartDetectionInit(void) {
 #endif
 }
 
-
-
 static void RxStart(int handle) {
     TChanDesc  *pChan = &sChan[handle];
 
@@ -955,7 +963,7 @@ static void RxStart(int handle) {
     *pChan->extIntEIMSK &= ~pChan->extIntEIMSKVal;
 }
 
-#ifdef USART1_EXTVECT 
+#ifdef USART1_EXTVECT
 ISR(USART1_EXTVECT) {
     RxStart(1);
 }
