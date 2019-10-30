@@ -72,11 +72,6 @@ typedef enum {
    eShaderStopped
 } TShaderState;
 
-typedef enum {
-   eStateOpen = 0,
-   eStateClose = 1,
-} TShaderLastAction;
-
 /*-----------------------------------------------------------------------------
 *  Variables
 */                                
@@ -92,11 +87,8 @@ void ShaderGetConfig(TShaderNumber number, TDigOutNumber *pOnSwitch, TDigOutNumb
 void ShaderSetAction(TShaderNumber number, TShaderAction action);
 bool ShaderGetState(TShaderNumber number, TShaderState *pState);
 bool ShaderSetPosition(TShaderNumber number, uint8_t targetPosition);
-bool ShaderSetHandPosition(TShaderNumber number, uint8_t targetPosition);
 bool ShaderGetPosition(TShaderNumber number, uint8_t *pPosition);
 void ShaderCheck(void);
-bool ShaderGetLastAction(TShaderNumber number, TShaderLastAction *pState);
-bool ShaderSetSwipp(TShaderNumber number, uint8_t position);
 
 
 #ifdef __cplusplus
