@@ -1,5 +1,5 @@
 OBJS = main.o
-BIN  = portserver
+BIN  = mqtt
 ARCH = $(TARGET_ARCH)
 OBJDIR = obj
 BINDIR = bin
@@ -11,6 +11,7 @@ else ifeq ($(SYS),mingw32)
 OS = win32
 endif
 
+SUBDIRS = ../../bus
 ifeq ($(OS),win32)
 SUBDIRS += ../../sio/win32
 else ifeq ($(OS),linux)
@@ -24,15 +25,16 @@ else ifeq ($(OS),linux)
 INCLUDE_PATH += ../../include/linux
 endif
 
+LIBRARY_PATH = ../../bus/bin
 ifeq ($(OS),win32)
 LIBRARY_PATH += ../../sio/win32/bin
 else ifeq ($(OS),linux)
 LIBRARY_PATH += ../../sio/linux/bin
 endif
 
-LIBRARY = sio
+LIBRARY = sio bus
 ifeq ($(OS),linux)
-LIBRARY += rt
+LIBRARY += rt mosquitto yaml-cpp
 endif
 
 ifeq ($(ARCH),i686)
@@ -43,7 +45,7 @@ else ifeq ($(ARCH), armhf)
 		GCC_PREFIX = arm-linux-gnueabihf-
 endif
 
-GCC = $(GCC_PREFIX)gcc
+GCC = $(GCC_PREFIX)g++
 INC_PATH=$(foreach d, $(INCLUDE_PATH), -I$d)
 LIB_PATH=$(foreach d, $(LIBRARY_PATH), -L$d)
 LIBS=$(foreach d, $(LIBRARY), -l$d)
@@ -59,6 +61,11 @@ all: $(OBJS)
 %.o: %.c
 	@mkdir -p $(OBJDIR)
 	$(GCC) -g -c -Wall $(INC_PATH) $< -o $(OBJDIR)/$@
+
+%.o: %.cpp
+	@mkdir -p $(OBJDIR)
+	$(GCC) -g -c -Wall $(INC_PATH) $< -o $(OBJDIR)/$@
+
 
 .PHONY: clean
 clean:

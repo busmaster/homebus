@@ -1,5 +1,5 @@
 OBJS = main.o
-BIN  = portserver
+BIN  = buttongpio
 ARCH = $(TARGET_ARCH)
 OBJDIR = obj
 BINDIR = bin
@@ -11,6 +11,7 @@ else ifeq ($(SYS),mingw32)
 OS = win32
 endif
 
+SUBDIRS = ../../bus
 ifeq ($(OS),win32)
 SUBDIRS += ../../sio/win32
 else ifeq ($(OS),linux)
@@ -24,13 +25,14 @@ else ifeq ($(OS),linux)
 INCLUDE_PATH += ../../include/linux
 endif
 
+LIBRARY_PATH = ../../bus/bin
 ifeq ($(OS),win32)
 LIBRARY_PATH += ../../sio/win32/bin
 else ifeq ($(OS),linux)
 LIBRARY_PATH += ../../sio/linux/bin
 endif
 
-LIBRARY = sio
+LIBRARY = sio bus
 ifeq ($(OS),linux)
 LIBRARY += rt
 endif
@@ -54,7 +56,7 @@ all: $(OBJS)
 		(cd $$d; $(MAKE) all)  \
 	done
 	@mkdir -p $(BINDIR)
-	$(GCC) $(OBJDIR)/$(OBJS) $(LIB_PATH) $(LIBS) -o $(BINDIR)/$(BIN)
+	$(GCC) $(OBJDIR)/$(OBJS) $(LIB_PATH) $(LIBS) -o $(BINDIR)/$(BIN) -Wall
 
 %.o: %.c
 	@mkdir -p $(OBJDIR)
@@ -64,5 +66,7 @@ all: $(OBJS)
 clean:
 	rm -rf $(BINDIR) $(OBJDIR)
 	for d in $(SUBDIRS); do \
-		(cd $$d; $(MAKE) clean)  \
+		(cd $$d; $(MAKE) clean) \
 	done
+
+

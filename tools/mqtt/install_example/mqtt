@@ -1,0 +1,50 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          mqtt
+# Required-Start:    $syslog portserver mosquitto
+# Required-Stop:     $syslog portserver mosquitto
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start daemon at boot time
+# Description:       Enable service provided by daemon.
+### END INIT INFO
+
+DAEMON=/usr/bin/mqtt
+
+if  [ ! -e $DAEMON ]; then
+	echo $DAEMON not found.
+        exit 1
+fi
+
+
+BUSDEV=/dev/hausbus12
+BUSADDR=251
+EVENTADDR=250
+BROKER="10.0.0.200"
+PORT=1883
+CONFIG=/home/pi/config.yaml
+
+case "$1" in
+    start)
+        echo "Starting mqtt client..."
+        start-stop-daemon -b --start --background --make-pidfile --pidfile /var/run/mqtt.pid --exec $DAEMON -- -c $BUSDEV -a $BUSADDR -f $CONFIG -e $EVENTADDR -m $BROKER -p $PORT
+        ;;
+    stop)
+        echo "Stopping mqtt client..."
+        start-stop-daemon --stop --remove-pidfile --pidfile /var/run/mqtt.pid
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+
+    force-reload)
+        echo "Error: argument '$1' not supported" >&2
+        exit 2
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 3
+esac
+
+exit 0

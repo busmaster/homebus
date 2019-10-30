@@ -4,6 +4,8 @@ ARCH = $(TARGET_ARCH)
 OBJDIR = obj
 BINDIR = bin
 
+CFLAGS=-g -c -Wall
+
 SYS = $(shell gcc -dumpmachine)
 ifneq (, $(findstring linux, $(SYS)))
 OS = linux
@@ -60,7 +62,7 @@ all: $(OBJS)
 
 %.o: %.c
 	@mkdir -p $(OBJDIR)
-	$(GCC) -g -c -Wall $(INC_PATH) $< -o $(OBJDIR)/$@
+	$(GCC) $(CFLAGS) $(INC_PATH) $< -o $(OBJDIR)/$@
 
 .PHONY: clean
 clean:
