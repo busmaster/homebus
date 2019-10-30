@@ -1,0 +1,12 @@
+fuse settings for at90usb647 (see smartmeterif_bootloader/main.c)
+extended fuse byte:
+0xf9
+fuse byte high:
+0xd0
+fuse byte low:
+0xdf
+
+avrdude -p usb647 -c stk200 -e
+avrdude -p usb647 -c stk200 -U efuse:w:0xf9:m
+avrdude -p usb647 -c stk200 -U hfuse:w:0xd0:m
+avrdude -p usb647 -c stk200 -U lfuse:w:0xdf:m
