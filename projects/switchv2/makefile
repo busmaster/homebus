@@ -4,7 +4,7 @@
 
 ## General Flags
 PROJECT = switchv2
-MCU = atmega88
+MCU = atmega88pa
 TARGET = switchv2.elf
 CC = avr-gcc
 
@@ -13,7 +13,7 @@ COMMON = -mmcu=$(MCU)
 
 ## Compile options common for all C compilation units.
 CFLAGS = $(COMMON)
-CFLAGS += -Wall -gdwarf-2                                                            -DF_CPU=1000000UL -O2 -fsigned-char -fshort-enums
+CFLAGS += -Wall -gdwarf-2 -DF_CPU=1000000UL -O2 -fsigned-char -fshort-enums
 CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d 
 
 ## Assembly specific flags
@@ -35,10 +35,10 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Include Directories
-INCLUDES = -I ../../include/avr -I ../../include 
+INCLUDES = -I . -I ../../include/avr -I ../../include 
 
 ## Objects that must be built in order to link
-OBJECTS = main.o bus.o siotype1.o 
+OBJECTS = main.o bus.o siosingle.o 
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
@@ -53,7 +53,7 @@ main.o: main.c
 bus.o: ../../bus/bus.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-siotype1.o: ../../sio/avr/siotype1.c
+siosingle.o: ../../sio/avr/siosingle.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
