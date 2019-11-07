@@ -126,11 +126,11 @@ int main(void) {
    uint16_t  flashWordAddr;
    uint16_t  sum;
    int       sioHdl;
- 
+
    cli();
    MCUSR = 0x00;
-   wdt_disable();   
-   
+   wdt_disable();
+
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
 
    PortInit();
@@ -139,7 +139,7 @@ int main(void) {
    FlashInit();
 
    SioInit();
-   
+
    /* sio for bus interface */
    sioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
                     eSioStopBits1, eSioModeHalfDuplex);
@@ -162,7 +162,6 @@ int main(void) {
    /* warten bis Betriebsspannung auf 24 V-Seite volle Höhe (> 20 V) erreicht hat */
    while (!POWER_GOOD);
 
-   
 
    /* Prüfsumme der Applikation berechnen */
    sum = 0;
@@ -178,7 +177,7 @@ int main(void) {
       sFwuState = WAIT_FOR_UPD_ENTER;
       LedSet(eLedRedFlashFast);
    }
-  
+
    LedSet(eLedRedOff);
    LedSet(eLedGreenOn);
    ENABLE_INT;
@@ -388,8 +387,8 @@ static void PortInit(void) {
     /* PB.2: MOSI: output low */
     /* PB.1: SCK: output low */
     /* PB.0: unused: output low */
-    PORTB = 0b00000000;
-    DDRB  = 0b11111111;
+    PORTB = 0b00000100;
+    DDRB  = 0b11111011;
 	
     /* PC.7: unused: output low */
     /* PC.6: unused: output low */

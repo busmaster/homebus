@@ -138,28 +138,28 @@ int main(void) {
 
    uint8_t ret;
    int   sioHdl;
-   
+
    cli();
    MCUSR = 0x00;
-   wdt_disable();   
+   wdt_disable();
 
    /* get module address from EEPROM */
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
    GetClientListFromEeprom();
-    
+
    PortInit();
    LedInit();
    TimerInit();
-   ButtonInit();   
+   ButtonInit();
    PwmInit();
 #ifdef BUSVAR
    // ApplicationInit might use BusVar
    BusVarInit(sMyAddr, BusVarNv);
-#endif    
+#endif
    ApplicationInit();
    SioInit();
    SioRandSeed(sMyAddr);
-   
+
    /* sio for bus interface */
    sioHdl = SioOpen("USART0", eSioBaud9600, eSioDataBits8, eSioParityNo,
                     eSioStopBits1, eSioModeHalfDuplex);
@@ -177,15 +177,15 @@ int main(void) {
    ENABLE_INT;
    RestorePwm();
 
-   /* ext int for power fail: PCINT29 low level sensitive */ 
-   
+   /* ext int for power fail: PCINT29 low level sensitive */
+
    PCICR |= (1 << PCIE3);
    PCIFR |= (1<<PCIF3);
-   PCMSK2 |= (1 << PCINT29);
-   
+   PCMSK3 |= (1 << PCINT29);
+
    LedSet(eLedGreenFlashSlow);
    ApplicationStart();
-   
+
    /* Hauptschleife */
    while (1) {
       Idle();
@@ -193,12 +193,12 @@ int main(void) {
       ProcessBus(ret);
       CheckButton();
       PwmCheck();
-      LedCheck();	  
+      LedCheck();
       ApplicationCheck();
       CheckEvent();
 #ifdef BUSVAR
       BusVarProcess();
-#endif	  
+#endif
    }
    return 0;
 }
@@ -207,7 +207,7 @@ int main(void) {
 *  NV memory for persist bus variables
 */
 static bool BusVarNv(uint16_t address, void *buf, uint8_t bufSize, TBusVarDir dir) {
-    
+
     void *eeprom;
 
     // range check
@@ -237,7 +237,7 @@ static uint8_t GetUnconfirmedClient(uint8_t actualClient) {
     if (actualClient >= sNumClients) {
         return 0xff;
     }
-   
+
     for (i = 0; i < sNumClients; i++) {
         nextClient = actualClient + i +1;
         nextClient %= sNumClients;
@@ -321,13 +321,12 @@ static void CheckEvent(void) {
         for (i = 0; i < NUM_PWM_CHANNEL; i++) {
             PwmIsOn(i, &sCurPwmState[i]);
         }
-        if ((memcmp(sCurPwmActVal, sOldPwmActVal, sizeof(sCurPwmActVal)) == 0) && 
+        if ((memcmp(sCurPwmActVal, sOldPwmActVal, sizeof(sCurPwmActVal)) == 0) &&
             (memcmp(sCurPwmState,  sOldPwmState,  sizeof(sCurPwmActVal)) == 0)) {
             actValChanged = false;
         } else {
             actValChanged = true;
         }
-        
         if (actValChanged) {
             memcpy(sOldPwmActVal, sCurPwmActVal, sizeof(sOldPwmActVal));
             memcpy(sOldPwmState,  sCurPwmState,  sizeof(sOldPwmState));
@@ -359,15 +358,13 @@ static void CheckEvent(void) {
         sTxBusMsg.senderAddr = MY_ADDR;
         sTxBusMsg.msg.devBus.receiverAddr = pClient->address;
         pActVal->devType = eBusDevTypePwm16;
-    
-        memcpy(pActVal->actualValue.pwm16.pwm, sCurPwmActVal, 
+        memcpy(pActVal->actualValue.pwm16.pwm, sCurPwmActVal,
                sizeof(pActVal->actualValue.pwm16.pwm));
         val16 = 0;
         for (i = 0; i < NUM_PWM_CHANNEL; i++) {
             val16 |= sCurPwmState[i] ? 1 << i : 0;
         }
         pActVal->actualValue.pwm16.state = val16;
-        
         if (BusSend(&sTxBusMsg) == BUS_SEND_OK) {
             pClient->state = eEventWaitForConfirmation;
             pClient->requestTimeStamp = actualTime16;
@@ -393,7 +390,6 @@ static void CheckEvent(void) {
     default:
         break;
     }
-    
     if (getNextClient) {
         nextClient = GetUnconfirmedClient(sActualClient);
         if (nextClient <= sActualClient) {
@@ -449,41 +445,41 @@ static void BusTransceiverPowerDown(bool powerDown) {
 
 /*-----------------------------------------------------------------------------
 *  restore pwm output state
-* 
+*
 *  restore block:
 *       byte 0: 0b01010101:
 *       byte 1: 0bxxxxxxxx: on/off mask: 0 off, 1 on , bit0 .. channel 0
-*                                                      bit1 .. channel 1  
-*                                                      bit2 .. channel 2  
+*                                                      bit1 .. channel 1
+*                                                      bit2 .. channel 2
 *                                                      bit3 .. channel 3
-*                                                      bit4 .. channel 4  
-*                                                      bit5 .. channel 5  
+*                                                      bit4 .. channel 4
+*                                                      bit5 .. channel 5
 *                                                      bit6 .. channel 6
 *                                                      bit7 .. channel 7
-*       byte 2: 0bxxxxxxxx: on/off mask: 0 off, 1 on , bit0 .. channel 8  
-*                                                      bit1 .. channel 9  
+*       byte 2: 0bxxxxxxxx: on/off mask: 0 off, 1 on , bit0 .. channel 8
+*                                                      bit1 .. channel 9
 *                                                      bit2 .. channel 10
-*                                                      bit3 .. channel 11 
-*                                                      bit4 .. channel 12 
+*                                                      bit3 .. channel 11
+*                                                      bit4 .. channel 12
 *                                                      bit5 .. channel 13
 *                                                      bit6 .. channel 14
 *                                                      bit7 .. channel 15
-*       byte 3: low byte channel 0  
-*       byte 4: low byte channel 1  
-*       byte 5: low byte channel 2  
-*       byte 6: low byte channel 3  
-*       byte 7: low byte channel 4  
-*       byte 8: low byte channel 5  
-*       byte 9: low byte channel 6  
-*       byte 10: low byte channel 7  
-*       byte 11: low byte channel 8  
-*       byte 12: low byte channel 9  
-*       byte 13: low byte channel 10  
-*       byte 14: low byte channel 11  
-*       byte 15: low byte channel 12  
-*       byte 16: low byte channel 13  
-*       byte 17: low byte channel 14  
-*       byte 18: low byte channel 15  
+*       byte 3: low byte channel 0
+*       byte 4: low byte channel 1
+*       byte 5: low byte channel 2
+*       byte 6: low byte channel 3
+*       byte 7: low byte channel 4
+*       byte 8: low byte channel 5
+*       byte 9: low byte channel 6
+*       byte 10: low byte channel 7
+*       byte 11: low byte channel 8
+*       byte 12: low byte channel 9
+*       byte 13: low byte channel 10
+*       byte 14: low byte channel 11
+*       byte 15: low byte channel 12
+*       byte 16: low byte channel 13
+*       byte 17: low byte channel 14
+*       byte 18: low byte channel 15
 */
 static void RestorePwm(void) {
 
@@ -495,7 +491,7 @@ static void RestorePwm(void) {
     uint8_t     i;
 
     /* find the newest state */
-    for (ptrToEeprom = EEPROM_PWM_RESTORE_START; 
+    for (ptrToEeprom = EEPROM_PWM_RESTORE_START;
          ptrToEeprom < (EEPROM_PWM_RESTORE_END - sizeRestore);
          ptrToEeprom += sizeRestore) {
         pwmMask = eeprom_read_byte(ptrToEeprom);
@@ -507,7 +503,7 @@ static void RestorePwm(void) {
     }
     if (ptrToEeprom > (EEPROM_PWM_RESTORE_END - sizeRestore)) {
         /* not found -> no restore
-         * set pwm[] = 0xffff, state off 
+         * set pwm[] = 0xffff, state off
          */
         for (i = 0; i < NUM_PWM_CHANNEL; i++) {
             PwmOn(i, false);
@@ -526,15 +522,14 @@ static void RestorePwm(void) {
         pwmLow  = eeprom_read_byte(ptrToEeprom + 3 + i * sizeof(uint8_t));
         PwmSet(i, pwmLow);
     }
-	
     /* delete  */
     eeprom_write_byte((uint8_t *)ptrToEeprom, 0xff);
-    eeprom_write_byte((uint8_t *)ptrToEeprom + 1, 0xff); 
-    eeprom_write_byte((uint8_t *)ptrToEeprom + 2, 0xff);	
+    eeprom_write_byte((uint8_t *)ptrToEeprom + 1, 0xff);
+    eeprom_write_byte((uint8_t *)ptrToEeprom + 2, 0xff);
     for (i = 0; i < NUM_PWM_CHANNEL; i++) {
         eeprom_write_byte(ptrToEeprom + 3 + i, 0xff);
     }
-	
+
     RESTORE_INT(flags);
 	spNextPtrToEeprom = ptrToEeprom + sizeRestore;
     if (spNextPtrToEeprom > (EEPROM_PWM_RESTORE_END - sizeRestore)) {
@@ -598,7 +593,7 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqSetVar:
         case eBusDevRespGetVar:
         case eBusDevRespSetVar:
-#endif		
+#endif
         case eBusDevRespActualValueEvent:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
@@ -614,12 +609,12 @@ static void ProcessBus(uint8_t ret) {
         }
     } else if (ret == BUS_MSG_ERROR) {
         ButtonTimeStampRefresh();
-    } 
+    }
 
     if (msgForMe == false) {
        return;
     }
-   
+
     switch (msgType) {
     case eBusDevReqReboot:
         /* use watchdog to reboot */
@@ -694,7 +689,7 @@ static void ProcessBus(uint8_t ret) {
                 break;
             default:
                 break;
-            }    
+            }
         }
         /* response packet */
         sTxMsg.type = eBusDevRespSetValue;
@@ -722,27 +717,27 @@ static void ProcessBus(uint8_t ret) {
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetAddr:
-        sTxMsg.senderAddr = MY_ADDR; 
-        sTxMsg.type = eBusDevRespSetAddr;  
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespSetAddr;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         eeprom_write_byte((uint8_t *)MODUL_ADDRESS, spBusMsg->msg.devBus.x.devReq.setAddr.addr);
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqEepromRead:
-        sTxMsg.senderAddr = MY_ADDR; 
+        sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.type = eBusDevRespEepromRead;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        sTxMsg.msg.devBus.x.devResp.readEeprom.data = 
+        sTxMsg.msg.devBus.x.devResp.readEeprom.data =
             eeprom_read_byte((const uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr);
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;  
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqEepromWrite:
-        sTxMsg.senderAddr = MY_ADDR; 
+        sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.type = eBusDevRespEepromWrite;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr, 
+        eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr,
                           spBusMsg->msg.devBus.x.devReq.writeEeprom.data);
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;  
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevRespActualValueEvent:
         pClient = sClient;
@@ -769,8 +764,8 @@ static void ProcessBus(uint8_t ret) {
         }
         break;
     case eBusDevReqSetClientAddr:
-        sTxMsg.senderAddr = MY_ADDR; 
-        sTxMsg.type = eBusDevRespSetClientAddr;  
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespSetClientAddr;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
             uint8_t *p = &spBusMsg->msg.devBus.x.devReq.setClientAddr.clientAddr[i];
@@ -780,8 +775,8 @@ static void ProcessBus(uint8_t ret) {
         GetClientListFromEeprom();
         break;
     case eBusDevReqGetClientAddr:
-        sTxMsg.senderAddr = MY_ADDR; 
-        sTxMsg.type = eBusDevRespGetClientAddr;  
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespGetClientAddr;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
             uint8_t *p = &sTxMsg.msg.devBus.x.devResp.getClientAddr.clientAddr[i];
@@ -819,7 +814,7 @@ static void ProcessBus(uint8_t ret) {
     case eBusDevRespGetVar:
         BusVarRespGet(spBusMsg->senderAddr, &spBusMsg->msg.devBus.x.devResp.getVar);
         break;
-#endif		
+#endif
     default:
         break;
     }
@@ -855,17 +850,17 @@ static void SwitchEvent(uint8_t address, uint8_t button, bool pressed) {
 *  Power-Fail Interrupt (PCINT29)
 */
 ISR(PCINT3_vect) {
-	
-	uint8_t  *ptrToEeprom;
+
+    uint8_t  *ptrToEeprom;
     uint8_t pwm[NUM_PWM_CHANNEL];
     uint8_t  i;
     bool     on;
     uint16_t  pwmMask = 0;
-	
-	if(!POWER_GOOD) {
-	   LedSet(eLedRedOn);
+
+    if(!POWER_GOOD) {
+       LedSet(eLedRedOn);
        PWM_ALLOUT_DISABLE;
-    	
+
        for (i = 0; i < NUM_PWM_CHANNEL; i++) {
            PwmGet(i, &pwm[i]);
            PwmIsOn(i, &on);
@@ -983,14 +978,14 @@ static void PortInit(void) {
     /* PB.1: SCK: output low */
     /* PB.0: unused: output low */
     PORTB = 0b00000000;
-    DDRB  = 0b11111111;
-	
+    DDRB  = 0b11111011;
+
     /* PC.7: unused: output low */
     /* PC.6: unused: output low */
-    /* PC.5: unused: output low */		
+    /* PC.5: unused: output low */
     /* PC.4: unused: output low */
     /* PC.3: unused: output low */
-    /* PC.2: /OE: output low */	
+    /* PC.2: /OE: output low */
     /* PC.1: SDA: output low  */
     /* PC.0: SCL: output low */
     PORTC = 0b00000100;
@@ -998,7 +993,7 @@ static void PortInit(void) {
 
     /* PD.7: led1: output low */
     /* PD.6: led2: output low */
-    /* PD.5: input high z, power fail */	
+    /* PD.5: input high z, power fail */
     /* PD.4: transceiver power, output high */
     /* PD.3: TX1: output high */
     /* PD.2: RX1: input pull up */
@@ -1008,4 +1003,3 @@ static void PortInit(void) {
     PORTD = 0b00000101;
     DDRD  = 0b11011010;
 }
-

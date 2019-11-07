@@ -44,7 +44,7 @@
 
 #define NUM_LED     2
 
-#define POWER_GOOD                   ((PIND & 0b00010000) != 0)
+#define POWER_GOOD                   ((PIND & 0b00100000) != 0)
 
 #define BUS_TRANSCEIVER_POWER_DOWN   (PORTD |= 0b00010000)
 #define BUS_TRANSCEIVER_POWER_UP     (PORTD &= ~0b00010000)
