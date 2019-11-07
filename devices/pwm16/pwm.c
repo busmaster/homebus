@@ -396,7 +396,7 @@ bool PwmSetState(TPwmNumber channel, TFadeState state) {
    return false;
 }
 
-bool PwmStarDimm(TPwmNumber channel) {
+bool PwmStartDimm(TPwmNumber channel) {
 	bool rc = false;
 	
     if ((channel >= 0) && (channel < NUM_PWM_CHANNEL)) {
@@ -406,8 +406,8 @@ bool PwmStarDimm(TPwmNumber channel) {
 	   }
 	   else if((sState[channel].pwmLastDir != 0) && sState[channel].on) {
 		   sState[channel].pwmLastDir = 0;
-		   if(sState[channel].pwm > 30) {
-		   rc = PwmDimmTo(channel, 30, 20UL * (sState[channel].pwm - 30));
+		   if(sState[channel].pwm > MIN_DIM_VALUE) {
+		   rc = PwmDimmTo(channel, MIN_DIM_VALUE, 20UL * (sState[channel].pwm - MIN_DIM_VALUE));
 		   }
 	   } else {
 		   sState[channel].pwmLastDir = 1;

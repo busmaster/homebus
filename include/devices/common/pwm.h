@@ -124,7 +124,7 @@ bool     PwmToggle(TPwmNumber channel);
 bool     PwmGetAllState(uint8_t *buf, uint8_t buf_size);
 bool     PwmDelayedOff(TPwmNumber channel, uint32_t offDelayMs);
 bool     PwmSetState(TPwmNumber channel, TFadeState state);
-bool     PwmStarDimm(TPwmNumber channel);
+bool     PwmStartDimm(TPwmNumber channel);
 
 #ifdef __cplusplus
 }

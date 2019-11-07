@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #define NUM_PWM_CHANNEL    16
-
+#define MIN_DIM_VALUE      48 
 #ifdef __cplusplus
 }
 #endif
