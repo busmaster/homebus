@@ -210,7 +210,7 @@ static TStartTime  sSttime[NUM_BUTTONS];
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "pwm4_0.04";
+   return "pwm16_0.05"; /*Schlafzimmerlicht */
 }
 
 /*-----------------------------------------------------------------------------
@@ -278,6 +278,8 @@ void ApplicationStart(void) {
 	PwmSet(ePwm6,0);     // WC gedimmt
 	PwmSet(ePwm7,0);     // WC Haupt
 	PwmSet(ePwm8,255);  // Schrankraum
+	PwmSet(ePwm9,255);  // Schlafzimmer Haupt
+	PwmSet(ePwm10,127);  // Schlafzimmer neben
 }
 
 void ApplicationCheck(void) {
@@ -314,7 +316,7 @@ void ApplicationCheck(void) {
 		if (((uint32_t)(actualTime - sSttime[40+(NUM_BUTTONS/2)].startTime)) > TASTTIME) {
 			// dimmen
 			sMerk[40+(NUM_BUTTONS/2)] = 0;
-			PwmStarDimm(ePwm0);
+			PwmStartDimm(ePwm0);
 			}
 		}
 /* dimmen Tobias Türe */		
@@ -323,7 +325,7 @@ void ApplicationCheck(void) {
 		if (((uint32_t)(actualTime - sSttime[35+(NUM_BUTTONS/2)].startTime)) > TASTTIME) {
 			// dimmen
 			sMerk[35+(NUM_BUTTONS/2)] = 0;
-			PwmStarDimm(ePwm4);
+			PwmStartDimm(ePwm4);
 			}
 		}
 /* dimmen Tobias Türe */		
@@ -332,7 +334,7 @@ void ApplicationCheck(void) {
 		if (((uint32_t)(actualTime - sSttime[56+(NUM_BUTTONS/2)].startTime)) > TASTTIME) {
 			// dimmen
 			sMerk[56+(NUM_BUTTONS/2)] = 0;
-			PwmStarDimm(ePwm4);
+			PwmStartDimm(ePwm4);
 			}
 		}
 	if(sMerk[38+(NUM_BUTTONS/2)] > 0) {
@@ -340,7 +342,7 @@ void ApplicationCheck(void) {
 		if (((uint32_t)(actualTime - sSttime[38+(NUM_BUTTONS/2)].startTime)) > TASTTIME) {
 			// dimmen
 			sMerk[38+(NUM_BUTTONS/2)] = 0;
-			PwmStarDimm(ePwm2);
+			PwmStartDimm(ePwm2);
 			}
 		}
 /* dimmen Tobias Türe */		
@@ -349,7 +351,34 @@ void ApplicationCheck(void) {
 		if (((uint32_t)(actualTime - sSttime[55+(NUM_BUTTONS/2)].startTime)) > TASTTIME) {
 			// dimmen
 			sMerk[55+(NUM_BUTTONS/2)] = 0;
-			PwmStarDimm(ePwm2);
+			PwmStartDimm(ePwm2);
+			}
+		}
+/* Schlafzimmer Türe */		
+	if(sMerk[29] > 0) {
+        GET_TIME_MS32(actualTime);
+		if (((uint32_t)(actualTime - sSttime[29].startTime)) > TASTTIME) {
+			// dimmen
+			sMerk[29] = 0;
+			PwmStartDimm(ePwm9);
+			}
+		}
+/* Schlafzimmer Bett Türe */	
+	if(sMerk[30+(NUM_BUTTONS/2)] > 0) {
+        GET_TIME_MS32(actualTime);
+		if (((uint32_t)(actualTime - sSttime[30+(NUM_BUTTONS/2)].startTime)) > TASTTIME) {
+			// dimmen
+			sMerk[30+(NUM_BUTTONS/2)] = 0;
+			PwmStartDimm(ePwm9);
+			}
+		}		
+/* Schlafzimmer Bett Fenster */		
+	if(sMerk[31] > 0) {
+        GET_TIME_MS32(actualTime);
+		if (((uint32_t)(actualTime - sSttime[31].startTime)) > TASTTIME) {
+			// dimmen
+			sMerk[31] = 0;
+			PwmStartDimm(ePwm9);
 			}
 		}
 
@@ -495,8 +524,23 @@ void ApplicationReleased28_0(void) {}
 void ApplicationPressed28_1(void) {}
 void ApplicationReleased28_1(void) {}
 
-void ApplicationPressed29_0(void) {}
-void ApplicationReleased29_0(void) {}
+void ApplicationPressed29_0(void) {
+   GET_TIME_MS32(sSttime[29].startTime);	
+   sMerk[29] = 1;	
+}
+void ApplicationReleased29_0(void) {
+   uint32_t      actualTime;
+
+   GET_TIME_MS32(actualTime);
+
+   if (((uint32_t)(actualTime - sSttime[29].startTime)) <= TASTTIME) {	
+   sMerk[29] = 0;   
+   PwmToggle(ePwm9);	
+   } else {
+   PwmSetState(ePwm9, ePwmNoFade); // Stoppe dimmen
+/* Aktion in ApplicationCheck */	   
+   }		
+}
 void ApplicationPressed29_1(void) {
    GET_TIME_MS32(sSttime[29+(NUM_BUTTONS/2)].startTime);
 }
@@ -515,15 +559,63 @@ void ApplicationReleased29_1(void) {
    }  	
 }
 
-void ApplicationPressed30_0(void) {}
-void ApplicationReleased30_0(void) {}
-void ApplicationPressed30_1(void) {}
-void ApplicationReleased30_1(void) {}
+void ApplicationPressed30_0(void) {
+	GET_TIME_MS32(sSttime[30].startTime);
+}
+void ApplicationReleased30_0(void) {
+   uint32_t      actualTime;
 
-void ApplicationPressed31_0(void) {}
-void ApplicationReleased31_0(void) {}
-void ApplicationPressed31_1(void) {}
-void ApplicationReleased31_1(void) {}
+   GET_TIME_MS32(actualTime);
+   if (((uint32_t)(actualTime - sSttime[30].startTime)) > TASTTIME) {
+      PwmToggle(ePwm10);
+   } 		
+}
+void ApplicationPressed30_1(void) {
+   GET_TIME_MS32(sSttime[30+(NUM_BUTTONS/2)].startTime);	
+   sMerk[30+(NUM_BUTTONS/2)] = 1;
+}
+void ApplicationReleased30_1(void) {
+   uint32_t      actualTime;
+
+   GET_TIME_MS32(actualTime);
+
+   if (((uint32_t)(actualTime - sSttime[30+(NUM_BUTTONS/2)].startTime)) <= TASTTIME) {	
+   sMerk[30+(NUM_BUTTONS/2)] = 0;   
+   PwmToggle(ePwm9);	
+   } else {
+   PwmSetState(ePwm9, ePwmNoFade); // Stoppe dimmen
+/* Aktion in ApplicationCheck */	   
+   }
+}
+
+void ApplicationPressed31_0(void) {
+   GET_TIME_MS32(sSttime[31].startTime);	
+   sMerk[31] = 1;	
+}
+void ApplicationReleased31_0(void) {
+   uint32_t      actualTime;
+
+   GET_TIME_MS32(actualTime);
+
+   if (((uint32_t)(actualTime - sSttime[31].startTime)) <= TASTTIME) {	
+   sMerk[31] = 0;   
+   PwmToggle(ePwm9);	
+   } else {
+   PwmSetState(ePwm9, ePwmNoFade); // Stoppe dimmen
+/* Aktion in ApplicationCheck */	   
+   }	
+}
+void ApplicationPressed31_1(void) {
+	GET_TIME_MS32(sSttime[31+(NUM_BUTTONS/2)].startTime);
+}
+void ApplicationReleased31_1(void) {
+   uint32_t      actualTime;
+
+   GET_TIME_MS32(actualTime);
+   if (((uint32_t)(actualTime - sSttime[31+(NUM_BUTTONS/2)].startTime)) > TASTTIME) {
+      PwmToggle(ePwm10);
+   } 	
+}
 
 void ApplicationPressed32_0(void) {}
 void ApplicationReleased32_0(void) {}

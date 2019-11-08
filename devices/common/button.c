@@ -34,7 +34,7 @@
 #define BUTTON_MAX_NUM_ACTIVE  5            
 
 /* nach 100ms ohne Bustelegramm wird Taster als geöffnet gewertet */  
-#define BUTTON_TIMEOUT         60  /* ms */
+#define BUTTON_TIMEOUT         100  /* ms */
 
 /*-----------------------------------------------------------------------------
 *  typedefs

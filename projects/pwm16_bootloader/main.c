@@ -157,11 +157,12 @@ int main(void) {
    /* In Bootbereich verschieben */
    MCUCR = (1 << IVSEL);
 
-   LedSet(eLedGreenOn);
+   LedSet(eLedGreenOff);
    LedSet(eLedRedOn);
    /* warten bis Betriebsspannung auf 24 V-Seite volle Höhe (> 20 V) erreicht hat */
    while (!POWER_GOOD);
-
+   
+   LedSet(eLedRedOff);
 
    /* Prüfsumme der Applikation berechnen */
    sum = 0;
@@ -178,8 +179,6 @@ int main(void) {
       LedSet(eLedRedFlashFast);
    }
 
-   LedSet(eLedRedOff);
-   LedSet(eLedGreenOn);
    ENABLE_INT;
 
    /* Startup-Msg senden */

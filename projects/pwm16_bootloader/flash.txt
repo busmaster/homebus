@@ -1,1 +1,1 @@
-avrdude -p ATmega1284p -V -e -v -c stk500v2 -P /dev/stk500 -U flash:w:michael239.hex:i -U lfuse:w:0xdd:m -U hfuse:w:0xd0:m -U efuse:w:0xfc:m
+avrdude -p ATmega1284p -V -e -v -c stk500v2 -P /dev/stk500 -U flash:w:pwm16_bootloader.hex:i -U lfuse:w:0xdd:m -U hfuse:w:0xd0:m -U efuse:w:0xfc:m
