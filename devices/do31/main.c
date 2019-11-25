@@ -151,6 +151,7 @@ static uint8_t sSw8State[256];
 /*-----------------------------------------------------------------------------
 *  Functions
 */
+static void CpuInit(void);
 static void PortInit(void);
 static void TimerInit(void);
 static void CheckButton(void);
@@ -175,6 +176,8 @@ int main(void) {
 
    uint8_t ret;
    int   sioHdl;
+
+   CpuInit();
 
    /* get module address from EEPROM */
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
@@ -1252,3 +1255,14 @@ static void PortInit(void) {
    PORTG = 0b00011000;
    DDRG  = 0b00011111;
 }
+
+/*-----------------------------------------------------------------------------
+*  Prepare CPU state: the bootloader might have left inappropriate settings
+*/
+static void CpuInit(void) {
+   /* clear interrupt enable bits */
+   TIMSK = 0;
+   UCSR0B = 0;
+   UCSR1B = 0;
+   EIMSK = 0;
+ }
