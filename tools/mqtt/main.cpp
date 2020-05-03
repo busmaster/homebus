@@ -55,6 +55,7 @@
 #define MAX_LEN_TOPIC        60
 #define MAX_LEN_TOPIC_DESC   50
 #define BUS_RESPONSE_TIMEOUT 100 /* ms */
+#define BUS_MAX_NUM_EVENT_RX 16
 
 #define PATH_LEN             255
 
@@ -89,6 +90,7 @@ typedef struct {
             uint8_t address;
             uint8_t port;
             T_sw8_port_type type;
+            uint8_t event_receiver[BUS_MAX_NUM_EVENT_RX];
         } sw8;
     } io;
     UT_hash_handle hh;
@@ -413,6 +415,32 @@ static void sw8_set_output(uint8_t address, uint8_t output, T_sw8_port_type type
 }
 
 /*-----------------------------------------------------------------------------
+*  send a SW8 actual value event ReqActualValueEvent telegram
+*/
+static void sw8_ReqActualValueEvent(uint8_t addr, uint8_t receiver, uint8_t digin, uint8_t value) {
+
+    TBusTelegram tx_msg;
+    uint8_t      ret;
+    uint8_t      state;
+
+    tx_msg.type = eBusDevReqActualValueEvent;
+    tx_msg.senderAddr = addr;
+    tx_msg.msg.devBus.receiverAddr = receiver;
+    tx_msg.msg.devBus.x.devReq.actualValueEvent.devType = eBusDevTypeSw8;
+    if (value == 0) {
+        state = 0;
+    } else {
+        state = (1 << digin);
+    }
+    tx_msg.msg.devBus.x.devReq.actualValueEvent.actualValue.sw8.state = state;
+
+    ret = BusSend(&tx_msg);
+    if (ret != BUS_SEND_OK) {
+        syslog(LOG_ERR, "SW8 %d: ReqActualValueEvent bus send error (state %d) ", addr, state);
+    }
+}
+
+/*-----------------------------------------------------------------------------
 *  subscription callback for .../set
 */
 static void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto_message *message) {
@@ -422,6 +450,7 @@ static void my_message_callback(struct mosquitto *mq, void *obj, const struct mo
     char         *ch;
     int          len;
     uint8_t      value8;
+    int          i;
 
 printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
 
@@ -446,7 +475,15 @@ printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
         break;
     case eBusDevTypeSw8:
         value8 = (uint8_t)strtoul((char *)message->payload, 0, 0);
-        sw8_set_output(cfg->io.sw8.address, cfg->io.sw8.port, cfg->io.sw8.type, value8 != 0);
+        if (cfg->io.sw8.type == e_sw8_digin) {
+            snprintf(topic + len, sizeof(topic) - len, "/actual");
+            mosquitto_publish(mosq, 0, topic, 1, value8 ? "1" : "0", 1, true);
+            for (i = 0; cfg->io.sw8.event_receiver[i] != 0; i++) {
+                sw8_ReqActualValueEvent(cfg->io.sw8.address, cfg->io.sw8.event_receiver[i], cfg->io.sw8.port, value8 != 0);
+            }
+        } else {
+            sw8_set_output(cfg->io.sw8.address, cfg->io.sw8.port, cfg->io.sw8.type, value8 != 0);
+        }
         break;
     default:
         break;
@@ -541,6 +578,7 @@ static int ReadConfig(const char *pFile)  {
             /* SW8 */
             topic_entry->devtype = eBusDevTypeSw8;
             io_entry->phys_io = (uint8_t)topic_entry->devtype;
+            memset(topic_entry->io.sw8.event_receiver, 0, sizeof(topic_entry->io.sw8.event_receiver));
             if (physical["address"]) {
                 topic_entry->io.sw8.address = (uint8_t)strtoul(physical["address"].as<std::string>().c_str(), 0, 0);
                 io_entry->phys_io |= (topic_entry->io.sw8.address << 8);
@@ -549,6 +587,12 @@ static int ReadConfig(const char *pFile)  {
                break;
             }
             if (physical["digin"]) {
+                YAML::Node recv = node["receiver"];
+                if (node["receiver"]) {
+                    for (std::size_t i = 0; i < recv.size(); i++) {
+                        topic_entry->io.sw8.event_receiver[i] = (uint8_t)strtoul(recv[i].as<std::string>().c_str(), 0, 0);
+                    }
+                }
                 topic_entry->io.sw8.port = (uint8_t)strtoul(physical["digin"].as<std::string>().c_str(), 0, 0);
                 topic_entry->io.sw8.type = e_sw8_digin;
                 io_entry->phys_io |= topic_entry->io.sw8.port << 16;
@@ -950,7 +994,7 @@ int main(int argc, char *argv[]) {
                 snprintf(broker, sizeof(broker), "%s", argv[i + 1]);
             }
         }
-        /* event listen address */
+        /* port */
         if (strcmp(argv[i], "-p") == 0) {
             if (argc > i) {
                 port = (int)strtoul(argv[i + 1], 0, 0);
