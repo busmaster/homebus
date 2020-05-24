@@ -156,7 +156,7 @@ bool BusVarWrite(uint8_t idx, void *buf, uint8_t bufSize, TBusVarResult *result)
         }
     }
     memcpy(vt->mem, buf, vt->size);
-    
+
     *result = eBusVarSuccess;
     return true;
 }
@@ -195,11 +195,11 @@ void BusVarTransactionClose(TBusVarHdl varHdl) {
     vtd->state = eBusVarState_Invalid;
 
     while (sVarFifoRdIdx != sVarFifoWrIdx) {
-    	vtd = &sVarTransactionFifo[sVarFifoRdIdx];
+        vtd = &sVarTransactionFifo[sVarFifoRdIdx];
         if (vtd->state == eBusVarState_Invalid) {
             IDX_INC(sVarFifoRdIdx);
         } else {
-        	break;
+            break;
         }
     }
 }
@@ -215,11 +215,11 @@ void BusVarRespSet(uint8_t addr, TBusDevRespSetVar *respSet) {
 
     rdIdx = sVarFifoRdIdx;
     do {
-    	vtd = &sVarTransactionFifo[rdIdx];
-    	if ((addr == vtd->addr) && (vtd->idx != respSet->index)) {
-    		break;
-    	}
-    	IDX_INC(rdIdx);
+        vtd = &sVarTransactionFifo[rdIdx];
+        if ((addr == vtd->addr) && (vtd->idx != respSet->index)) {
+            break;
+        }
+        IDX_INC(rdIdx);
     } while (rdIdx != sVarFifoWrIdx);
 
     if (rdIdx != sVarFifoWrIdx) {
@@ -239,11 +239,11 @@ void BusVarRespGet(uint8_t addr, TBusDevRespGetVar *respGet) {
 
     rdIdx = sVarFifoRdIdx;
     do {
-    	vtd = &sVarTransactionFifo[rdIdx];
-    	if ((addr == vtd->addr) && (vtd->idx == respGet->index) && (respGet->length == vtd->size)) {
-    		break;
-    	}
-    	IDX_INC(rdIdx);
+        vtd = &sVarTransactionFifo[rdIdx];
+        if ((addr == vtd->addr) && (vtd->idx == respGet->index) && (respGet->length == vtd->size)) {
+            break;
+        }
+        IDX_INC(rdIdx);
     } while (rdIdx != sVarFifoWrIdx);
 
     if (rdIdx != sVarFifoWrIdx) {
@@ -283,7 +283,7 @@ static void Process(TVarTransactionDesc *vtd) {
             vtd->state = eBusVarState_TxRetry;
         }
         vtd->txTime = actualTime16;
-	break;
+        break;
     case eBusVarState_Waiting:
         if ((actualTime16 - vtd->txTime) > RESPONSE_TIMEOUT) {
             vtd->state = eBusVarState_Timeout;
@@ -322,10 +322,10 @@ void BusVarProcess(void) {
         return;
     }
     for (rdIdx = sVarFifoRdIdx; rdIdx != sVarFifoWrIdx; ) {
-    	vtd = &sVarTransactionFifo[rdIdx];
-    	if (vtd->state != eBusVarState_Invalid) {
-    	    Process(vtd);
-    	}
+        vtd = &sVarTransactionFifo[rdIdx];
+        if (vtd->state != eBusVarState_Invalid) {
+            Process(vtd);
+        }
         IDX_INC(rdIdx);
     }
 }
