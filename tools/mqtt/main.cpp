@@ -53,6 +53,7 @@
 *  Macros
 */
 #define MAX_LEN_TOPIC        60
+#define MAX_LEN_MESSAGE      256
 #define MAX_LEN_TOPIC_DESC   50
 #define BUS_RESPONSE_TIMEOUT 100 /* ms */
 #define BUS_MAX_NUM_EVENT_RX 16
@@ -92,7 +93,13 @@ typedef struct {
             T_sw8_port_type type;
             uint8_t event_receiver[BUS_MAX_NUM_EVENT_RX];
         } sw8;
+        struct {
+            uint8_t address;
+            uint8_t index;
+            uint8_t size;
+        } var;
     } io;
+
     UT_hash_handle hh;
 } T_topic_desc;
 
@@ -109,6 +116,7 @@ typedef struct {
     uint32_t phys_dev;  /* the key consists of: device type (8 bit),
                          *                      device address (8 bit)
                          */
+    /* shadow copy of IO state of device */
     union {
         TBusDevActualValueDo31 do31;
         TBusDevActualValuePwm4 pwm4;
@@ -216,7 +224,7 @@ static int do31_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
         ret = BusCheck();
         if (ret == BUS_MSG_OK) {
             rx_msg = BusMsgBufGet();
-            if ((rx_msg->type == eBusDevRespSetValue)     &&
+            if ((rx_msg->type == eBusDevRespSetValue)        &&
                 (rx_msg->msg.devBus.receiverAddr == my_addr) &&
                 (rx_msg->senderAddr == addr)) {
                 response_ok = true;
@@ -295,7 +303,7 @@ static int pwm4_ReqSetValue(uint8_t addr, uint8_t set, uint8_t *pwm) {
         ret = BusCheck();
         if (ret == BUS_MSG_OK) {
             rx_msg = BusMsgBufGet();
-            if ((rx_msg->type == eBusDevRespSetValue)     &&
+            if ((rx_msg->type == eBusDevRespSetValue)        &&
                 (rx_msg->msg.devBus.receiverAddr == my_addr) &&
                 (rx_msg->senderAddr == addr)) {
                 response_ok = true;
@@ -364,7 +372,7 @@ static int sw8_ReqSetValue(uint8_t addr, uint8_t *digout) {
         ret = BusCheck();
         if (ret == BUS_MSG_OK) {
             rx_msg = BusMsgBufGet();
-            if ((rx_msg->type == eBusDevRespSetValue)     &&
+            if ((rx_msg->type == eBusDevRespSetValue)        &&
                 (rx_msg->msg.devBus.receiverAddr == my_addr) &&
                 (rx_msg->senderAddr == addr)) {
                 response_ok = true;
@@ -441,6 +449,75 @@ static void sw8_ReqActualValueEvent(uint8_t addr, uint8_t receiver, uint8_t digi
 }
 
 /*-----------------------------------------------------------------------------
+*  send ReqSetVar telegram
+*/
+static int var_ReqSetVar(uint8_t addr, uint8_t index, uint8_t size, uint8_t *value) {
+
+    TBusTelegram        tx_msg;
+    TBusTelegram        *rx_msg;
+    unsigned long       start_time;
+    unsigned long       cur_time;
+    uint8_t             ret;
+    uint8_t             *data;
+    bool                response_ok = false;
+    bool                timeout = false;
+
+    tx_msg.type = eBusDevReqSetVar;
+    tx_msg.senderAddr = my_addr;
+    tx_msg.msg.devBus.receiverAddr = addr;
+    tx_msg.msg.devBus.x.devReq.setVar.index = index;
+    tx_msg.msg.devBus.x.devReq.setVar.length = size;
+    data = tx_msg.msg.devBus.x.devReq.setVar.data;
+    memcpy(data, value, size);
+
+    BusSend(&tx_msg);
+
+    /* response */
+    start_time = get_tick_count();
+    do {
+        cur_time = get_tick_count();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            rx_msg = BusMsgBufGet();
+            if ((rx_msg->type == eBusDevRespSetVar)          &&
+                (rx_msg->msg.devBus.receiverAddr == my_addr) &&
+                (rx_msg->senderAddr == addr)) {
+                if ((rx_msg->msg.devBus.x.devResp.setVar.index == index) &&
+                    (rx_msg->msg.devBus.x.devResp.setVar.result == eBusVarSuccess)) {
+                    response_ok = true;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            if ((cur_time - start_time) > BUS_RESPONSE_TIMEOUT) {
+                timeout = true;
+            }
+        }
+        usleep(10000);
+    } while (!response_ok && !timeout);
+
+    return response_ok ? 0 : -1;
+}
+/*-----------------------------------------------------------------------------
+*  convert readable hex sting to uint8_t array
+*/
+static int payload_to_uint8(const char *str, int len, uint8_t *buf, int buf_size) {
+
+   int i;
+   char *end;
+   unsigned long val;
+
+   for (val = strtoul(str, &end, 16), i = 0;
+        (str != end) && (i < buf_size) && (val < 0xff);
+       val = strtoul(str, &end, 16), i++)  {
+       str = end;
+       buf[i] = (uint8_t)val;
+   }
+   return (str == end) ? i: -1;
+}
+
+/*-----------------------------------------------------------------------------
 *  subscription callback for .../set
 */
 static void my_message_callback(struct mosquitto *mq, void *obj, const struct mosquitto_message *message) {
@@ -449,7 +526,7 @@ static void my_message_callback(struct mosquitto *mq, void *obj, const struct mo
     char         topic[MAX_LEN_TOPIC];
     char         *ch;
     int          len;
-    uint8_t      value8;
+    uint8_t      value[BUS_MAX_VAR_SIZE];
     int          i;
 
 printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
@@ -466,23 +543,30 @@ printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
 
     switch(cfg->devtype) {
     case eBusDevTypeDo31:
-        value8 = (uint8_t)strtoul((char *)message->payload, 0, 0);
-        do31_set_output(cfg->io.do31.address, cfg->io.do31.output, cfg->io.do31.type, value8);
+        value[0] = (uint8_t)strtoul((char *)message->payload, 0, 0);
+        do31_set_output(cfg->io.do31.address, cfg->io.do31.output, cfg->io.do31.type, value[0]);
         break;
     case eBusDevTypePwm4:
-        value8 = (uint8_t)strtoul((char *)message->payload, 0, 0);
-        pwm4_set_output(cfg->io.pwm4.address, cfg->io.pwm4.output, value8 != 0);
+        value[0] = (uint8_t)strtoul((char *)message->payload, 0, 0);
+        pwm4_set_output(cfg->io.pwm4.address, cfg->io.pwm4.output, value[0] != 0);
         break;
     case eBusDevTypeSw8:
-        value8 = (uint8_t)strtoul((char *)message->payload, 0, 0);
+        value[0] = (uint8_t)strtoul((char *)message->payload, 0, 0);
         if (cfg->io.sw8.type == e_sw8_digin) {
             snprintf(topic + len, sizeof(topic) - len, "/actual");
-            mosquitto_publish(mosq, 0, topic, 1, value8 ? "1" : "0", 1, true);
+            mosquitto_publish(mosq, 0, topic, 1, value[0] ? "1" : "0", 1, true);
             for (i = 0; cfg->io.sw8.event_receiver[i] != 0; i++) {
-                sw8_ReqActualValueEvent(cfg->io.sw8.address, cfg->io.sw8.event_receiver[i], cfg->io.sw8.port, value8 != 0);
+                sw8_ReqActualValueEvent(cfg->io.sw8.address, cfg->io.sw8.event_receiver[i], cfg->io.sw8.port, value[0] != 0);
             }
         } else {
-            sw8_set_output(cfg->io.sw8.address, cfg->io.sw8.port, cfg->io.sw8.type, value8 != 0);
+            sw8_set_output(cfg->io.sw8.address, cfg->io.sw8.port, cfg->io.sw8.type, value[0] != 0);
+        }
+        break;
+    case eBusDevTypeInv:
+        /* set variable */
+        /* we expect the payload to contain a printable hex array: e.g. "1 02 55 aa" for the 4-byte array 0x01, 0x02, 0x55, 0xaa */
+        if (payload_to_uint8((const char *)message->payload, message->payloadlen, value, (int)sizeof(value)) == cfg->io.var.size) {
+            var_ReqSetVar(cfg->io.var.address, cfg->io.var.index, cfg->io.var.size, value);
         }
         break;
     default:
@@ -611,6 +695,22 @@ static int ReadConfig(const char *pFile)  {
                 printf("missing digin/digout/pulseout at topic %s\n", node["topic"].as<std::string>().c_str());
                 break;
             }
+        } else if (physical["type"] && (physical["type"].as<std::string>().compare("var") == 0)) {
+            /* var */
+            topic_entry->devtype = eBusDevTypeInv;
+            io_entry->phys_io = (uint8_t)topic_entry->devtype;
+            if (physical["address"]) {
+                topic_entry->io.var.address = (uint8_t)strtoul(physical["address"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= (topic_entry->io.var.address << 8);
+            }
+            if (physical["index"]) {
+                topic_entry->io.var.index = (uint8_t)strtoul(physical["index"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= (topic_entry->io.var.index << 16);
+            }
+            if (physical["size"]) {
+                topic_entry->io.var.size = (uint8_t)strtoul(physical["size"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= (topic_entry->io.var.size << 24);
+            }
         } else {
             printf("unknown or missing type at topic %s\n", node["topic"].as<std::string>().c_str());
             break;
@@ -620,7 +720,7 @@ static int ReadConfig(const char *pFile)  {
         num_topics++;
     }
 
-    /* create a device table */
+    /* create a device table entry */
     dev_desc = 0;
     HASH_ITER(hh, io_desc, io_entry, io_tmp) {
         type_addr = io_entry->phys_io & 0xffff;
@@ -639,7 +739,8 @@ static int ReadConfig(const char *pFile)  {
 #define MAX_LEN_PAYLOAD 20
 
 static void publish_do31(
-    T_dev_desc             *dev_entry,
+    uint32_t               phys_dev,
+    TBusDevActualValueDo31 *shadow,
     TBusDevActualValueDo31 *av,
     bool                   publish_unconditional
     ) {
@@ -658,9 +759,9 @@ static void publish_do31(
         byteIdx = i / 8;
         bitPos = i % 8;
         if (publish_unconditional ||
-            ((dev_entry->io.do31.digOut[byteIdx] & (1 << bitPos)) !=
+            ((shadow->digOut[byteIdx] & (1 << bitPos)) !=
              (av->digOut[byteIdx] & (1 << bitPos)))) {
-            phys_io = dev_entry->phys_dev | (i << 16) | (e_do31_digout << 24);
+            phys_io = phys_dev | (i << 16) | (e_do31_digout << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
             if (io_entry) {
                 actval8 = (av->digOut[byteIdx] & (1 << bitPos)) != 0;
@@ -670,13 +771,13 @@ printf("publish %s %d\n", topic, actval8);
             }
         }
     }
-    memcpy(dev_entry->io.do31.digOut, av->digOut, sizeof(dev_entry->io.do31.digOut));
+    memcpy(shadow->digOut, av->digOut, sizeof(av->digOut));
 
     /* shader */
     for (i = 0; i < 15; i++) {
         if (publish_unconditional ||
-            (dev_entry->io.do31.shader[i] != av->shader[i])) {
-            phys_io = dev_entry->phys_dev | (i << 16) | (e_do31_shader << 24);
+            (shadow->shader[i] != av->shader[i])) {
+            phys_io = phys_dev | (i << 16) | (e_do31_shader << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
             if (io_entry) {
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
@@ -710,11 +811,12 @@ printf("publish %s %s\n", topic, payload);
             }
         }
     }
-    memcpy(dev_entry->io.do31.shader, av->shader, sizeof(dev_entry->io.do31.shader));
+    memcpy(shadow->shader, av->shader, sizeof(av->shader));
 }
 
 static void publish_pwm4(
-    T_dev_desc             *dev_entry,
+    uint32_t               phys_dev,
+    TBusDevActualValuePwm4 *shadow,
     TBusDevActualValuePwm4 *av,
     bool                   publish_unconditional
     ) {
@@ -728,8 +830,8 @@ static void publish_pwm4(
     for (i = 0; i < 4; i++) {
         bitPos = i;
         if (publish_unconditional ||
-            ((dev_entry->io.pwm4.state & (1 << bitPos)) != (av->state & (1 << bitPos)))) {
-            phys_io = dev_entry->phys_dev | (i << 16);
+            ((shadow->state & (1 << bitPos)) != (av->state & (1 << bitPos)))) {
+            phys_io = phys_dev | (i << 16);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
             if (io_entry) {
                 actval8 = (av->state & (1 << bitPos)) != 0;
@@ -739,11 +841,12 @@ printf("publish %s %d\n", topic, actval8);
             }
         }
     }
-    dev_entry->io.pwm4.state = av->state;
+    shadow->state = av->state;
 }
 
 static void publish_sw8(
-    T_dev_desc             *dev_entry,
+    uint32_t               phys_dev,
+    TBusDevActualValueSw8  *shadow,
     TBusDevActualValueSw8  *av,
     bool                   publish_unconditional
     ) {
@@ -758,8 +861,8 @@ static void publish_sw8(
     for (i = 0; i < 8; i++) {
         bitPos = i;
         if (publish_unconditional ||
-            ((dev_entry->io.sw8.state & (1 << bitPos)) != (av->state & (1 << bitPos)))) {
-            phys_io = dev_entry->phys_dev | (i << 16) | (e_sw8_digin << 24);
+            ((shadow->state & (1 << bitPos)) != (av->state & (1 << bitPos)))) {
+            phys_io = phys_dev | (i << 16) | (e_sw8_digin << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
             if (io_entry) {
                 actval8 = (av->state & (1 << bitPos)) != 0;
@@ -773,8 +876,8 @@ printf("publish %s %d\n", topic, actval8);
     for (i = 0; i < 8; i++) {
         bitPos = i;
         if (publish_unconditional ||
-            ((dev_entry->io.sw8.state & (1 << bitPos)) != (av->state & (1 << bitPos)))) {
-            phys_io = dev_entry->phys_dev | (i << 16) | (e_sw8_digout << 24);
+            ((shadow->state & (1 << bitPos)) != (av->state & (1 << bitPos)))) {
+            phys_io = phys_dev | (i << 16) | (e_sw8_digout << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
             if (io_entry) {
                 actval8 = (av->state & (1 << bitPos)) != 0;
@@ -788,8 +891,8 @@ printf("publish %s %d\n", topic, actval8);
     for (i = 0; i < 8; i++) {
         bitPos = i;
         if (publish_unconditional ||
-            ((dev_entry->io.sw8.state & (1 << bitPos)) != (av->state & (1 << bitPos)))) {
-            phys_io = dev_entry->phys_dev | (i << 16) | (e_sw8_pulseout << 24);
+            ((shadow->state & (1 << bitPos)) != (av->state & (1 << bitPos)))) {
+            phys_io = phys_dev | (i << 16) | (e_sw8_pulseout << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
             if (io_entry) {
                 actval8 = (av->state & (1 << bitPos)) != 0;
@@ -799,28 +902,70 @@ printf("publish %s %d\n", topic, actval8);
             }
         }
     }
-    dev_entry->io.sw8.state = av->state;
+    shadow->state = av->state;
+}
+
+static void publish_var(
+    uint32_t         phys_dev,
+    uint8_t          index,
+    uint8_t          length,
+    uint8_t          *data
+    ) {
+    uint32_t  phys_io;
+    T_io_desc *io_entry;
+    char      topic[MAX_LEN_TOPIC];
+    char      msg[MAX_LEN_MESSAGE];
+    char      *ch;
+    size_t    remaining_size;
+    size_t    len;
+    int       i;
+
+    phys_io = phys_dev | (index << 16) | (length << 24);
+    HASH_FIND_INT(io_desc, &phys_io, io_entry);
+    if (io_entry) {
+        snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
+
+        for (i = 0, ch = msg, remaining_size = sizeof(msg); (i < length) && (remaining_size > 3); i++) {
+            len = snprintf(ch, remaining_size, "%02x ", data[i]);
+            remaining_size -= len;
+            ch += len;
+        }
+        // remove appended space
+        ch--;
+        *ch = '\0';
+printf("publish %s %s\n", topic, msg);
+        mosquitto_publish(mosq, 0, topic, 1, msg, 1, true);
+    }
 }
 
 static void serve_bus(void) {
     uint8_t                     busRet;
     TBusTelegram                *pRxBusMsg;
-    TBusDevReqActualValueEvent  *ave;
+    TBusDevReqActualValueEvent  *ave = 0;
+    TBusDevReqSetVar            *sv = 0;
     T_dev_desc                  *dev_entry;
     uint32_t                    phys_dev;
     TBusDevType                 dev_type;
+    TBusTelegram                tx_msg;
 
     busRet = BusCheck();
     if (busRet != BUS_MSG_OK) {
         return;
     }
     pRxBusMsg = BusMsgBufGet();
-    if ((pRxBusMsg->type != eBusDevReqActualValueEvent) ||
-        ((pRxBusMsg->msg.devBus.receiverAddr != event_addr))) {
+    if (((pRxBusMsg->type != eBusDevReqActualValueEvent) || (pRxBusMsg->msg.devBus.receiverAddr != event_addr)) &&
+        ((pRxBusMsg->type != eBusDevReqSetVar) || (pRxBusMsg->msg.devBus.receiverAddr != my_addr))) {
         return;
     }
-    ave = &pRxBusMsg->msg.devBus.x.devReq.actualValueEvent;
-    dev_type = ave->devType;
+    if (pRxBusMsg->type == eBusDevReqActualValueEvent) {
+        ave = &pRxBusMsg->msg.devBus.x.devReq.actualValueEvent;
+        dev_type = ave->devType;
+    } else if (pRxBusMsg->type == eBusDevReqSetVar) {
+        sv = &pRxBusMsg->msg.devBus.x.devReq.setVar;
+        dev_type = eBusDevTypeInv;
+    } else {
+        return;
+    }
     /* find changed io  */
     phys_dev = dev_type + (pRxBusMsg->senderAddr << 8);
     HASH_FIND_INT(dev_desc, &phys_dev, dev_entry);
@@ -832,16 +977,29 @@ static void serve_bus(void) {
     }
     switch (dev_type) {
     case eBusDevTypeDo31:
-        publish_do31(dev_entry, &ave->actualValue.do31, false);
+        publish_do31(dev_entry->phys_dev, &dev_entry->io.do31, &ave->actualValue.do31, false);
         break;
     case eBusDevTypePwm4:
-        publish_pwm4(dev_entry, &ave->actualValue.pwm4, false);
+        publish_pwm4(dev_entry->phys_dev, &dev_entry->io.pwm4, &ave->actualValue.pwm4, false);
         break;
     case eBusDevTypeSw8:
-        publish_sw8(dev_entry, &ave->actualValue.sw8, false);
+        publish_sw8(dev_entry->phys_dev, &dev_entry->io.sw8,  &ave->actualValue.sw8, false);
+        break;
+    case eBusDevTypeInv:
+        publish_var(dev_entry->phys_dev, sv->index, sv->length, sv->data);
         break;
     default:
         break;
+    }
+
+    /* send response on SetVar */
+    if (pRxBusMsg->type == eBusDevReqSetVar) {
+        tx_msg.type = eBusDevRespSetVar;
+        tx_msg.senderAddr = my_addr;
+        tx_msg.msg.devBus.x.devResp.setVar.index = sv->index;
+        tx_msg.msg.devBus.x.devResp.setVar.result = eBusVarSuccess;
+        tx_msg.msg.devBus.receiverAddr = pRxBusMsg->senderAddr;
+        BusSend(&tx_msg);
     }
 }
 
@@ -881,7 +1039,7 @@ static TBusTelegram *request_actval(uint8_t address) {
     return response_ok ? rx_msg : 0;
 }
 
-static int init_state(void) {
+static int init_state_io(void) {
 
     T_dev_desc             *dev_entry;
     T_dev_desc             *dev_tmp;
@@ -894,6 +1052,10 @@ static int init_state(void) {
 
     HASH_ITER(hh, dev_desc, dev_entry, dev_tmp) {
         dev_type = dev_entry->phys_dev & 0xff;
+        if (dev_type == eBusDevTypeInv) {
+            // for variables
+            continue;
+        }
         address = (dev_entry->phys_dev >> 8) & 0xff;
         rx_msg = request_actval(address);
         if (rx_msg) {
@@ -906,19 +1068,90 @@ static int init_state(void) {
             switch (dev_type) {
             case eBusDevTypeDo31:
 printf("publish init state: DO31 at %d\n", address);
-                publish_do31(dev_entry, &av->actualValue.do31, true);
+                publish_do31(dev_entry->phys_dev, &dev_entry->io.do31, &av->actualValue.do31, true);
                 break;
             case eBusDevTypePwm4:
 printf("publish init state: PWM4 at %d\n", address);
-                publish_pwm4(dev_entry, &av->actualValue.pwm4, true);
+                publish_pwm4(dev_entry->phys_dev, &dev_entry->io.pwm4, &av->actualValue.pwm4, true);
                 break;
             case eBusDevTypeSw8:
 printf("publish init state: SW8 at %d\n", address);
-                publish_sw8(dev_entry, &av->actualValue.sw8, true);
+                publish_sw8(dev_entry->phys_dev, &dev_entry->io.sw8, &av->actualValue.sw8, true);
                 break;
             default:
                 break;
             }
+        }
+    }
+    return rc;
+}
+
+static TBusTelegram *request_var(uint8_t address, uint8_t index, uint8_t length) {
+
+    TBusTelegram    tx_msg;
+    TBusTelegram    *rx_msg;
+    uint8_t         ret;
+    unsigned long   start_time;
+    unsigned long   cur_time;
+    bool            response_ok = false;
+    bool            timeout = false;
+
+    tx_msg.type = eBusDevReqGetVar;
+    tx_msg.senderAddr = my_addr;
+    tx_msg.msg.devBus.receiverAddr = address;
+    tx_msg.msg.devBus.x.devReq.getVar.index = index;
+    BusSend(&tx_msg);
+    start_time = get_tick_count();
+    do {
+        cur_time = get_tick_count();
+        ret = BusCheck();
+        if (ret == BUS_MSG_OK) {
+            rx_msg = BusMsgBufGet();
+            if ((rx_msg->type == eBusDevRespGetVar)                    &&
+                (rx_msg->msg.devBus.receiverAddr == my_addr)           &&
+                (rx_msg->msg.devBus.x.devResp.getVar.index == index)   &&
+                (rx_msg->msg.devBus.x.devResp.getVar.length == length) &&
+                (rx_msg->senderAddr == address)) {
+                response_ok = true;
+            }
+        } else {
+            if ((cur_time - start_time) > BUS_RESPONSE_TIMEOUT) {
+                timeout = true;
+            }
+        }
+        usleep(10000);
+    } while (!response_ok && !timeout);
+
+    return response_ok ? rx_msg : 0;
+}
+
+
+static int init_state_var(void) {
+
+    T_io_desc    *io_entry;
+    T_io_desc    *io_tmp;
+    uint8_t      address;
+    uint8_t      index;
+    uint8_t      length;
+    uint8_t      *data;
+    uint8_t      dev_type;
+    TBusTelegram *rx_msg;
+
+    int rc = -1;
+
+    HASH_ITER(hh, io_desc, io_entry, io_tmp) {
+        dev_type = io_entry->phys_io & 0xff;
+        if (dev_type != eBusDevTypeInv) {
+            continue;
+        }
+        address = (io_entry->phys_io >> 8) & 0xff;
+        index = (io_entry->phys_io >> 16) & 0xff;
+        length = (io_entry->phys_io >> 24) & 0xff;
+        rx_msg = request_var(address, index, length);
+        if (rx_msg) {
+            data = rx_msg->msg.devBus.x.devResp.getVar.data;
+printf("publish init state: VAR at %d\n", address);
+            publish_var(dev_type | (address << 8), index, length, data);
         }
     }
     return rc;
@@ -929,8 +1162,8 @@ printf("publish init state: SW8 at %d\n", address);
 */
 static void print_usage(void) {
 
-   printf("\nUsage:\n");
-   printf("mqtt -c sio-port -a bus-address -f yaml-cfg -e event-listen-bus-address -m mqtt-broker-ip [-p mqtt-port]\n");
+    printf("\nUsage:\n");
+    printf("mqtt -c sio-port -a bus-address -f yaml-cfg -e event-listen-bus-address -m mqtt-broker-ip [-p mqtt-port]\n");
 }
 
 /*-----------------------------------------------------------------------------
@@ -1074,6 +1307,10 @@ int main(int argc, char *argv[]) {
             }
             printf("SW8, address %d, port %d, type %s", topic_entry->io.sw8.address, topic_entry->io.sw8.port, type);
             break;
+        case eBusDevTypeInv:
+            // variable
+            printf("VAR, address %d, index %d, size %d", topic_entry->io.var.address, topic_entry->io.var.index, topic_entry->io.var.size);
+            break;
         default:
             printf("(unknown)");
             break;
@@ -1092,7 +1329,8 @@ int main(int argc, char *argv[]) {
     }
     mosq_connected = true;
     mosqFd = mosquitto_socket(mosq);
-    init_state();
+    init_state_io();
+    init_state_var();
     /* subscribe to all configured topics extended by 'set' */
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
         snprintf(topic, sizeof(topic), "%s/set", topic_entry->topic);
@@ -1106,7 +1344,8 @@ int main(int argc, char *argv[]) {
                 sleep(30);
             }
             mosqFd = mosquitto_socket(mosq);
-            init_state();
+            init_state_io();
+            init_state_var();
             /* subscribe to all configured topics extended by 'set' */
             HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
                 snprintf(topic, sizeof(topic), "%s/set", topic_entry->topic);
