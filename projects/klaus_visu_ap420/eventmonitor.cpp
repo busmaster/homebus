@@ -11,11 +11,7 @@ eventmonitor::eventmonitor(QObject *parent) : QObject(parent) {
     connect(eventmon, SIGNAL(started()), this, SLOT(onStarted()));
     connect(eventmon, SIGNAL(finished(int)), this, SLOT(onFinished(int)));
 
-#ifdef AP420
-    QString program = "/root/git/homebus/tools/eventmonitor/bin/eventmonitor";
-#else
-    QString program = "/home/germana/Oeffentlich/git/homebus/tools/eventmonitor/bin/eventmonitor";
-#endif
+    QString program = "/usr/bin/homebus/eventmonitor";
     QStringList arguments;
     arguments << "-c" << "/dev/hausbus0" << "-a" << "250" << "-l";
 

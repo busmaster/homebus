@@ -165,7 +165,6 @@ void MainWindow::cycTimerEvent() {
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
-   obj = obj;
 
    if (event->type() == QEvent::MouseButtonPress)
    {
@@ -194,7 +193,7 @@ void MainWindow::onSendServiceCmd(const struct moduleservice::cmd *cmd, QDialog 
 void MainWindow::onDisableScreenSaver(void) {
 
     QEvent event(QEvent::MouseButtonPress);
-    eventFilter(0, &event);
+    eventFilter(nullptr, &event);
 }
 
 void MainWindow::onBusEvent(eventmonitor::event *ev) {

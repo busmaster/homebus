@@ -12,11 +12,7 @@ moduleservice::moduleservice(QObject *parent) : QObject(parent) {
     connect(modulservice, SIGNAL(started()), this, SLOT(onStarted()));
     connect(modulservice, SIGNAL(finished(int)), this, SLOT(onFinished(int)));
 
-#ifdef AP420
-    QString program = "/root/git/homebus/tools/modulservice/bin/modulservice";
-#else
-    QString program = "/home/germana/Oeffentlich/git/homebus/tools/modulservice/bin/modulservice";
-#endif
+    QString program = "/usr/bin/homebus/modulservice";
     QStringList arguments;
     arguments << "-c" << "/dev/hausbus1" << "-o" << "250" << "-s";
 
@@ -117,10 +113,10 @@ bool moduleservice::command(const struct cmd *cmd, QDialog *dialog) {
         str = "actval";
         break;
     default:
-        str = 0;
+        str = nullptr;
         break;
     }
-    if (str == 0) {
+    if (str == nullptr) {
         // unsupported cmd
         return false;
     }
