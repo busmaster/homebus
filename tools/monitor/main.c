@@ -977,18 +977,19 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, SPACE "result: ");
                 switch (pBusMsg->msg.devBus.x.devResp.getVar.result) {
                 case eBusVarSuccess:
-                    fprintf(spOutput, "success\r\n");
+                    fprintf(spOutput, "success");
                     break;
                 case eBusVarLengthError:
-                    fprintf(spOutput, "length error\r\n");
+                    fprintf(spOutput, "length error");
                     break;
                 case eBusVarIndexError:
-                    fprintf(spOutput, "index error\r\n");
+                    fprintf(spOutput, "index error");
                     break;
                 default:
-                    fprintf(spOutput, "unknown error code (%d)\r\n", pBusMsg->msg.devBus.x.devResp.getVar.result);
+                    fprintf(spOutput, "unknown error code (%d)", pBusMsg->msg.devBus.x.devResp.getVar.result);
                     break;
 		}
+                printf("\r\n");
                 if (pBusMsg->msg.devBus.x.devResp.getVar.length > 0) {
                     fprintf(spOutput, SPACE "data:");
                     for (i = 0; i < pBusMsg->msg.devBus.x.devResp.getVar.length; i++) {
@@ -1012,16 +1013,16 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, SPACE "result: ");
                 switch (pBusMsg->msg.devBus.x.devResp.setVar.result) {
                 case eBusVarSuccess:
-                    fprintf(spOutput, "success\r\n");
+                    fprintf(spOutput, "success");
                     break;
                 case eBusVarLengthError:
-                    fprintf(spOutput, "length error\r\n");
+                    fprintf(spOutput, "length error");
                     break;
                 case eBusVarIndexError:
-                    fprintf(spOutput, "index error\r\n");
+                    fprintf(spOutput, "index error");
                     break;
                 default:
-                    fprintf(spOutput, "unknown error code (%d)\r\n", pBusMsg->msg.devBus.x.devResp.setVar.result);
+                    fprintf(spOutput, "unknown error code (%d)", pBusMsg->msg.devBus.x.devResp.setVar.result);
                     break;
 		}
                 break;
