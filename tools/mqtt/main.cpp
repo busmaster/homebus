@@ -139,7 +139,7 @@ static bool             mosq_connected;
 /*-----------------------------------------------------------------------------
 *  Functions
 */
-
+static void publish_var(uint32_t phys_dev, uint8_t index, uint8_t length, uint8_t *data);
 
 /*-----------------------------------------------------------------------------
 *  get the current time in ms
@@ -565,8 +565,9 @@ printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
     case eBusDevTypeInv:
         /* set variable */
         /* we expect the payload to contain a printable hex array: e.g. "1 02 55 aa" for the 4-byte array 0x01, 0x02, 0x55, 0xaa */
-        if (payload_to_uint8((const char *)message->payload, message->payloadlen, value, (int)sizeof(value)) == cfg->io.var.size) {
-            var_ReqSetVar(cfg->io.var.address, cfg->io.var.index, cfg->io.var.size, value);
+        if ((payload_to_uint8((const char *)message->payload, message->payloadlen, value, (int)sizeof(value)) == cfg->io.var.size) &&
+            (var_ReqSetVar(cfg->io.var.address, cfg->io.var.index, cfg->io.var.size, value) == 0)) {
+            publish_var((uint8_t)eBusDevTypeInv | (cfg->io.var.address << 8), cfg->io.var.index, cfg->io.var.size, value);
         }
         break;
     default:
@@ -933,8 +934,7 @@ static void publish_var(
         // remove appended space
         ch--;
         *ch = '\0';
-printf("publish %s %s\n", topic, msg);
-        mosquitto_publish(mosq, 0, topic, 1, msg, 1, true);
+        mosquitto_publish(mosq, 0, topic, len - 1, msg, 1, true);
     }
 }
 
@@ -1364,6 +1364,9 @@ int main(int argc, char *argv[]) {
         }
         if ((ret > 0) && FD_ISSET(mosqFd, &rfds)) {
             mosquitto_loop_read(mosq, 1);
+        }
+        if (mosquitto_want_write(mosq)) {
+            mosquitto_loop_write(mosq, 1);
         }
         mosquitto_loop_misc(mosq);
     }
