@@ -79,6 +79,14 @@
     address: 30
     digin: 0
 
+#var glocke enable
+- topic: home/glocke/enable
+  physical:
+    type: var
+    address: 240
+    index: 1
+    size: 1
+
 #keller
 - topic: home/ug/lager/licht
   physical:
@@ -320,3 +328,10 @@
     address: 101
     digin: 0
   receiver: [240]
+#var licht eingang mode
+- topic: home/eingang/licht/mode
+  physical:
+    type: var
+    address: 240
+    index: 2
+    size: 1
