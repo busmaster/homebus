@@ -554,7 +554,7 @@ printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
         value[0] = (uint8_t)strtoul((char *)message->payload, 0, 0);
         if (cfg->io.sw8.type == e_sw8_digin) {
             snprintf(topic + len, sizeof(topic) - len, "/actual");
-            mosquitto_publish(mosq, 0, topic, 1, value[0] ? "1" : "0", 1, false);
+            mosquitto_publish(mosq, 0, topic, 1, value[0] ? "1" : "0", 1, true);
             for (i = 0; cfg->io.sw8.event_receiver[i] != 0; i++) {
                 sw8_ReqActualValueEvent(cfg->io.sw8.address, cfg->io.sw8.event_receiver[i], cfg->io.sw8.port, value[0] != 0);
             }
@@ -768,7 +768,7 @@ static void publish_do31(
                 actval8 = (av->digOut[byteIdx] & (1 << bitPos)) != 0;
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
 printf("publish %s %d\n", topic, actval8);
-                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, false);
+                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
             }
         }
     }
@@ -807,7 +807,7 @@ printf("publish %s %d\n", topic, actval8);
                 }
                 if (payloadlen) {
 printf("publish %s %s\n", topic, payload);
-                    mosquitto_publish(mosq, 0, topic, payloadlen, payload, 1, false);
+                    mosquitto_publish(mosq, 0, topic, payloadlen, payload, 1, true);
                 }
             }
         }
@@ -838,7 +838,7 @@ static void publish_pwm4(
                 actval8 = (av->state & (1 << bitPos)) != 0;
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
 printf("publish %s %d\n", topic, actval8);
-                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, false);
+                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
             }
         }
     }
@@ -869,7 +869,7 @@ static void publish_sw8(
                 actval8 = (av->state & (1 << bitPos)) != 0;
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
 printf("publish %s %d\n", topic, actval8);
-                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, false);
+                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
             }
         }
     }
@@ -884,7 +884,7 @@ printf("publish %s %d\n", topic, actval8);
                 actval8 = (av->state & (1 << bitPos)) != 0;
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
 printf("publish %s %d\n", topic, actval8);
-                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, false);
+                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
             }
         }
     }
@@ -899,7 +899,7 @@ printf("publish %s %d\n", topic, actval8);
                 actval8 = (av->state & (1 << bitPos)) != 0;
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
 printf("publish %s %d\n", topic, actval8);
-                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, false);
+                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
             }
         }
     }
@@ -934,7 +934,7 @@ static void publish_var(
         // remove appended space
         ch--;
         *ch = '\0';
-        mosquitto_publish(mosq, 0, topic, len - 1, msg, 1, false);
+        mosquitto_publish(mosq, 0, topic, len - 1, msg, 1, true);
     }
 }
 
