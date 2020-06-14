@@ -335,3 +335,19 @@
     address: 240
     index: 2
     size: 1
+
+#steckdose internet router
+- topic: home/internet
+  physical:
+    type: do31
+    address: 240
+    digout: 27
+    activelow: 1
+
+#steckdose kameras
+- topic: home/kamera
+  physical:
+    type: do31
+    address: 240
+    digout: 28
+    activelow: 1
