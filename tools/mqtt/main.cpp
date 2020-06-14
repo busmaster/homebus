@@ -65,7 +65,8 @@
 */
 typedef enum {
     e_do31_digout = 0,
-    e_do31_shader = 1
+    e_do31_digout_activelow = 1,
+    e_do31_shader = 2
 } T_do31_output_type;
 
 typedef enum {
@@ -261,6 +262,16 @@ static void do31_set_output(uint8_t address, uint8_t output, T_do31_output_type 
             digout[byteIdx] = 2 << bitPos;
         } else {
             digout[byteIdx] = 3 << bitPos;
+        }
+        str = "DO";
+    } else if (type == e_do31_digout_activelow) {
+        /* calculate the bit position (2 bits for each output) */
+        byteIdx = output / 4;
+        bitPos = (output % 4) * 2;
+        if (value == 0) {
+            digout[byteIdx] = 3 << bitPos;
+        } else {
+            digout[byteIdx] = 2 << bitPos;
         }
         str = "DO";
     } else if (type == e_do31_shader) {
@@ -628,7 +639,11 @@ static int ReadConfig(const char *pFile)  {
                break;
             }
             if (physical["digout"]) {
-                topic_entry->io.do31.type = e_do31_digout;
+                if (physical["activelow"]) {
+                    topic_entry->io.do31.type = e_do31_digout_activelow;
+                } else {
+                    topic_entry->io.do31.type = e_do31_digout;
+                }
                 topic_entry->io.do31.output = (uint8_t)strtoul(physical["digout"].as<std::string>().c_str(), 0, 0);
                 io_entry->phys_io |= topic_entry->io.do31.output << 16;
                 io_entry->phys_io |= topic_entry->io.do31.type << 24;
@@ -749,6 +764,7 @@ static void publish_do31(
     int                    byteIdx;
     int                    bitPos;
     uint8_t                actval8;
+    bool                   active_low;
     uint32_t               phys_io;
     T_io_desc              *io_entry;
     char                   topic[MAX_LEN_TOPIC];
@@ -764,8 +780,17 @@ static void publish_do31(
              (av->digOut[byteIdx] & (1 << bitPos)))) {
             phys_io = phys_dev | (i << 16) | (e_do31_digout << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
+            active_low = false;
+            if (!io_entry) {
+                phys_io = phys_dev | (i << 16) | (e_do31_digout_activelow << 24);
+                HASH_FIND_INT(io_desc, &phys_io, io_entry);
+                active_low = true;
+            }
             if (io_entry) {
                 actval8 = (av->digOut[byteIdx] & (1 << bitPos)) != 0;
+                if (active_low) {
+                    actval8 = !actval8;
+                }
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
 printf("publish %s %d\n", topic, actval8);
                 mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
