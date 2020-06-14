@@ -79,8 +79,8 @@
     address: 30
     digin: 0
 
-#var glocke enable
-- topic: home/glocke/enable
+#var glocke disable
+- topic: home/glocke/disable
   physical:
     type: var
     address: 240
