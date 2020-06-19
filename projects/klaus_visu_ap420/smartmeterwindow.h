@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <QDialog>
 #include <QTimer>
-#include "moduleservice.h"
+#include <QMqttClient>
 
 namespace Ui {
 class smartmeterwindow;
@@ -20,11 +20,9 @@ public:
     void hide(void);
 
 signals:
-    void serviceCmd(const char *);
-    void serviceCmd(const moduleservice::cmd *, QDialog *);
+    void messagePublish(const char *, const char *);
 
 private slots:
-    void onCmdConf(const struct moduleservice::result *, QDialog *);
     void onScreenSaverActivation(void);
     void updTimerEvent(void);
     void on_pushButtonBack_clicked();

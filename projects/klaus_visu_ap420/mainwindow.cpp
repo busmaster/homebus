@@ -1,7 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "moduleservice.h"
-#include "eventmonitor.h"
 #include "statusled.h"
 
 #include <QProcess>
@@ -9,6 +7,11 @@
 
 #include <QMouseEvent>
 #include <QColorDialog>
+#include <QMqttClient>
+#include <QString>
+#include <QtCore/QDateTime>
+
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -70,13 +73,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     io = new ioState;
 
-    meventmon = new eventmonitor;
-    connect(meventmon, SIGNAL(busEvent(struct eventmonitor::event *)), this, SLOT(onBusEvent(struct eventmonitor::event *)));
-
-    mservice = new moduleservice;
-    connect(mservice, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
-            this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
-
     uiEg = new egwindow(this, io);
     uiOg = new ogwindow(this, io);
     uiUg = new ugwindow(this, io);
@@ -85,17 +81,24 @@ MainWindow::MainWindow(QWidget *parent) :
     uiSetup = new setupwindow(this, io);
     uiSmartmeter = new smartmeterwindow(this);
     uiKameraeingang = new kameraeingangwindow(this, io);
+
+    mqttClient = new QMqttClient(this);
+    mqttClient->setHostname(QString("10.0.0.200"));
+    mqttClient->setPort(1883);
+    mqttClient->connectToHost();
+
+    connect(mqttClient, SIGNAL(connected()), this, SLOT(onMqtt_connected()));
+    connect(mqttClient, SIGNAL(disconnected()), this, SLOT(onMqtt_disconnected()));
+    connect(mqttClient, SIGNAL(messageReceived(const QByteArray &, const QMqttTopicName &)), this, SLOT(onMqtt_messageReceived(const QByteArray &, const QMqttTopicName &)));
+
+    ui->pushButtonEG->setStyleSheet("background-color: green");
+    ui->pushButtonOG->setStyleSheet("background-color: green");
+    ui->pushButtonUG->setStyleSheet("background-color: green");
+    ui->pushButtonGarage->setStyleSheet("background-color: green");
+    ui->pushButtonKueche->setStyleSheet("background-color: green");
 }
 
 MainWindow::~MainWindow() {
-
-    meventmon->command("-exit\n");
-    meventmon->waitForFinished();
-    delete meventmon;
-
-    mservice->command("-exit\n");
-    mservice->waitForFinished();
-    delete mservice;
 
     delete ui;
     delete uiEg;
@@ -126,6 +129,61 @@ MainWindow::~MainWindow() {
     if (statusLed) {
         delete statusLed;
     }
+}
+
+void MainWindow::onMqtt_connected() {
+
+    qDebug() << "mqtt connected";
+
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/arbeit/schreibtisch/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/arbeit/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/schrank/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/schlaf/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/bad/spiegel/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/bad/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/vorraum/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/wohn/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/wohn/lesen/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/vorraum/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/wc/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/glocke/taster/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/glocke/disable/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/ug/lager/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/ug/stiege/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/ug/arbeit/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/ug/fitness/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/ug/vorraum/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/ug/technik/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/gang/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/anna/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/severin/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/wc/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/wand/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/geschirrspueler/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/abwasch/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/kaffeemaschine/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/dunstabzug/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/speis/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eg/ess/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/netzteil/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht1/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht2/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht3/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht4/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht5/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht6/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/garage/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/garage/tor/status/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/terrasse/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eingang/licht/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/eingang/licht/mode/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/internet/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/kamera/actual"), 1);
+}
+void MainWindow::onMqtt_disconnected() {
+
+    qDebug() << "disconnected";
 }
 
 void MainWindow::scrTimerEvent() {
@@ -185,90 +243,135 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
   return false;
 }
 
-void MainWindow::onSendServiceCmd(const struct moduleservice::cmd *cmd, QDialog *dialog) {
-
-    mservice->command(cmd, dialog);
-}
-
 void MainWindow::onDisableScreenSaver(void) {
 
     QEvent event(QEvent::MouseButtonPress);
     eventFilter(nullptr, &event);
 }
 
-void MainWindow::onBusEvent(eventmonitor::event *ev) {
+void MainWindow::onMessagePublish(const char *topic, const char *message) {
 
-    quint32 egSum = io->egState.sum;
-    quint32 ogSum = io->ogState.sum;
-    quint32 ugSum = io->ugState.sum;
-    quint32 kuecheSum = io->kuecheState.sum;
-    quint32 garageSum = io->garageState.sum;
-    bool    socket_1 = io->socket_1;
-    bool    socket_2 = io->socket_1;
-    bool    glocke = io->glocke;
+    mqttClient->publish(QMqttTopicName(topic), message, 1, false);
+}
 
-    if ((ev->srcAddr == 240) && (ev->type == eventmonitor::eDevDo31)) {
-        ((ev->data.do31.digOut & 0x00000001) == 0) ? io->ogState.detail.lightStiegePwr = 0  : io->ogState.detail.lightStiegePwr = 1;
-        ((ev->data.do31.digOut & 0x00000002) == 0) ? io->ogState.detail.lightStiege1 = 0    : io->ogState.detail.lightStiege1 = 1;
-        ((ev->data.do31.digOut & 0x00000004) == 0) ? io->ogState.detail.lightStiege2 = 0    : io->ogState.detail.lightStiege2 = 1;
-        ((ev->data.do31.digOut & 0x00000008) == 0) ? io->ogState.detail.lightStiege3 = 0    : io->ogState.detail.lightStiege3 = 1;
-        ((ev->data.do31.digOut & 0x00000010) == 0) ? io->ogState.detail.lightStiege4 = 0    : io->ogState.detail.lightStiege4 = 1;
-        ((ev->data.do31.digOut & 0x00000020) == 0) ? io->ogState.detail.lightStiege5 = 0    : io->ogState.detail.lightStiege5 = 1;
-        ((ev->data.do31.digOut & 0x00000040) == 0) ? io->ogState.detail.lightStiege6 = 0    : io->ogState.detail.lightStiege6 = 1;
-        ((ev->data.do31.digOut & 0x00000080) == 0) ? io->ogState.detail.lightSchrank = 0    : io->ogState.detail.lightSchrank = 1;
-        ((ev->data.do31.digOut & 0x00000100) == 0) ? io->ogState.detail.lightSchlaf = 0     : io->ogState.detail.lightSchlaf = 1;
-        ((ev->data.do31.digOut & 0x00000200) == 0) ? io->garageState.detail.light = 0       : io->garageState.detail.light = 1;
-        ((ev->data.do31.digOut & 0x00000400) == 0) ? io->ogState.detail.lightBadSpiegel = 0 : io->ogState.detail.lightBadSpiegel = 1;
-        ((ev->data.do31.digOut & 0x00000800) == 0) ? io->ogState.detail.lightVorraum = 0    : io->ogState.detail.lightVorraum = 1;
-        ((ev->data.do31.digOut & 0x00001000) == 0) ? io->ogState.detail.lightBad = 0        : io->ogState.detail.lightBad = 1;
-        ((ev->data.do31.digOut & 0x00002000) == 0) ? io->egState.detail.lightWohn = 0       : io->egState.detail.lightWohn = 1;
-        ((ev->data.do31.digOut & 0x00004000) == 0) ? io->egState.detail.lightWohnLese = 0   : io->egState.detail.lightWohnLese = 1;
-        ((ev->data.do31.digOut & 0x00008000) == 0) ? io->egState.detail.lightEss = 0        : io->egState.detail.lightEss = 1;
-        ((ev->data.do31.digOut & 0x00010000) == 0) ? io->egState.detail.lightVorraum = 0    : io->egState.detail.lightVorraum = 1;
-        ((ev->data.do31.digOut & 0x00020000) == 0) ? io->egState.detail.lightWC = 0         : io->egState.detail.lightWC = 1;
-        ((ev->data.do31.digOut & 0x00080000) == 0) ? io->kuecheState.detail.light = 0       : io->kuecheState.detail.light = 1;
-        ((ev->data.do31.digOut & 0x00100000) == 0) ? io->egState.detail.lightTerrasse = 0   : io->egState.detail.lightTerrasse = 1;
-        ((ev->data.do31.digOut & 0x00200000) == 0) ? io->ugState.detail.lightLager = 0      : io->ugState.detail.lightLager  = 1;
-        ((ev->data.do31.digOut & 0x00400000) == 0) ? io->ugState.detail.lightStiege = 0     : io->ugState.detail.lightStiege  = 1;
-        ((ev->data.do31.digOut & 0x00800000) == 0) ? io->ugState.detail.lightArbeit = 0     : io->ugState.detail.lightArbeit  = 1;
-        ((ev->data.do31.digOut & 0x01000000) == 0) ? io->ugState.detail.lightFitness = 0    : io->ugState.detail.lightFitness = 1;
-        ((ev->data.do31.digOut & 0x02000000) == 0) ? io->ugState.detail.lightVorraum = 0    : io->ugState.detail.lightVorraum = 1;
-        ((ev->data.do31.digOut & 0x04000000) == 0) ? io->ugState.detail.lightTechnik = 0    : io->ugState.detail.lightTechnik = 1;
-        ((ev->data.do31.digOut & 0x40000000) == 0) ? io->egState.detail.lightEingang = 0    : io->egState.detail.lightEingang = 1;
-        ((ev->data.do31.digOut & 0x08000000) == 0) ? io->socket_1 = true                    : io->socket_1 = false; // inverted connection NC
-        ((ev->data.do31.digOut & 0x10000000) == 0) ? io->socket_2 = true                    : io->socket_2 = false; // inverted connection NC
-    } else if ((ev->srcAddr == 241) && (ev->type == eventmonitor::eDevDo31)) {
-        ((ev->data.do31.digOut & 0x01000000) == 0) ? io->kuecheState.detail.lightSpeis = 0  : io->kuecheState.detail.lightSpeis = 1;
-        ((ev->data.do31.digOut & 0x02000000) == 0) ? io->egState.detail.lightGang = 0       : io->egState.detail.lightGang = 1;
-        ((ev->data.do31.digOut & 0x04000000) == 0) ? io->egState.detail.lightArbeit = 0     : io->egState.detail.lightArbeit = 1;
-        ((ev->data.do31.digOut & 0x08000000) == 0) ? io->ogState.detail.lightAnna = 0       : io->ogState.detail.lightAnna = 1;
-        ((ev->data.do31.digOut & 0x10000000) == 0) ? io->ogState.detail.lightSeverin = 0    : io->ogState.detail.lightSeverin = 1;
-        ((ev->data.do31.digOut & 0x20000000) == 0) ? io->ogState.detail.lightWC = 0         : io->ogState.detail.lightWC = 1;
-        ((ev->data.do31.digOut & 0x40000000) == 0) ? io->kuecheState.detail.lightWand = 0   : io->kuecheState.detail.lightWand = 1;
-    } else if ((ev->srcAddr == 36) && (ev->type == eventmonitor::eDevSw8)) {
-        ((ev->data.sw8.digInOut & 0x01) == 0)      ? io->garageState.detail.door = 1         : io->garageState.detail.door = 0;
-    } else if ((ev->srcAddr == 30) && (ev->type == eventmonitor::eDevSw8)) {
-        ((ev->data.sw8.digInOut & 0x01) == 1)      ? io->glocke = true                       : io->glocke = false;
-    } else if ((ev->srcAddr == 239) && (ev->type == eventmonitor::eDevPwm4)) {
-        ((ev->data.pwm4.state & 0x01) == 0) ? io->kuecheState.detail.lightGeschirrspueler  = 0 : io->kuecheState.detail.lightGeschirrspueler = 1;
-        ((ev->data.pwm4.state & 0x02) == 0) ? io->kuecheState.detail.lightAbwasch = 0          : io->kuecheState.detail.lightAbwasch = 1;
-        ((ev->data.pwm4.state & 0x04) == 0) ? io->kuecheState.detail.lightKaffee = 0           : io->kuecheState.detail.lightKaffee = 1;
-        ((ev->data.pwm4.state & 0x08) == 0) ? io->kuecheState.detail.lightDunstabzug = 0       : io->kuecheState.detail.lightDunstabzug = 1;
+
+void MainWindow::messageActionStateBit(const QMqttTopicName &topic, const QByteArray &message, const char *compare_str, quint32 *state, quint32 mask) {
+
+    bool set;
+
+    if (QString::compare(topic.name(), compare_str) == 0) {
+        if (QString::compare(message, "1") == 0) {
+            *state |= mask;
+        } else {
+            *state &= ~mask;
+        }
     }
+}
 
-    if ((egSum != io->egState.sum)         ||
-        (ogSum != io->ogState.sum)         ||
-        (ugSum != io->ugState.sum)         ||
-        (kuecheSum != io->kuecheState.sum) ||
-        (garageSum != io->garageState.sum) ||
-        (socket_1 != io->socket_1)         ||
-        (socket_2 != io->socket_2)         ||
-        (glocke != io->glocke)) {
+void MainWindow::message_to_byteArray(const QString &message, QByteArray &data) {
+
+    /* we get the message as readable hex array string, eg.: "01 02 55 aa" */
+    int i;
+    QStringList list = message.split(" ", QString::SkipEmptyParts);
+
+    for (i = 0; i < list.size(); i++) {
+        data.append(list.at(i).toUInt(0, 16));
+    }
+}
+
+void MainWindow::messageActionVar(const QMqttTopicName &topic, const QByteArray &message, const char *compare_str, quint8 *data, quint8 data_len) {
+
+    QByteArray buf;
+
+    if (QString::compare(topic.name(), compare_str) == 0) {
+        message_to_byteArray(QString(message), buf);
+        if (buf.size() == data_len) {
+            memcpy(data, buf.constData(), data_len);
+        }
+    }
+}
+
+void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTopicName &topic) {
+
+    quint32 egLight = io->egLight;
+    quint32 ogLight = io->ogLight;
+    quint32 ugLight = io->ugLight;
+    quint32 kueche = io->kueche;
+    quint32 garage = io->garage;
+    quint32 sockets = io->sockets;
+    quint32 glocke_taster = io->glocke_taster;
+    quint32 var_glocke_disable = io->var_glocke_disable;
+    quint32 var_mode_LightEingang = io->var_mode_LightEingang;
+
+    qDebug() << topic.name() << ":" << message;
+
+    messageActionStateBit(topic, message, "home/eg/arbeit/schreibtisch/actual", &io->egLight, ioState::egLightBits::egLightSchreibtisch);
+    messageActionStateBit(topic, message, "home/eg/arbeit/licht/actual", &io->egLight, ioState::egLightBits::egLightArbeit);
+    messageActionStateBit(topic, message, "home/eg/wohn/licht/actual", &io->egLight, ioState::egLightBits::egLightWohn);
+    messageActionStateBit(topic, message, "home/eg/wohn/lesen/licht/actual", &io->egLight, ioState::egLightBits::egLightWohnLese);
+    messageActionStateBit(topic, message, "home/eg/vorraum/licht/actual", &io->egLight, ioState::egLightBits::egLightVorraum);
+    messageActionStateBit(topic, message, "home/eg/wc/licht/actual", &io->egLight, ioState::egLightBits::egLightWC);
+    messageActionStateBit(topic, message, "home/eg/ess/licht/actual", &io->egLight, ioState::egLightBits::egLightEss);
+    messageActionStateBit(topic, message, "home/eg/gang/licht/actual", &io->egLight, ioState::egLightBits::egLightGang);
+    messageActionStateBit(topic, message, "home/terrasse/licht/actual", &io->egLight, ioState::egLightBits::egLightTerrasse);
+    messageActionStateBit(topic, message, "home/eingang/licht/actual", &io->egLight, ioState::egLightBits::egLightEingang);
+
+    messageActionStateBit(topic, message, "home/og/schrank/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightSchrank);
+    messageActionStateBit(topic, message, "home/og/schlaf/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightSchlaf);
+    messageActionStateBit(topic, message, "home/og/bad/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightBad);
+    messageActionStateBit(topic, message, "home/og/bad/spiegel/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightBadSpiegel);
+    messageActionStateBit(topic, message, "home/og/vorraum/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightVorraum);
+    messageActionStateBit(topic, message, "home/og/anna/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightAnna);
+    messageActionStateBit(topic, message, "home/og/severin/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightSeverin);
+    messageActionStateBit(topic, message, "home/og/wc/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightWC);
+    messageActionStateBit(topic, message, "home/og/stiege/netzteil/actual", &io->ogLight, ioState::ogLightBits::ogLightStiegePwr);
+    messageActionStateBit(topic, message, "home/og/stiege/licht1/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege1);
+    messageActionStateBit(topic, message, "home/og/stiege/licht2/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege2);
+    messageActionStateBit(topic, message, "home/og/stiege/licht3/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege3);
+    messageActionStateBit(topic, message, "home/og/stiege/licht4/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege4);
+    messageActionStateBit(topic, message, "home/og/stiege/licht5/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege5);
+    messageActionStateBit(topic, message, "home/og/stiege/licht6/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege6);
+
+    messageActionStateBit(topic, message, "home/ug/lager/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightLager);
+    messageActionStateBit(topic, message, "home/ug/stiege/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightStiege);
+    messageActionStateBit(topic, message, "home/ug/fitness/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightFitness);
+    messageActionStateBit(topic, message, "home/ug/arbeit/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightArbeit);
+    messageActionStateBit(topic, message, "home/ug/vorraum/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightVorraum);
+    messageActionStateBit(topic, message, "home/ug/technik/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightTechnik);
+
+    messageActionStateBit(topic, message, "home/eg/kueche/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLight);
+    messageActionStateBit(topic, message, "home/eg/kueche/wand/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightWand);
+    messageActionStateBit(topic, message, "home/eg/kueche/geschirrspueler/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightGeschirrspueler);
+    messageActionStateBit(topic, message, "home/eg/kueche/abwasch/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightAbwasch);
+    messageActionStateBit(topic, message, "home/eg/kueche/kaffeemaschine/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightKaffee);
+    messageActionStateBit(topic, message, "home/eg/kueche/dunstabzug/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightDunstabzug);
+    messageActionStateBit(topic, message, "home/eg/speis/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightSpeis);
+
+    messageActionStateBit(topic, message, "home/garage/licht/actual", &io->garage, ioState::garageBits::garageLight);
+    messageActionStateBit(topic, message, "home/garage/tor/status/actual", &io->garage, ioState::garageBits::garageDoorClosed);
+
+    messageActionStateBit(topic, message, "home/internet/actual", &io->sockets, ioState::socketBits::socketInternet);
+    messageActionStateBit(topic, message, "home/kamera/actual", &io->sockets, ioState::socketBits::socketCamera);
+
+    messageActionStateBit(topic, message, "home/glocke/taster/actual", &io->glocke_taster, 1 /* 1 bit */);
+
+    messageActionVar(topic, message, "home/glocke/disable/actual", &io->var_glocke_disable, 1);
+    messageActionVar(topic, message, "home/eingang/licht/mode/actual", &io->var_mode_LightEingang, 1);
+
+    if ((egLight != io->egLight)                             ||
+        (ogLight != io->ogLight)                             ||
+        (ugLight != io->ugLight)                             ||
+        (kueche != io->kueche)                               ||
+        (garage != io->garage)                               ||
+        (sockets != io->sockets)                             ||
+        (glocke_taster != io->glocke_taster)                 ||
+        (var_glocke_disable != io->var_glocke_disable)       ||
+        (var_mode_LightEingang != io->var_mode_LightEingang)) {
         emit ioChanged();
     }
 
-    if (egSum != io->egState.sum) {
-        if (io->egState.sum == 0) {
+    if (egLight != io->egLight) {
+        if (!io->egLight) {
             ui->pushButtonEG->setStyleSheet("background-color: green");
         } else {
             ui->pushButtonEG->setStyleSheet("background-color: yellow");
@@ -276,8 +379,8 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ui->pushButtonEG->update();
     }
 
-    if (ugSum != io->ugState.sum) {
-        if (io->ugState.sum == 0) {
+    if (ugLight != io->ugLight) {
+        if (!io->ugLight) {
             ui->pushButtonUG->setStyleSheet("background-color: green");
         } else {
             ui->pushButtonUG->setStyleSheet("background-color: yellow");
@@ -285,8 +388,8 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ui->pushButtonUG->update();
     }
 
-    if (ogSum != io->ogState.sum) {
-        if (io->ogState.sum == 0) {
+    if (ogLight != io->ogLight) {
+        if (!io->ogLight) {
             ui->pushButtonOG->setStyleSheet("background-color: green");
         } else {
             ui->pushButtonOG->setStyleSheet("background-color: yellow");
@@ -294,11 +397,12 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ui->pushButtonOG->update();
     }
 
-    if (garageSum != io->garageState.sum) {
-        if (io->garageState.sum == 0) {
+    if (garage != io->garage) {
+        if (!(io->garage & ioState::garageBits::garageLight) &&
+             (io->garage & ioState::garageBits::garageDoorClosed)) {
             ui->pushButtonGarage->setStyleSheet("background-color: green");
         } else {
-            if (io->garageState.detail.door == 0) {
+            if ((io->garage & ioState::garageBits::garageDoorClosed)) {
                 ui->pushButtonGarage->setStyleSheet("background-color: yellow");
             } else {
                 ui->pushButtonGarage->setStyleSheet("background-color: red");
@@ -307,8 +411,8 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ui->pushButtonGarage->update();
     }
 
-    if (kuecheSum != io->kuecheState.sum) {
-        if (io->kuecheState.sum == 0) {
+    if (kueche != io->kueche) {
+        if (!io->kueche) {
             ui->pushButtonKueche->setStyleSheet("background-color: green");
         } else {
             ui->pushButtonKueche->setStyleSheet("background-color: yellow");
@@ -316,22 +420,14 @@ void MainWindow::onBusEvent(eventmonitor::event *ev) {
         ui->pushButtonKueche->update();
     }
 
-    if ((io->egState.sum == 0) &&
-        (io->ogState.sum == 0) &&
-        (io->ugState.sum == 0) &&
-        (io->kuecheState.sum == 0) &&
-        (io->garageState.sum == 0)) {
+    if (!io->egLight && !io->ogLight && !io->ugLight && !io->kueche &&
+        (!(io->garage & ioState::garageBits::garageLight) && (io->garage & ioState::garageBits::garageDoorClosed))) {
         if (statusLed) statusLed->set_state(statusled::eGreen);
-    } else if (io->garageState.detail.door != 0) {
+    } else if (!(io->garage & ioState::garageBits::garageDoorClosed)) {
         if (statusLed) statusLed->set_state(statusled::eRedBlink);
     } else {
         if (statusLed) statusLed->set_state(statusled::eOrange);
     }
-}
-
-void MainWindow::onCmdConf(const struct moduleservice::result *result, QDialog *dialog) {
-
-    emit cmdConf(result, dialog);
 }
 
 void MainWindow::on_pushButtonEG_clicked() {

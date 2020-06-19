@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QFile>
 #include <QString>
+#include <QMqttClient>
 
 #include "egwindow.h"
 #include "ogwindow.h"
@@ -17,8 +18,6 @@
 #include "smartmeterwindow.h"
 #include "kameraeingangwindow.h"
 #include "iostate.h"
-#include "moduleservice.h"
-#include "eventmonitor.h"
 #include "statusled.h"
 
 namespace Ui {
@@ -37,12 +36,11 @@ public:
 
 signals:
     void ioChanged(void);
-    void cmdConf(const struct moduleservice::result *, QDialog *);
     void screenSaverActivated(void);
 
 public slots:
-    void onSendServiceCmd(const struct moduleservice::cmd *, QDialog *);
     void onDisableScreenSaver(void);
+    void onMessagePublish(const char *, const char *);
 
 private slots:
     void scrTimerEvent();
@@ -54,11 +52,15 @@ private slots:
     void on_pushButtonGarage_clicked();
     void on_pushButtonSetup_clicked();
     void on_pushButtonSmartMeter_clicked();
-    void onBusEvent(struct eventmonitor::event *);
-    void onCmdConf(const struct moduleservice::result *, QDialog *);
     void on_pushButtonKameraEingang_clicked();
+    void onMqtt_connected();
+    void onMqtt_disconnected();
+    void onMqtt_messageReceived(const QByteArray &, const QMqttTopicName &);
 
 private:
+    void messageActionStateBit(const QMqttTopicName &, const QByteArray &, const char *, quint32 *, quint32);
+    void messageActionVar(const QMqttTopicName &, const QByteArray &, const char *, quint8 *, quint8);
+    void message_to_byteArray(const QString &, QByteArray &);
     Ui::MainWindow *ui;
     egwindow *uiEg;
     ogwindow *uiOg;
@@ -89,8 +91,7 @@ private:
 
     ioState *io;
 
-    moduleservice *mservice;
-    eventmonitor *meventmon;
+    QMqttClient *mqttClient;
 };
 
 #endif // MAINWINDOW_H
