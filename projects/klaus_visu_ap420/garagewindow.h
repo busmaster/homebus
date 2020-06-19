@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <QDialog>
-#include "moduleservice.h"
+#include <QMqttClient>
 #include "iostate.h"
 
 namespace Ui {
@@ -20,10 +20,9 @@ public:
     void hide(void);
 
 signals:
-    void serviceCmd(const moduleservice::cmd *, QDialog *);
+    void messagePublish(const char *, const char *);
 
 private slots:
-    void onCmdConf(const struct moduleservice::result *, QDialog *);
     void onIoStateChanged(void);
 
     void on_pushButtonLight_pressed();
@@ -33,9 +32,6 @@ private:
     Ui::garagewindow *ui;
     ioState *io;
     bool isVisible;
-
-    QPushButton *currentButton;
-    bool        currentButtonState;
 };
 
 #endif // GARAGEWINDOW_H

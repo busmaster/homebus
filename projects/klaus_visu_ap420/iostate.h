@@ -3,83 +3,83 @@
 
 #include <QObject>
 
+
 class ioState : public QObject {
     Q_OBJECT
 public:
     explicit ioState(QObject *parent = 0);
 
-    union {
-        quint32 sum;
-        struct {
-            int lightWohn       : 1;
-            int lightEss        : 1;
-            int lightGang       : 1;
-            int lightWC         : 1;
-            int lightVorraum    : 1;
-            int lightArbeit     : 1;
-            int lightTerrasse   : 1;
-            int lightWohnLese   : 1;
-            int lightEingang    : 1;
-        } detail;
-    } egState;
-    union {
-        quint32 sum;
-        struct {
-            int lightStiegePwr  : 1;
-            int lightStiege1    : 1;
-            int lightStiege2    : 1;
-            int lightStiege3    : 1;
-            int lightStiege4    : 1;
-            int lightStiege5    : 1;
-            int lightStiege6    : 1;
-            int lightSchrank    : 1;
-            int lightSchlaf     : 1;
-            int lightBad        : 1;
-            int lightBadSpiegel : 1;
-            int lightVorraum    : 1;
-            int lightWC         : 1;
-            int lightAnna       : 1;
-            int lightSeverin    : 1;
-        } detail;
-    } ogState;
-    union {
-        quint32 sum;
-        struct {
-            int lightLager      : 1;
-            int lightStiege     : 1;
-            int lightArbeit     : 1;
-            int lightFitness    : 1;
-            int lightVorraum    : 1;
-            int lightTechnik    : 1;
-        } detail;
-    } ugState;
-    union {
-        quint32 sum;
-        struct {
-            int light           : 1;
-            int door            : 1;
-        } detail;
-    } garageState;
+    enum egLightBits {
+        egLightWohn         = 0x1,
+        egLightEss          = 0x2,
+        egLightGang         = 0x4,
+        egLightWC           = 0x8,
+        egLightVorraum      = 0x10,
+        egLightArbeit       = 0x20,
+        egLightSchreibtisch = 0x40,
+        egLightTerrasse     = 0x80,
+        egLightWohnLese     = 0x100,
+        egLightEingang      = 0x200
+    };
+    quint32 egLight;
 
-    union {
-        quint32 sum;
-        struct {
-            int light                : 1;
-            int lightWand            : 1;
-            int lightKaffee          : 1;
-            int lightGeschirrspueler : 1;
-            int lightDunstabzug      : 1;
-            int lightAbwasch         : 1;
-            int lightSpeis           : 1;
-        } detail;
-    } kuecheState;
+    enum ogLightBits {
+        ogLightStiegePwr  = 0x1,
+        ogLightStiege1    = 0x2,
+        ogLightStiege2    = 0x4,
+        ogLightStiege3    = 0x8,
+        ogLightStiege4    = 0x10,
+        ogLightStiege5    = 0x20,
+        ogLightStiege6    = 0x40,
+        ogLightSchrank    = 0x80,
+        ogLightSchlaf     = 0x100,
+        ogLightBad        = 0x200,
+        ogLightBadSpiegel = 0x400,
+        ogLightVorraum    = 0x800,
+        ogLightWC         = 0x1000,
+        ogLightAnna       = 0x2000,
+        ogLightSeverin    = 0x4000
+    };
+    quint32 ogLight;
+
+    enum ugLightBits {
+        ugLightLager      = 0x1,
+        ugLightStiege     = 0x2,
+        ugLightArbeit     = 0x4,
+        ugLightFitness    = 0x8,
+        ugLightVorraum    = 0x10,
+        ugLightTechnik    = 0x20
+    };
+    quint32 ugLight;
+
+
+    enum garageBits {
+        garageLight       = 0x1,
+        garageDoorClosed  = 0x2,
+    };
+    quint32 garage;
+
+    enum kuecheLightBits {
+        kuecheLight                = 0x1,
+        kuecheLightWand            = 0x2,
+        kuecheLightKaffee          = 0x4,
+        kuecheLightGeschirrspueler = 0x8,
+        kuecheLightDunstabzug      = 0x10,
+        kuecheLightAbwasch         = 0x20,
+        kuecheLightSpeis           = 0x40,
+    };
+    quint32 kueche;
 
     /* switchable sockets Technik */
-    bool socket_1;
-    bool socket_2;
+    enum socketBits {
+        socketInternet = 0x1,
+        socketCamera   = 0x2
+    };
+    quint32 sockets;
 
-    /* Tasterzustand Glocke */
-    bool glocke;
+    quint32 glocke_taster;
+    quint8  var_glocke_disable;
+    quint8  var_mode_LightEingang;
 };
 
 #endif // IOSTATE_H

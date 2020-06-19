@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui mqtt
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets network
 
@@ -19,9 +19,7 @@ SOURCES += main.cpp\
     ogwindow.cpp \
     ugwindow.cpp \
     garagewindow.cpp \
-    moduleservice.cpp \
     statusled.cpp \
-    eventmonitor.cpp \
     kuechewindow.cpp \
     setupwindow.cpp \
     smartmeterwindow.cpp \
@@ -33,9 +31,7 @@ HEADERS  += mainwindow.h \
     ogwindow.h \
     ugwindow.h \
     garagewindow.h \
-    moduleservice.h \
     statusled.h \
-    eventmonitor.h \
     kuechewindow.h \
     setupwindow.h \
     smartmeterwindow.h \

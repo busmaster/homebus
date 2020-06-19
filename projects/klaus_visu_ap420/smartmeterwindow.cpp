@@ -8,11 +8,9 @@ smartmeterwindow::smartmeterwindow(QWidget *parent) :
     ui->setupUi(this);
     isVisible = false;
 
-    connect(this, SIGNAL(serviceCmd(const moduleservice::cmd *, QDialog *)),
-            parent, SLOT(onSendServiceCmd(const struct moduleservice::cmd *, QDialog *)));
-    connect(parent, SIGNAL(cmdConf(const struct moduleservice::result *, QDialog *)),
-            this, SLOT(onCmdConf(const struct moduleservice::result *, QDialog *)));
     connect(parent, SIGNAL(screenSaverActivated()), this, SLOT(onScreenSaverActivation()));
+    connect(this, SIGNAL(messagePublish(const char *, const char *)),
+            parent, SLOT(onMessagePublish(const char *, const char *)));
 
     updTimer = new QTimer(this);
     connect(updTimer, SIGNAL(timeout()), this, SLOT(updTimerEvent()));
@@ -31,12 +29,14 @@ void smartmeterwindow::onScreenSaverActivation(void) {
 
 void smartmeterwindow::updTimerEvent(void) {
 
+/*
     struct moduleservice::cmd command;
 
     command.type = moduleservice::eActval;
     command.destAddr = 47;
 
     emit serviceCmd(&command, this);
+*/
 }
 
 void smartmeterwindow::show(void) {
@@ -52,6 +52,7 @@ void smartmeterwindow::hide(void) {
     updTimer->stop();
 }
 
+/*
 void smartmeterwindow::onCmdConf(const struct moduleservice::result *res, QDialog *dialog) {
 
     if ((dialog == this) && (res->data.state == moduleservice::eCmdOk)) {
@@ -62,7 +63,7 @@ void smartmeterwindow::onCmdConf(const struct moduleservice::result *res, QDialo
         ui->label_pplus->setText(str);
     }
 }
-
+*/
 
 void smartmeterwindow::on_pushButtonBack_clicked() {
     hide();

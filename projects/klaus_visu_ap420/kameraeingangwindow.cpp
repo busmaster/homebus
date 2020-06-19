@@ -52,7 +52,7 @@ void kameraeingangwindow::onScreenSaverActivation(void) {
 }
 
 void kameraeingangwindow::onIoStateChanged(void) {
-    if (io->glocke && !isVisible) {
+    if (io->glocke_taster && !isVisible) {
         emit disableScreenSaver();
         show();
     }
