@@ -257,8 +257,6 @@ void MainWindow::onMessagePublish(const char *topic, const char *message) {
 
 void MainWindow::messageActionStateBit(const QMqttTopicName &topic, const QByteArray &message, const char *compare_str, quint32 *state, quint32 mask) {
 
-    bool set;
-
     if (QString::compare(topic.name(), compare_str) == 0) {
         if (QString::compare(message, "1") == 0) {
             *state |= mask;
