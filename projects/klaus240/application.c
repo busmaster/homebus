@@ -36,9 +36,12 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
-#define OUTPUT_AUTO      0
-#define OUTPUT_OFF       1
-#define OUTPUT_ON        2
+#define MODE_LIGHT_AUTO      0
+#define MODE_LIGHT_OFF       1
+#define MODE_LIGHT_ON        2
+
+#define MODE_BELL_ON         0
+#define MODE_BELL_OFF        1
 
 /*-----------------------------------------------------------------------------
 *  typedefs
@@ -190,10 +193,8 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
    {ApplicationPressed128_0, ApplicationPressed128_1, ApplicationReleased128_0, ApplicationReleased128_1}
 };
 
-static bool sDoorbellOn = true;
 static bool sBellToggle = false;
-static uint8_t sDoorlightMode = OUTPUT_AUTO;
-static bool    sDoorlightAutoState = false;
+static bool sDoorlightAutoState = false;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -204,7 +205,7 @@ static bool    sDoorlightAutoState = false;
 * returns version string (max length is 15 chars)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus2_1.00";
+   return "Klaus2_1.01";
 }
 
 /*-----------------------------------------------------------------------------
@@ -248,6 +249,12 @@ void ApplicationInit(void) {
     /* Helligkeitsautomatik Licht Vorraum UG */
     BusVarAdd(0, sizeof(uint8_t), true);
 
+    /* Glocke Sperre */
+    BusVarAdd(1, sizeof(uint8_t), false);
+
+    /* Mode Licht Eingang  */
+    BusVarAdd(2, sizeof(uint8_t), false);
+
 }
 
 void ApplicationStart(void) {
@@ -256,15 +263,45 @@ void ApplicationStart(void) {
 
 void ApplicationCheck(void) {
 
+    uint8_t modeLight;
+    static uint8_t sModeLightOld = MODE_LIGHT_AUTO;
+    TBusVarResult result;
+
+    /* door light mode */
+    if ((BusVarRead(2, &modeLight, sizeof(modeLight), &result) == sizeof(modeLight)) &&
+        (modeLight != sModeLightOld)) {
+        sModeLightOld = modeLight;
+        switch (modeLight) {
+        case MODE_LIGHT_AUTO:
+            /* restore current autostate if switched to automode */
+            if (sDoorlightAutoState) {
+                DigOutOn(eDigOut30);
+            } else {
+                DigOutOff(eDigOut30);
+            }
+            break;
+        case MODE_LIGHT_OFF:
+            DigOutOff(eDigOut30);
+            break;
+        case MODE_LIGHT_ON:
+            DigOutOn(eDigOut30);
+            break;
+        default:
+            break;
+        }
+    }
 }
 
-
 /*
-  
 busvar:
 index 0: type byte, persistent, 0: Helligkeitsautomatik Keller Vorraum AUS
                                 1: EIN
                                 sonst: reserviert
+      1: type byte, nicht pers. 0: Glocke eingeschaltet
+                                1: Glocke gesperrt
+      2: type byte, nicht pers. 0: Licht Eingang AUTO (Bewegungsmelder)
+                                1: Licht Eingang AUS
+                                2: Licht Eingang EIN
 
 eDigOut0   Netzteil Stiege
 eDigOut1   Stiege Leuchte 1 (1. Lampe von unten)
@@ -293,8 +330,8 @@ eDigOut23  Arbeit UG
 eDigOut24  Fitness
 eDigOut25  Vorraum UG
 eDigOut26  Technik
-eDigOut27  Steckdose Netzwerkverteiler
-eDigOut28  Steckdose Netzwerkverteiler 
+eDigOut27  Steckdose Netzwerkverteiler Internet Router
+eDigOut28  Steckdose Netzwerkverteiler Netzteil Kameras
 eDigOut29  Küche Unterbauleuchten/Dunstabzugleuchte
 eDigOut30  Außenlampe Haustür
 */
@@ -567,7 +604,7 @@ void ApplicationPressed23_0(void) {
         DigOutOff(eDigOut10);
     } else {
         DigOutDelayedOff(eDigOut10, 60UL * 1000UL * 120UL /* 120 min */);
-    } 
+    }
 }
 void ApplicationReleased23_0(void) {}
 void ApplicationPressed23_1(void) {
@@ -632,13 +669,18 @@ void ApplicationReleased29_1(void) {}
 
 void ApplicationPressed30_0(void) {
     /* Glocke */
-    if (!sDoorbellOn) {
+    uint8_t disable;
+    TBusVarResult result;
+
+    if (BusVarRead(1, &disable, sizeof(disable), &result) != sizeof(disable)) {
+        return;
+    }
+    if (disable) {
         return;
     }
     if (!DigOutIsDelayed(eDigOut18)) {
         DigOutDelayedOff(eDigOut18, 250);
     }
-
     /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
     if (!sBellToggle) {
         sBellToggle = true;
@@ -649,8 +691,14 @@ void ApplicationPressed30_0(void) {
     }
 }
 void ApplicationReleased30_0(void) {
-    /* Glocke */    
-    if (!sDoorbellOn) {
+    /* Glocke */
+    uint8_t disable;
+    TBusVarResult result;
+
+    if (BusVarRead(1, &disable, sizeof(disable), &result) != sizeof(disable)) {
+        return;
+    }
+    if (disable) {
         return;
     }
     /* Licht in Ess-, Wohnzimmer, Fitness, Arbeit UG kurz umschalten */
@@ -719,10 +767,10 @@ void ApplicationPressed36_1(void) {}
 void ApplicationReleased36_1(void) {}
 
 void ApplicationPressed37_0(void) {
-    
+
     uint8_t enable;
     TBusVarResult result;
-    
+
     if (BusVarRead(0, &enable, sizeof(enable), &result) != sizeof(enable)) {
         return;
     }
@@ -735,7 +783,7 @@ void ApplicationReleased37_0(void) {
 
     uint8_t enable;
     TBusVarResult result;
-    
+
     if (BusVarRead(0, &enable, sizeof(enable), &result) != sizeof(enable)) {
         return;
     }
@@ -1078,24 +1126,32 @@ void ApplicationReleased99_0(void) {}
 void ApplicationPressed99_1(void) {}
 void ApplicationReleased99_1(void) {}
 
-void ApplicationPressed100_0(void) {
-    sDoorbellOn = true;
-}
-void ApplicationReleased100_0(void) {
-    sDoorbellOn = false;
-}
+void ApplicationPressed100_0(void) {}
+void ApplicationReleased100_0(void) {}
 void ApplicationPressed100_1(void) {}
 void ApplicationReleased100_1(void) {}
 
 /* 101.0: Motion detector */
 void ApplicationPressed101_0(void) {
-    if (sDoorlightMode == OUTPUT_AUTO) {
+    uint8_t mode;
+    TBusVarResult result;
+
+    if (BusVarRead(2, &mode, sizeof(mode), &result) != sizeof(mode)) {
+        return;
+    }
+    if (mode == MODE_LIGHT_AUTO) {
         DigOutOn(eDigOut30);
     }
     sDoorlightAutoState = true;
 }
 void ApplicationReleased101_0(void) {
-    if (sDoorlightMode == OUTPUT_AUTO) {
+    uint8_t mode;
+    TBusVarResult result;
+
+    if (BusVarRead(2, &mode, sizeof(mode), &result) != sizeof(mode)) {
+        return;
+    }
+    if (mode == MODE_LIGHT_AUTO) {
         DigOutOff(eDigOut30);
     }
     sDoorlightAutoState = false;
@@ -1103,33 +1159,17 @@ void ApplicationReleased101_0(void) {
 void ApplicationPressed101_1(void) {}
 void ApplicationReleased101_1(void) {}
 
-/* 102.0: ON mode */
-void ApplicationPressed102_0(void) {
-    sDoorlightMode = OUTPUT_ON;
-    DigOutOn(eDigOut30);
-}
+void ApplicationPressed102_0(void) {}
 void ApplicationReleased102_0(void) {}
 void ApplicationPressed102_1(void) {}
 void ApplicationReleased102_1(void) {}
 
-/* 103.0: AUTO mode */
-void ApplicationPressed103_0(void) {
-    sDoorlightMode = OUTPUT_AUTO;
-    if (sDoorlightAutoState) {
-        DigOutOn(eDigOut30);
-    } else {
-        DigOutOff(eDigOut30);
-    }
-}
+void ApplicationPressed103_0(void) {}
 void ApplicationReleased103_0(void) {}
 void ApplicationPressed103_1(void) {}
 void ApplicationReleased103_1(void) {}
 
-/* 104.0: OFF mode */
-void ApplicationPressed104_0(void) {
-    sDoorlightMode = OUTPUT_OFF;
-    DigOutOff(eDigOut30);
-}
+void ApplicationPressed104_0(void) {}
 void ApplicationReleased104_0(void) {}
 void ApplicationPressed104_1(void) {}
 void ApplicationReleased104_1(void) {}
