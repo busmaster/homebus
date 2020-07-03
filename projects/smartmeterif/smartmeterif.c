@@ -47,6 +47,14 @@
 #define MODUL_ADDRESS        0 /* size 1  */
 #define KEY_ADDR             1 /* size 16 */
 
+/* 8 bytes non volatile bus variables memory */
+#define BUSVAR_NV_START      0x20
+#define BUSVAR_NV_END        0x27
+
+#if (BUSVAR_MEMSIZE > (BUSVAR_NV_END - BUSVAR_NV_START + 1))
+#error "nvmem size too small"
+#endif
+
 /* our bus address */
 #define MY_ADDR                    sMyAddr
 
@@ -150,12 +158,16 @@ static TIfState sIfState;
 static uint8_t sPayLoad[MBUS_PAYLOAD_SIZE];
 static TMeterData sMd;
 
-static char version[] = "smif 0.02";
+static char version[] = "smif 0.03";
+
+static TBusTelegram    sTxMsg;
+static bool            sTxRetry = false;
 
 /*-----------------------------------------------------------------------------
 *  Functions
 */
 static void ProcessBus(uint8_t ret);
+static void ApplicationCheck(void);
 
 void SetupHardware(void);
 static void Host_Task(void);
@@ -174,9 +186,9 @@ void EVENT_USB_Host_DeviceEnumerationComplete(void);
 int main(void) {
 
     static TBusTelegram    sTxMsg;
-    
+
     SetupHardware();
-    
+
     LedSet(eLedGreenOff);
 
     GlobalInterruptEnable();
@@ -192,9 +204,64 @@ int main(void) {
         Host_Task();
 
         USB_USBTask();
-        
+
         ProcessBus(BusCheck());
         LedCheck();
+        BusVarProcess();
+        ApplicationCheck();
+    }
+}
+
+/*-----------------------------------------------------------------------------
+*  process busvar state change
+*/
+static void ApplicationCheck(void) {
+
+    static uint8_t sAveEnabledOld = 0;
+    static uint16_t sEnabledStartTimeS = 0;
+    static TMeterData sMdOld;
+    uint8_t aveEnabled;
+    uint16_t actualTimeS = 0;
+    TBusVarResult result;
+    TBusDevReqActualValueEvent *pAve;
+
+    if (BusVarRead(0, &aveEnabled, sizeof(aveEnabled), &result) != sizeof(aveEnabled)) {
+        return;
+    }
+    if (aveEnabled == 0) {
+        return;
+    }
+
+    if (sAveEnabledOld == 0) {
+        GET_TIME_S(sEnabledStartTimeS);
+        sAveEnabledOld = 1;
+    }
+
+    GET_TIME_S(actualTimeS);
+    if ((uint16_t)(actualTimeS - sEnabledStartTimeS) >= 60) {
+        aveEnabled = 0;
+        sAveEnabledOld = 0;
+        BusVarWrite(0, &aveEnabled, sizeof(aveEnabled), &result);
+    }
+
+    if (memcmp(&sMdOld, &sMd, sizeof(sMdOld)) != 0) {
+        memcpy(&sMdOld, &sMd, sizeof(sMdOld));
+        pAve = &sTxMsg.msg.devBus.x.devReq.actualValueEvent;
+        sTxMsg.type = eBusDevRespActualValueEvent;
+        sTxMsg.senderAddr = MY_ADDR;
+        BusVarRead(2, &sTxMsg.msg.devBus.receiverAddr, sizeof(uint8_t), &result);
+        pAve->devType = eBusDevTypeSmIf;
+
+        pAve->actualValue.smif.countA_plus         = sMd.countA_plus;
+        pAve->actualValue.smif.countA_minus        = sMd.countA_minus;
+        pAve->actualValue.smif.countR_plus         = sMd.countR_plus;
+        pAve->actualValue.smif.countR_minus        = sMd.countR_minus;
+        pAve->actualValue.smif.activePower_plus    = sMd.activePower_plus;
+        pAve->actualValue.smif.activePower_minus   = sMd.activePower_minus;
+        pAve->actualValue.smif.reactivePower_plus  = sMd.reactivePower_plus;
+        pAve->actualValue.smif.reactivePower_minus = sMd.reactivePower_minus;
+
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
     }
 }
 
@@ -207,8 +274,7 @@ static void ProcessBus(uint8_t ret) {
     TBusDevRespInfo        *pInfo;
     TBusDevRespActualValue *pActVal;
     uint8_t                *pData;
-    static TBusTelegram    sTxMsg;
-    static bool            sTxRetry = false;
+    uint8_t                val8;
 
     if (sTxRetry) {
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
@@ -225,6 +291,10 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqEepromRead:
         case eBusDevReqEepromWrite:
         case eBusDevReqDiag:
+        case eBusDevReqGetVar:
+        case eBusDevReqSetVar:
+        case eBusDevRespGetVar:
+        case eBusDevRespSetVar:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
             }
@@ -237,7 +307,7 @@ static void ProcessBus(uint8_t ret) {
     if (msgForMe == false) {
        return;
     }
-   
+
     switch (msgType) {
     case eBusDevReqReboot:
         /* use watchdog to reboot */
@@ -265,7 +335,7 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         pActVal->devType = eBusDevTypeSmIf;
-       
+
         pActVal->actualValue.smif.countA_plus         = sMd.countA_plus;
         pActVal->actualValue.smif.countA_minus        = sMd.countA_minus;
         pActVal->actualValue.smif.countR_plus         = sMd.countR_plus;
@@ -274,34 +344,34 @@ static void ProcessBus(uint8_t ret) {
         pActVal->actualValue.smif.activePower_minus   = sMd.activePower_minus;
         pActVal->actualValue.smif.reactivePower_plus  = sMd.reactivePower_plus;
         pActVal->actualValue.smif.reactivePower_minus = sMd.reactivePower_minus;
-        
+
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetAddr:
-        sTxMsg.senderAddr = MY_ADDR; 
-        sTxMsg.type = eBusDevRespSetAddr;  
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespSetAddr;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         eeprom_write_byte((uint8_t *)MODUL_ADDRESS, spBusMsg->msg.devBus.x.devReq.setAddr.addr);
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqEepromRead:
-        sTxMsg.senderAddr = MY_ADDR; 
+        sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.type = eBusDevRespEepromRead;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        sTxMsg.msg.devBus.x.devResp.readEeprom.data = 
+        sTxMsg.msg.devBus.x.devResp.readEeprom.data =
             eeprom_read_byte((const uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr);
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;  
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqEepromWrite:
-        sTxMsg.senderAddr = MY_ADDR; 
+        sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.type = eBusDevRespEepromWrite;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr, 
+        eeprom_write_byte((uint8_t *)spBusMsg->msg.devBus.x.devReq.readEeprom.addr,
                           spBusMsg->msg.devBus.x.devReq.writeEeprom.data);
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;  
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqDiag:
-        sTxMsg.senderAddr = MY_ADDR; 
+        sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.type = eBusDevRespDiag;
         sTxMsg.msg.devBus.x.devResp.diag.devType = eBusDevTypeSmIf;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
@@ -318,10 +388,39 @@ static void ProcessBus(uint8_t ret) {
             *(pData + 8)  = sIfState.waitReadyErr;
             *(pData + 9)  = sIfState.rxbufOvrErr;
             *(pData + 10) = sIfState.attachedCnt;
-            *(pData + 11) = sIfState.unattachedCnt;    
+            *(pData + 11) = sIfState.unattachedCnt;
             *(pData + 12) = sIfState.csErr;
         }
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;  
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        break;
+    case eBusDevReqGetVar:
+        val8 = spBusMsg->msg.devBus.x.devReq.getVar.index;
+        sTxMsg.msg.devBus.x.devResp.getVar.length =
+            BusVarRead(val8, sTxMsg.msg.devBus.x.devResp.getVar.data,
+                       sizeof(sTxMsg.msg.devBus.x.devResp.getVar.data),
+                       &sTxMsg.msg.devBus.x.devResp.getVar.result);
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespGetVar;
+        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        sTxMsg.msg.devBus.x.devResp.getVar.index = val8;
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        break;
+    case eBusDevReqSetVar:
+        val8 = spBusMsg->msg.devBus.x.devReq.setVar.index;
+        BusVarWrite(val8, spBusMsg->msg.devBus.x.devReq.setVar.data,
+                    spBusMsg->msg.devBus.x.devReq.setVar.length,
+                    &sTxMsg.msg.devBus.x.devResp.setVar.result);
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespSetVar;
+        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        sTxMsg.msg.devBus.x.devResp.setVar.index = val8;
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        break;
+    case eBusDevRespSetVar:
+        BusVarRespSet(spBusMsg->senderAddr, &spBusMsg->msg.devBus.x.devResp.setVar);
+        break;
+    case eBusDevRespGetVar:
+        BusVarRespGet(spBusMsg->senderAddr, &spBusMsg->msg.devBus.x.devResp.getVar);
         break;
     default:
         break;
@@ -393,7 +492,7 @@ static void PortInit(void) {
 static void TimerInit(void) {
 
     /* use timer 3/output compare A */
-    /* timer3 compare B is used for sio timing - do not change the timer mode WGM 
+    /* timer3 compare B is used for sio timing - do not change the timer mode WGM
      * and change sio timer settings when changing the prescaler!
      */
 
@@ -405,8 +504,8 @@ static void TimerInit(void) {
 
    TCCR3A = (0 << COM3A1) | (0 << COM3A0) | (0 << COM3B1) | (0 << COM3B0) | (0 << WGM31) | (0 << WGM30);
    TCCR3B = (0 << ICNC3) | (0 << ICES3) |
-            (0 << WGM33) | (0 << WGM32) | 
-            (1 << CS32)  | (0 << CS31)  | (1 << CS30); 
+            (0 << WGM33) | (0 << WGM32) |
+            (1 << CS32)  | (0 << CS31)  | (1 << CS30);
 
 #if (F_CPU == 8000000UL)
     #define TIMER_TCNT_INC    39
@@ -443,6 +542,27 @@ ISR(TIMER3_COMPA_vect)  {
     }
 }
 
+/*-----------------------------------------------------------------------------
+*  NV memory for persistent bus variables
+*/
+static bool BusVarNv(uint16_t address, void *buf, uint8_t bufSize, TBusVarDir dir) {
+
+    void *eeprom;
+
+    // range check
+    if ((address + bufSize) > (BUSVAR_NV_END - BUSVAR_NV_START + 1)) {
+        return false;
+    }
+
+    eeprom = (void *)(BUSVAR_NV_START + address);
+    if (dir == eBusVarRead) {
+        eeprom_read_block(buf, eeprom, bufSize);
+    } else {
+        eeprom_update_block(buf, eeprom, bufSize);
+    }
+    return true;
+}
+
 /*
  * configuration
  */
@@ -467,6 +587,16 @@ void SetupHardware(void) {
 
     LedInit();
 
+    BusVarInit(sMyAddr, BusVarNv);
+
+    /* bus variables */
+    /* enable ActualValueEvent message */
+    BusVarAdd(0, sizeof(uint8_t), false);
+    /* activation duration of ActaulValueEvent in seconds */
+    BusVarAdd(1, sizeof(uint8_t), true);
+    /* ActualValueEvent Receiver receiverAddress */
+    BusVarAdd(2, sizeof(uint8_t), true);
+
     SioInit();
     SioRandSeed(sMyAddr);
 
@@ -481,13 +611,13 @@ void SetupHardware(void) {
     PortInit();
 
     BUS_TRANSCEIVER_POWER_UP;
-    
+
     TimerInit();
     TimerStart();
 
     BusInit(sioHdl);
-    spBusMsg = BusMsgBufGet();    
-    
+    spBusMsg = BusMsgBufGet();
+
     USB_Init();
 }
 /*
@@ -506,7 +636,7 @@ static void Host_Task(void) {
     uint16_t actualTime16;
     uint8_t  checksum;
     uint8_t  i;
-    
+
     if (USB_HostState != HOST_STATE_Configured) {
         return;
     }
@@ -536,14 +666,14 @@ static void Host_Task(void) {
                     }
                     sIfState.rxIdx = 0;
                     rxLen = 0;
-                } 
+                }
                 if (rxLen > (sizeof(sIfState.rxBuf) - sIfState.rxIdx)) {
                     if (sIfState.rxbufOvrErr < 0xff) {
                         sIfState.rxbufOvrErr++;
                     }
                     sIfState.rxIdx = 0;
                     rxLen = 0;
-                } 
+                }
                 if (rxLen > 0) {
                     sIfState.receiveTimeStamp = actualTime16;
                     /* Read in the pipe data to the buffer */
@@ -552,13 +682,13 @@ static void Host_Task(void) {
                     } else {
                         if (sIfState.readStreamErr < 0xff) {
                             sIfState.readStreamErr++;
-                        }                        
+                        }
                     }
                 } else {
                     if (((uint16_t)(actualTime16 - sIfState.receiveTimeStamp)) >= RECEIVE_TIMEOUT_MS) {
                         sIfState.commState = eIfInit;
                         sIfState.rxIdx = 0;
-                    } 
+                    }
                 }
             }
             if (rxLen > 0) {
@@ -591,35 +721,35 @@ static void Host_Task(void) {
                             AES128_CBC_decrypt_buffer(sPayLoad, &sIfState.rxBuf[MBUS_PAYLOAD_OFFS], sizeof(sPayLoad), sKey, sIv);
 
                             sMd.activePower_plus  = (uint32_t)sPayLoad[44]         |
-                                                    ((uint32_t)sPayLoad[45] << 8)  | 
+                                                    ((uint32_t)sPayLoad[45] << 8)  |
                                                     ((uint32_t)sPayLoad[46] << 16) |
                                                     ((uint32_t)sPayLoad[47] << 24);
                             sMd.activePower_minus = (uint32_t)sPayLoad[51]         |
-                                                    ((uint32_t)sPayLoad[52] << 8)  | 
+                                                    ((uint32_t)sPayLoad[52] << 8)  |
                                                     ((uint32_t)sPayLoad[53] << 16) |
                                                     ((uint32_t)sPayLoad[54] << 24);
                             sMd.reactivePower_plus  = (uint32_t)sPayLoad[58]         |
-                                                      ((uint32_t)sPayLoad[59] << 8)  | 
+                                                      ((uint32_t)sPayLoad[59] << 8)  |
                                                       ((uint32_t)sPayLoad[60] << 16) |
                                                       ((uint32_t)sPayLoad[61] << 24);
                             sMd.reactivePower_minus = (uint32_t)sPayLoad[66]         |
-                                                      ((uint32_t)sPayLoad[67] << 8)  | 
+                                                      ((uint32_t)sPayLoad[67] << 8)  |
                                                       ((uint32_t)sPayLoad[68] << 16) |
                                                       ((uint32_t)sPayLoad[69] << 24);
                             sMd.countA_plus  = (uint32_t)sPayLoad[12]         |
-                                               ((uint32_t)sPayLoad[13] << 8)  | 
+                                               ((uint32_t)sPayLoad[13] << 8)  |
                                                ((uint32_t)sPayLoad[14] << 16) |
                                                ((uint32_t)sPayLoad[15] << 24);
                             sMd.countA_minus = (uint32_t)sPayLoad[19]         |
-                                               ((uint32_t)sPayLoad[20] << 8)  | 
+                                               ((uint32_t)sPayLoad[20] << 8)  |
                                                ((uint32_t)sPayLoad[21] << 16) |
                                                ((uint32_t)sPayLoad[22] << 24);
                             sMd.countR_plus  = (uint32_t)sPayLoad[28]         |
-                                               ((uint32_t)sPayLoad[29] << 8)  | 
+                                               ((uint32_t)sPayLoad[29] << 8)  |
                                                ((uint32_t)sPayLoad[30] << 16) |
                                                ((uint32_t)sPayLoad[31] << 24);
                             sMd.countR_minus = (uint32_t)sPayLoad[38]         |
-                                               ((uint32_t)sPayLoad[39] << 8)  | 
+                                               ((uint32_t)sPayLoad[39] << 8)  |
                                                ((uint32_t)sPayLoad[40] << 16) |
                                                ((uint32_t)sPayLoad[41] << 24);
                         }
@@ -635,7 +765,7 @@ static void Host_Task(void) {
         }
         /* Clear the pipe after it is read, ready for the next packet */
         Pipe_ClearIN();
-    } 
+    }
     /* Re-freeze IN pipe after use */
     Pipe_Freeze();
 
@@ -647,7 +777,7 @@ static void Host_Task(void) {
         if (Pipe_IsOUTReady()) {
             txbuf[0] = 0x05;       /* linestat: len = 1 */
             txbuf[1] = SEARCH_ACK;
-            
+
             rc = Pipe_Write_Stream_LE(txbuf, sizeof(txbuf), 0);
             if (rc != PIPE_RWSTREAM_NoError) {
                 if (sIfState.writeStreamErr < 0xff) {
@@ -669,8 +799,6 @@ static void Host_Task(void) {
         }
         Pipe_Freeze();
     }
-    
- 
 }
 
 /*
@@ -708,18 +836,18 @@ void EVENT_USB_Host_DeviceEnumerationComplete(void) {
     if ((devDesc.Header.Size != 0x12) ||
         (devDesc.VendorID != 0x0403)  ||
         (devDesc.ProductID != 0x6001)) {
-        sIfState.usbState = eUsbUnsupportedDev; 
+        sIfState.usbState = eUsbUnsupportedDev;
         return;
     }
     /* Get and process the configuration descriptor data */
     if (ProcessConfigDescriptor() != SuccessfulConfigRead) {
-        sIfState.usbState = eUsbConfigDescErr; 
+        sIfState.usbState = eUsbConfigDescErr;
         return;
     }
 
     /* Set the device configuration to the first configuration (rarely do devices use multiple configurations) */
     if (USB_Host_SetDeviceConfiguration(1) != HOST_SENDCONTROL_Successful) {
-        sIfState.usbState = eUsbSetDevConfigErr; 
+        sIfState.usbState = eUsbSetDevConfigErr;
         return;
     }
     USB_ControlRequest = (USB_Request_Header_t) {
@@ -780,5 +908,5 @@ void EVENT_USB_Host_DeviceEnumerationFailed(const uint8_t ErrorCode,
 /*
  * dev desc
  * 12 01 00 02 00 00 00 08 03 04 01 60 00 06 01 02
- * 03 01 
+ * 03 01
 */
