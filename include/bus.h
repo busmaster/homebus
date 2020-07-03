@@ -413,7 +413,7 @@ typedef struct {
       TBusDevActualValueRs485if rs485if;
       TBusDevActualValuePwm4    pwm4;
       TBusDevActualValueSmif    smif;
-      TBusDevActualValuePwm16   pwm16;	  
+      TBusDevActualValuePwm16   pwm16;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
@@ -429,7 +429,8 @@ typedef struct {
       TBusDevActualValueWind    wind;
       TBusDevActualValueRs485if rs485if;
       TBusDevActualValuePwm4    pwm4;
-      TBusDevActualValuePwm16   pwm16;	  
+      TBusDevActualValueSmif    smif;
+      TBusDevActualValuePwm16   pwm16;
    } actualValue;
 } __attribute__ ((packed)) TBusDevReqActualValueEvent;  /* Type 0x21 */
 
@@ -444,7 +445,8 @@ typedef struct {
       TBusDevActualValueWind    wind;
       TBusDevActualValueRs485if rs485if;
       TBusDevActualValuePwm4    pwm4;
-      TBusDevActualValuePwm16   pwm16;	  
+      TBusDevActualValueSmif    smif;
+      TBusDevActualValuePwm16   pwm16;
    } actualValue; /* same as request */
 } __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
 
