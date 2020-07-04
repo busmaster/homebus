@@ -163,6 +163,8 @@ static char version[] = "smif 0.03";
 static TBusTelegram    sTxMsg;
 static bool            sTxRetry = false;
 
+static bool            sCheckBusvarEnable = true;
+
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -217,31 +219,30 @@ int main(void) {
 */
 static void ApplicationCheck(void) {
 
-    static uint8_t sAveEnabledOld = 0;
     static uint16_t sEnabledStartTimeS = 0;
     static TMeterData sMdOld;
-    uint8_t aveEnabled;
+    static uint8_t sAveEnabled;
     uint16_t actualTimeS = 0;
     TBusVarResult result;
     TBusDevReqActualValueEvent *pAve;
+    uint8_t activationTime;
 
-    if (BusVarRead(0, &aveEnabled, sizeof(aveEnabled), &result) != sizeof(aveEnabled)) {
+    if (sCheckBusvarEnable) {
+        BusVarRead(0, &sAveEnabled, sizeof(sAveEnabled), &result);
+        if (sAveEnabled == 1) {
+            GET_TIME_S(sEnabledStartTimeS);
+        }
+        sCheckBusvarEnable = false;
+    }
+    if (sAveEnabled == 0) {
         return;
     }
-    if (aveEnabled == 0) {
-        return;
-    }
-
-    if (sAveEnabledOld == 0) {
-        GET_TIME_S(sEnabledStartTimeS);
-        sAveEnabledOld = 1;
-    }
-
     GET_TIME_S(actualTimeS);
-    if ((uint16_t)(actualTimeS - sEnabledStartTimeS) >= 60) {
-        aveEnabled = 0;
-        sAveEnabledOld = 0;
-        BusVarWrite(0, &aveEnabled, sizeof(aveEnabled), &result);
+    BusVarRead(1, &activationTime, sizeof(activationTime), &result);
+    if ((uint16_t)(actualTimeS - sEnabledStartTimeS) >= activationTime) {
+        sAveEnabled = 0;
+        BusVarWrite(0, &sAveEnabled, sizeof(sAveEnabled), &result);
+        return;
     }
 
     if (memcmp(&sMdOld, &sMd, sizeof(sMdOld)) != 0) {
@@ -410,6 +411,9 @@ static void ProcessBus(uint8_t ret) {
         BusVarWrite(val8, spBusMsg->msg.devBus.x.devReq.setVar.data,
                     spBusMsg->msg.devBus.x.devReq.setVar.length,
                     &sTxMsg.msg.devBus.x.devResp.setVar.result);
+        if (val8 == 0) { // enable event
+            sCheckBusvarEnable = true;
+        }
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.type = eBusDevRespSetVar;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
