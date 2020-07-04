@@ -80,6 +80,17 @@ public:
     quint32 glocke_taster;
     quint8  var_glocke_disable;
     quint8  var_mode_LightEingang;
+
+    struct smartmeter {
+        quint32 a_plus;
+        quint32 a_minus;
+        quint32 r_plus;
+        quint32 r_minus;
+        quint32 p_plus;
+        quint32 p_minus;
+        quint32 q_plus;
+        quint32 q_minus;
+    } sm;
 };
 
 #endif // IOSTATE_H

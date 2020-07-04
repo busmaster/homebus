@@ -10,6 +10,8 @@
 #include <QMqttClient>
 #include <QString>
 #include <QtCore/QDateTime>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <QDebug>
 
@@ -79,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent) :
     uiKueche = new kuechewindow(this, io);
     uiGarage = new garagewindow(this, io);
     uiSetup = new setupwindow(this, io);
-    uiSmartmeter = new smartmeterwindow(this);
+    uiSmartmeter = new smartmeterwindow(this, io);
     uiKameraeingang = new kameraeingangwindow(this, io);
 
     mqttClient = new QMqttClient(this);
@@ -180,6 +182,7 @@ void MainWindow::onMqtt_connected() {
     mqttClient->subscribe(QMqttTopicFilter("home/eingang/licht/mode/actual"), 1);
     mqttClient->subscribe(QMqttTopicFilter("home/internet/actual"), 1);
     mqttClient->subscribe(QMqttTopicFilter("home/kamera/actual"), 1);
+    mqttClient->subscribe(QMqttTopicFilter("home/smartmeter/actual"), 1);
 }
 void MainWindow::onMqtt_disconnected() {
 
@@ -300,6 +303,7 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
     quint32 glocke_taster = io->glocke_taster;
     quint32 var_glocke_disable = io->var_glocke_disable;
     quint32 var_mode_LightEingang = io->var_mode_LightEingang;
+    bool smChanged = false;
 
     qDebug() << topic.name() << ":" << message;
 
@@ -356,6 +360,27 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
     messageActionVar(topic, message, "home/glocke/disable/actual", &io->var_glocke_disable, 1);
     messageActionVar(topic, message, "home/eingang/licht/mode/actual", &io->var_mode_LightEingang, 1);
 
+    if (QString::compare(topic.name(), "home/smartmeter/actual") == 0) {
+        QJsonDocument doc = QJsonDocument::fromJson(message);
+        QJsonObject jObject = doc.object();
+        QJsonValue response;
+        QJsonObject responseObj;
+
+        response = jObject.value("counter");
+        responseObj = response.toObject();
+        io->sm.a_plus = responseObj.value("A+").toInt();
+        io->sm.a_minus = responseObj.value("A-").toInt();
+        io->sm.r_plus = responseObj.value("R+").toInt();;
+        io->sm.r_minus = responseObj.value("R-").toInt();
+        response = jObject.value("power");
+        responseObj = response.toObject();
+        io->sm.p_plus = responseObj.value("P+").toInt();
+        io->sm.p_minus = responseObj.value("P-").toInt();
+        io->sm.q_plus = responseObj.value("Q+").toInt();
+        io->sm.q_minus = responseObj.value("Q-").toInt();
+        smChanged = true;
+    }
+
     if ((egLight != io->egLight)                             ||
         (ogLight != io->ogLight)                             ||
         (ugLight != io->ugLight)                             ||
@@ -364,7 +389,8 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         (sockets != io->sockets)                             ||
         (glocke_taster != io->glocke_taster)                 ||
         (var_glocke_disable != io->var_glocke_disable)       ||
-        (var_mode_LightEingang != io->var_mode_LightEingang)) {
+        (var_mode_LightEingang != io->var_mode_LightEingang) ||
+        smChanged) {
         emit ioChanged();
     }
 

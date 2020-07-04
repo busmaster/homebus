@@ -5,6 +5,7 @@
 #include <QDialog>
 #include <QTimer>
 #include <QMqttClient>
+#include "iostate.h"
 
 namespace Ui {
 class smartmeterwindow;
@@ -14,7 +15,7 @@ class smartmeterwindow : public QDialog {
     Q_OBJECT
 
 public:
-    explicit smartmeterwindow(QWidget *parent);
+    explicit smartmeterwindow(QWidget *parent, ioState *state);
     ~smartmeterwindow();
     void show(void);
     void hide(void);
@@ -23,14 +24,14 @@ signals:
     void messagePublish(const char *, const char *);
 
 private slots:
+    void onIoStateChanged(void);
     void onScreenSaverActivation(void);
-    void updTimerEvent(void);
     void on_pushButtonBack_clicked();
 
 private:
     Ui::smartmeterwindow *ui;
+    ioState *io;
     bool isVisible;
-    QTimer *updTimer;
 };
 
 #endif // SMARTMETERWINDOW_H
