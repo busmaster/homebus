@@ -247,7 +247,7 @@ static void ApplicationCheck(void) {
     if (memcmp(&sMdOld, &sMd, sizeof(sMdOld)) != 0) {
         memcpy(&sMdOld, &sMd, sizeof(sMdOld));
         pAve = &sTxMsg.msg.devBus.x.devReq.actualValueEvent;
-        sTxMsg.type = eBusDevRespActualValueEvent;
+        sTxMsg.type = eBusDevReqActualValueEvent;
         sTxMsg.senderAddr = MY_ADDR;
         BusVarRead(2, &sTxMsg.msg.devBus.receiverAddr, sizeof(uint8_t), &result);
         pAve->devType = eBusDevTypeSmIf;
