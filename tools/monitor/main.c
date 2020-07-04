@@ -830,6 +830,17 @@ static void BusMonDecoded(int sioHandle) {
                                 pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.pwm4.pwm[i]);
                     }
                     break;
+                case eBusDevTypeSmIf:
+                    fprintf(spOutput, SPACE "device: SMIF\r\n");
+                    fprintf(spOutput, SPACE "A+: %d Wh\r\n",   pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.countA_plus);
+                    fprintf(spOutput, SPACE "A-: %d Wh\r\n",   pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.countA_minus);
+                    fprintf(spOutput, SPACE "R+: %d varh\r\n", pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.countR_plus);
+                    fprintf(spOutput, SPACE "R-: %d varh\r\n", pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.countR_minus);
+                    fprintf(spOutput, SPACE "P+: %d W\r\n",    pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.activePower_plus);
+                    fprintf(spOutput, SPACE "P-: %d W\r\n",    pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.activePower_minus);
+                    fprintf(spOutput, SPACE "Q+: %d var\r\n",  pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.reactivePower_plus);
+                    fprintf(spOutput, SPACE "Q-: %d var",      pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.reactivePower_minus);
+                    break;
                 default:
                     fprintf(spOutput, SPACE "device: unknown");
                     break;
