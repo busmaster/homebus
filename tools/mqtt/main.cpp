@@ -96,6 +96,9 @@ typedef struct {
         } sw8;
         struct {
             uint8_t address;
+        } smif;
+        struct {
+            uint8_t address;
             uint8_t index;
             uint8_t size;
         } var;
@@ -122,6 +125,7 @@ typedef struct {
         TBusDevActualValueDo31 do31;
         TBusDevActualValuePwm4 pwm4;
         TBusDevActualValueSw8  sw8;
+        TBusDevActualValueSmif smif;
     } io;
     UT_hash_handle hh;
 } T_dev_desc;
@@ -727,6 +731,14 @@ static int ReadConfig(const char *pFile)  {
                 topic_entry->io.var.size = (uint8_t)strtoul(physical["size"].as<std::string>().c_str(), 0, 0);
                 io_entry->phys_io |= (topic_entry->io.var.size << 24);
             }
+        } else if (physical["type"] && (physical["type"].as<std::string>().compare("smif") == 0)) {
+            /* smartmeter */
+            topic_entry->devtype = eBusDevTypeSmIf;
+            io_entry->phys_io = (uint8_t)topic_entry->devtype;
+            if (physical["address"]) {
+                topic_entry->io.var.address = (uint8_t)strtoul(physical["address"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= (topic_entry->io.var.address << 8);
+            }
         } else {
             printf("unknown or missing type at topic %s\n", node["topic"].as<std::string>().c_str());
             break;
@@ -931,6 +943,34 @@ printf("publish %s %d\n", topic, actval8);
     shadow->state = av->state;
 }
 
+static void publish_smif(
+    uint32_t               phys_dev,
+    TBusDevActualValueSmif *shadow,
+    TBusDevActualValueSmif *av
+    ) {
+    uint32_t  phys_io;
+    T_io_desc *io_entry;
+    char      topic[MAX_LEN_TOPIC];
+    char      message[MAX_LEN_MESSAGE];
+    int       len;
+
+    phys_io = phys_dev;
+    HASH_FIND_INT(io_desc, &phys_io, io_entry);
+    if (io_entry) {
+        snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
+        len = snprintf(message, sizeof(message),
+            "{\"counter\":{\"A+\":%d,\"A-\":%d,\"R+\":%d,\"R-\":%d},\"power\":{\"P+\":%d,\"P-\":%d,\"Q+\":%d,\"Q-\":%d}}",
+            av->countA_plus, av->countA_minus, av->countR_plus, av->countR_minus,
+            av->activePower_plus, av->activePower_minus, av->reactivePower_plus, av->reactivePower_minus);
+        if ((len > 0) && (len < (int)sizeof(message))) {
+printf("publish %s\n", topic);
+            mosquitto_publish(mosq, 0, topic, len, message, 1, false);
+        }
+    }
+    memcpy(shadow, av, sizeof(*shadow));
+
+}
+
 static void publish_var(
     uint32_t         phys_dev,
     uint8_t          index,
@@ -1009,6 +1049,9 @@ static void serve_bus(void) {
         break;
     case eBusDevTypeSw8:
         publish_sw8(dev_entry->phys_dev, &dev_entry->io.sw8,  &ave->actualValue.sw8, false);
+        break;
+    case eBusDevTypeSmIf:
+        publish_smif(dev_entry->phys_dev, &dev_entry->io.smif,  &ave->actualValue.smif);
         break;
     case eBusDevTypeInv:
         publish_var(dev_entry->phys_dev, sv->index, sv->length, sv->data);
@@ -1175,7 +1218,7 @@ static int init_state_var(void) {
         rx_msg = request_var(address, index, length);
         if (rx_msg) {
             data = rx_msg->msg.devBus.x.devResp.getVar.data;
-printf("publish init state: VAR at %d\n", address);
+printf("publish init state: VAR [idx %d, len %d] at %d\n", index, length, address);
             publish_var(dev_type | (address << 8), index, length, data);
         }
     }
@@ -1331,6 +1374,9 @@ int main(int argc, char *argv[]) {
                 break;
             }
             printf("SW8, address %d, port %d, type %s", topic_entry->io.sw8.address, topic_entry->io.sw8.port, type);
+            break;
+        case eBusDevTypeSmIf:
+            printf("SMIF, address %d", topic_entry->io.smif.address);
             break;
         case eBusDevTypeInv:
             // variable

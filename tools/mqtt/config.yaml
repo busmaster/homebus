@@ -351,3 +351,16 @@
     address: 240
     digout: 28
     activelow: 1
+
+#smartmeter
+#var enable ActualValueEvent
+- topic: home/smartmeter/enable-event
+  physical:
+    type: var
+    address: 47
+    index: 0
+    size: 1
+- topic: home/smartmeter
+  physical:
+    type: smif
+    address: 47
