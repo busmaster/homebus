@@ -999,7 +999,7 @@ static void BusMonDecoded(int sioHandle) {
                 default:
                     fprintf(spOutput, "unknown error code (%d)", pBusMsg->msg.devBus.x.devResp.getVar.result);
                     break;
-		}
+                }
                 printf("\r\n");
                 if (pBusMsg->msg.devBus.x.devResp.getVar.length > 0) {
                     fprintf(spOutput, SPACE "data:");
@@ -1035,7 +1035,22 @@ static void BusMonDecoded(int sioHandle) {
                 default:
                     fprintf(spOutput, "unknown error code (%d)", pBusMsg->msg.devBus.x.devResp.setVar.result);
                     break;
-		}
+                }
+                break;
+            case eBusDevReqGetFlashData:
+                fprintf(spOutput, "request get flash data ");
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "addr: %08x", pBusMsg->msg.devBus.x.devReq.getFlashData.addr);
+                break;
+            case eBusDevRespGetFlashData:
+                fprintf(spOutput, "response get flash data ");
+                fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
+                fprintf(spOutput, SPACE "addr: %08x\r\n", pBusMsg->msg.devBus.x.devResp.getFlashData.addr);
+                fprintf(spOutput, SPACE "numValid: %d\r\n", pBusMsg->msg.devBus.x.devResp.getFlashData.numValid);
+                fprintf(spOutput, SPACE "data:");
+                for (i = 0; i < pBusMsg->msg.devBus.x.devResp.getFlashData.numValid; i++) {
+                    fprintf(spOutput, " %02x", pBusMsg->msg.devBus.x.devResp.getFlashData.data[i]);
+                }
                 break;
             case eBusDevStartup:
                 fprintf(spOutput, "device startup");
