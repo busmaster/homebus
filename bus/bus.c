@@ -283,7 +283,9 @@ static TTelegramSize sTelegramSize[] = {
     { eBusLenConst,   .LC = MSG_BASE_SIZE2 + sizeof(TBusDevReqGetVar)         }, // eBusDevReqGetVar
     { eBusLenDirect,  .LEN_RESP_GET_VAR_OFFS, .LEN_RESP_GET_VAR_ADD           }, // eBusDevRespGetVar
     { eBusLenDirect,  .LEN_REQ_SET_VAR_OFFS, .LEN_REQ_SET_VAR_ADD             }, // eBusDevReqSetVar
-    { eBusLenConst,   .LC = MSG_BASE_SIZE2 + sizeof(TBusDevRespSetVar)        }  // eBusDevRespSetVar
+    { eBusLenConst,   .LC = MSG_BASE_SIZE2 + sizeof(TBusDevRespSetVar)        }, // eBusDevRespSetVar
+    { eBusLenConst,   .LC = MSG_BASE_SIZE2 + sizeof(TBusDevReqGetFlashData)   }, // eBusDevRepGetFlashData
+    { eBusLenConst,   .LC = MSG_BASE_SIZE2 + sizeof(TBusDevRespGetFlashData)  }  // eBusDevRespGetFlashData
 };
 
 static struct l2State {

@@ -65,6 +65,8 @@ extern "C" {
 
 #define BUS_MAX_VAR_SIZE                   32
 
+#define BUS_GETFLASH_PACKET_SIZE           32
+
 /* return codes for function BusCheck */
 #define BUS_NO_MSG     0
 #define BUS_MSG_OK     1
@@ -556,6 +558,16 @@ typedef struct {
     uint8_t       index;
 } __attribute__ ((packed)) TBusDevRespSetVar;             /* type 0x30 */
 
+typedef struct {                                          /* type 0x31 */
+    uint32_t addr;
+} __attribute__ ((packed)) TBusDevReqGetFlashData;
+
+typedef struct {                                          /* type 0x32 */
+    uint32_t addr;
+    uint8_t  numValid;
+    uint8_t  data[BUS_GETFLASH_PACKET_SIZE];
+} __attribute__ ((packed)) TBusDevRespGetFlashData;
+
 typedef union {
    TBusDevReqReboot           reboot;
    TBusDevReqUpdEnter         updEnter;
@@ -580,6 +592,7 @@ typedef union {
    TBusDevReqSetTime          setTime;
    TBusDevReqGetVar           getVar;
    TBusDevReqSetVar           setVar;
+   TBusDevReqGetFlashData     getFlashData;
 } __attribute__ ((packed)) TUniDevReq;
 
 typedef union {
@@ -605,6 +618,7 @@ typedef union {
    TBusDevRespSetTime          setTime;
    TBusDevRespGetVar           getVar;
    TBusDevRespSetVar           setVar;
+   TBusDevRespGetFlashData     getFlashData;
 } __attribute__ ((packed)) TUniDevResp;
 
 typedef struct {
@@ -671,6 +685,8 @@ typedef enum {
    eBusDevRespGetVar =                   0x2e,
    eBusDevReqSetVar =                    0x2f,
    eBusDevRespSetVar =                   0x30,
+   eBusDevReqGetFlashData =              0x31,
+   eBusDevRespGetFlashData =             0x32,
    eBusDevStartup =                      0xff
 } __attribute__ ((packed)) TBusMsgType;
 
