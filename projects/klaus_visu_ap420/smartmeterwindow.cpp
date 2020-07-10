@@ -31,6 +31,11 @@ void smartmeterwindow::show(void) {
     emit messagePublish("home/smartmeter/enable-event/set", "01"); // variable as hex number
 
     isVisible = true;
+    QString str;
+    str = "Zählerstand: ";
+    ui->label_aplus->setText(str);
+    str = "Wirkleistung: ";
+    ui->label_pplus->setText(str);
     QDialog::show();
 }
 
