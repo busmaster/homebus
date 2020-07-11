@@ -233,6 +233,8 @@ static void ApplicationCheck(void) {
         BusVarRead(0, &sAveEnabled, sizeof(sAveEnabled), &result);
         if (sAveEnabled == 1) {
             GET_TIME_S(sEnabledStartTimeS);
+            /* force a change event */
+            sMdOld.countA_plus = (uint32_t)-1;
         }
         sCheckBusvarEnable = false;
     }
