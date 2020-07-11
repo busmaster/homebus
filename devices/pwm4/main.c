@@ -70,6 +70,8 @@
 #define RETRY_CYCLE_TIME_MS         200 /* time in ms */
 #define CHANGE_DETECT_CYCLE_TIME_MS 500 /* time in ms */
 
+#define MAX_FIRMWARE_SIZE           (28UL * 1024UL)
+
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */
@@ -515,6 +517,7 @@ static void ProcessBus(uint8_t ret) {
     static bool            sTxRetry = false;
     bool                   flag;
     uint8_t                val8;
+    uint32_t               val32;
 
     if (sTxRetry) {
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
@@ -535,6 +538,7 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqSetClientAddr:
         case eBusDevReqGetClientAddr:
         case eBusDevRespActualValueEvent:
+        case eBusDevReqGetFlashData:
             if (spBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
             }
@@ -719,6 +723,24 @@ static void ProcessBus(uint8_t ret) {
         for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
             uint8_t *p = &sTxMsg.msg.devBus.x.devResp.getClientAddr.clientAddr[i];
             *p = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
+        }
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        break;
+    case eBusDevReqGetFlashData:
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespGetFlashData;
+        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        sTxMsg.msg.devBus.x.devResp.getFlashData.addr = spBusMsg->msg.devBus.x.devReq.getFlashData.addr;
+        val8 = sizeof(sTxMsg.msg.devBus.x.devResp.getFlashData.data);
+        val32 = spBusMsg->msg.devBus.x.devReq.getFlashData.addr;
+        if (val32 < MAX_FIRMWARE_SIZE) {
+            val8 = min(val8, MAX_FIRMWARE_SIZE - val32);
+        } else {
+            val8 = 0;
+        }
+        sTxMsg.msg.devBus.x.devResp.getFlashData.numValid = val8;
+        for (i = 0; i < val8; i++) {
+            sTxMsg.msg.devBus.x.devResp.getFlashData.data[i] = pgm_read_byte((short)val32 + i);
         }
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
