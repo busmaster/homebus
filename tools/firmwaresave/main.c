@@ -29,6 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "sio.h"
 #include "bus.h"
@@ -88,7 +89,7 @@ int main(int argc, char *argv[]) {
 
     comDev[0] = '\0';
     fileName[0] = '\0';
-    
+
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-c") == 0) {
             /* get com interface */
@@ -173,6 +174,25 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+
+/*-----------------------------------------------------------------------------
+/* sleep
+*/
+int msleep(long ms) {
+
+    struct timespec ts;
+    int ret;
+
+    ts.tv_sec = ms / 1000;
+    ts.tv_nsec = (ms % 1000) * 1000000;
+
+    do {
+        ret = nanosleep(&ts, &ts);
+    } while (ret && errno == EINTR);
+
+    return ret;
+}
+
 /*-----------------------------------------------------------------------------
 *  request flash packet
 */
@@ -212,6 +232,7 @@ static int ReqFlashData(uint8_t address, uint32_t flashOffs, uint8_t *buffer, si
                 timeOut = true;
             }
         }
+        msleep(1);
     } while (!responseOk && !timeOut);
 
     if (responseOk) {
