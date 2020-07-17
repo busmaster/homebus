@@ -204,13 +204,8 @@ void my_log_callback(struct mosquitto *mq, void *obj, int level, const char *str
 static int do31_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
 
     TBusTelegram        tx_msg;
-    TBusTelegram        *rx_msg;
-    unsigned long       start_time;
-    unsigned long       cur_time;
     uint8_t             ret;
     TBusDevSetValueDo31 *sv;
-    bool                response_ok = false;
-    bool                timeout = false;
 
     tx_msg.type = eBusDevReqSetValue;
     tx_msg.senderAddr = my_addr;
@@ -219,30 +214,9 @@ static int do31_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
     sv = &tx_msg.msg.devBus.x.devReq.setValue.setValue.do31;
     memcpy(sv->digOut, digout, sizeof(sv->digOut));
     memcpy(sv->shader, shader, sizeof(sv->shader));
+    ret = BusSend(&tx_msg);
 
-    BusSend(&tx_msg);
-
-    /* response */
-    start_time = get_tick_count();
-    do {
-        cur_time = get_tick_count();
-        ret = BusCheck();
-        if (ret == BUS_MSG_OK) {
-            rx_msg = BusMsgBufGet();
-            if ((rx_msg->type == eBusDevRespSetValue)        &&
-                (rx_msg->msg.devBus.receiverAddr == my_addr) &&
-                (rx_msg->senderAddr == addr)) {
-                response_ok = true;
-            }
-        } else {
-            if ((cur_time - start_time) > BUS_RESPONSE_TIMEOUT) {
-                timeout = true;
-            }
-        }
-        usleep(10000);
-    } while (!response_ok && !timeout);
-
-    return response_ok ? 0 : -1;
+    return (ret == BUS_SEND_OK) ? 0 : -1;
 }
 
 /*-----------------------------------------------------------------------------
@@ -293,13 +267,8 @@ static void do31_set_output(uint8_t address, uint8_t output, T_do31_output_type 
 static int pwm4_ReqSetValue(uint8_t addr, uint8_t set, uint8_t *pwm) {
 
     TBusTelegram        tx_msg;
-    TBusTelegram        *rx_msg;
-    unsigned long       start_time;
-    unsigned long       cur_time;
     uint8_t             ret;
     TBusDevSetValuePwm4 *sv;
-    bool                response_ok = false;
-    bool                timeout = false;
 
     tx_msg.type = eBusDevReqSetValue;
     tx_msg.senderAddr = my_addr;
@@ -308,30 +277,9 @@ static int pwm4_ReqSetValue(uint8_t addr, uint8_t set, uint8_t *pwm) {
     sv = &tx_msg.msg.devBus.x.devReq.setValue.setValue.pwm4;
     sv->set = set;
     memcpy(sv->pwm, pwm, sizeof(sv->pwm));
+    ret = BusSend(&tx_msg);
 
-    BusSend(&tx_msg);
-
-    /* response */
-    start_time = get_tick_count();
-    do {
-        cur_time = get_tick_count();
-        ret = BusCheck();
-        if (ret == BUS_MSG_OK) {
-            rx_msg = BusMsgBufGet();
-            if ((rx_msg->type == eBusDevRespSetValue)        &&
-                (rx_msg->msg.devBus.receiverAddr == my_addr) &&
-                (rx_msg->senderAddr == addr)) {
-                response_ok = true;
-            }
-        } else {
-            if ((cur_time - start_time) > BUS_RESPONSE_TIMEOUT) {
-                timeout = true;
-            }
-        }
-        usleep(10000);
-    } while (!response_ok && !timeout);
-
-    return response_ok ? 0 : -1;
+    return (ret == BUS_SEND_OK) ? 0 : -1;
 }
 
 /*-----------------------------------------------------------------------------
@@ -363,13 +311,8 @@ static void pwm4_set_output(uint8_t address, uint8_t output, bool on) {
 static int sw8_ReqSetValue(uint8_t addr, uint8_t *digout) {
 
     TBusTelegram        tx_msg;
-    TBusTelegram        *rx_msg;
-    unsigned long       start_time;
-    unsigned long       cur_time;
     uint8_t             ret;
     TBusDevSetValueSw8  *sv;
-    bool                response_ok = false;
-    bool                timeout = false;
 
     tx_msg.type = eBusDevReqSetValue;
     tx_msg.senderAddr = my_addr;
@@ -377,30 +320,9 @@ static int sw8_ReqSetValue(uint8_t addr, uint8_t *digout) {
     tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeSw8;
     sv = &tx_msg.msg.devBus.x.devReq.setValue.setValue.sw8;
     memcpy(sv->digOut, digout, sizeof(sv->digOut));
+    ret = BusSend(&tx_msg);
 
-    BusSend(&tx_msg);
-
-    /* response */
-    start_time = get_tick_count();
-    do {
-        cur_time = get_tick_count();
-        ret = BusCheck();
-        if (ret == BUS_MSG_OK) {
-            rx_msg = BusMsgBufGet();
-            if ((rx_msg->type == eBusDevRespSetValue)        &&
-                (rx_msg->msg.devBus.receiverAddr == my_addr) &&
-                (rx_msg->senderAddr == addr)) {
-                response_ok = true;
-            }
-        } else {
-            if ((cur_time - start_time) > BUS_RESPONSE_TIMEOUT) {
-                timeout = true;
-            }
-        }
-        usleep(10000);
-    } while (!response_ok && !timeout);
-
-    return response_ok ? 0 : -1;
+    return (ret == BUS_SEND_OK) ? 0 : -1;
 }
 
 /*-----------------------------------------------------------------------------
@@ -469,13 +391,8 @@ static void sw8_ReqActualValueEvent(uint8_t addr, uint8_t receiver, uint8_t digi
 static int var_ReqSetVar(uint8_t addr, uint8_t index, uint8_t size, uint8_t *value) {
 
     TBusTelegram        tx_msg;
-    TBusTelegram        *rx_msg;
-    unsigned long       start_time;
-    unsigned long       cur_time;
     uint8_t             ret;
     uint8_t             *data;
-    bool                response_ok = false;
-    bool                timeout = false;
 
     tx_msg.type = eBusDevReqSetVar;
     tx_msg.senderAddr = my_addr;
@@ -484,35 +401,9 @@ static int var_ReqSetVar(uint8_t addr, uint8_t index, uint8_t size, uint8_t *val
     tx_msg.msg.devBus.x.devReq.setVar.length = size;
     data = tx_msg.msg.devBus.x.devReq.setVar.data;
     memcpy(data, value, size);
+    ret = BusSend(&tx_msg);
 
-    BusSend(&tx_msg);
-
-    /* response */
-    start_time = get_tick_count();
-    do {
-        cur_time = get_tick_count();
-        ret = BusCheck();
-        if (ret == BUS_MSG_OK) {
-            rx_msg = BusMsgBufGet();
-            if ((rx_msg->type == eBusDevRespSetVar)          &&
-                (rx_msg->msg.devBus.receiverAddr == my_addr) &&
-                (rx_msg->senderAddr == addr)) {
-                if ((rx_msg->msg.devBus.x.devResp.setVar.index == index) &&
-                    (rx_msg->msg.devBus.x.devResp.setVar.result == eBusVarSuccess)) {
-                    response_ok = true;
-                } else {
-                    break;
-                }
-            }
-        } else {
-            if ((cur_time - start_time) > BUS_RESPONSE_TIMEOUT) {
-                timeout = true;
-            }
-        }
-        usleep(10000);
-    } while (!response_ok && !timeout);
-
-    return response_ok ? 0 : -1;
+    return (ret == BUS_SEND_OK) ? 0 : -1;
 }
 /*-----------------------------------------------------------------------------
 *  convert readable hex sting to uint8_t array
