@@ -37,9 +37,11 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <errno.h>
+#include <sys/timerfd.h>
 
 #include <mosquitto.h>
 #include <uthash.h>
+#include <utlist.h>
 #include <yaml-cpp/yaml.h>
 #include <iostream>
 #include <fstream>
@@ -130,6 +132,15 @@ typedef struct {
     UT_hash_handle hh;
 } T_dev_desc;
 
+typedef struct T_bus_tx {
+    struct T_bus_tx *next;
+    TBusTelegram    tx_msg;
+    bool            sent;
+    unsigned long   send_ts;
+    int             (* compare)(TBusTelegram *, void *);
+    void            *param;
+} T_bus_tx;
+
 /*-----------------------------------------------------------------------------
 *  Variables
 */
@@ -140,6 +151,8 @@ static uint8_t          my_addr;
 static uint8_t          event_addr;
 static struct mosquitto *mosq;
 static bool             mosq_connected;
+static T_bus_tx         *bus_txq;
+static int              timerFd;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -159,6 +172,25 @@ static unsigned long get_tick_count(void) {
               (unsigned long long)ts.tv_nsec / 1000000ULL);
 
     return time_ms;
+}
+
+/*-----------------------------------------------------------------------------
+* setup timer alarm
+*/
+static void set_alarm(int fd, unsigned long ms) {
+
+    struct itimerspec ts;
+
+    ts.it_value.tv_sec = ms / 1000;
+    if (ms > 0) {
+        ts.it_value.tv_nsec = ms % 1000 * 1000000;
+    } else {
+        ts.it_value.tv_nsec = 1; /* 0 disables the timer, so use 1 ns */
+    }
+    ts.it_interval.tv_sec = 0;
+    ts.it_interval.tv_nsec = 0;
+
+    timerfd_settime(fd, 0, &ts, 0);
 }
 
 /*-----------------------------------------------------------------------------
@@ -199,24 +231,60 @@ void my_log_callback(struct mosquitto *mq, void *obj, int level, const char *str
 }
 
 /*-----------------------------------------------------------------------------
+*  compare function for RespSetValue telegram
+*/
+struct respSetValue_compare_data {
+    TBusMsgType type;
+    uint8_t     receiverAddr;
+    uint8_t     senderAddr;
+};
+
+static int RespSetValue_compare(TBusTelegram *msg, void *param) {
+    struct respSetValue_compare_data *p = (struct respSetValue_compare_data *)param;
+
+    if ((p->type == msg->type)                            &&
+        (p->receiverAddr == msg->msg.devBus.receiverAddr) &&
+        (p->senderAddr == msg->senderAddr)) {
+        return 0;
+    }
+    return -1;
+}
+
+/*-----------------------------------------------------------------------------
 *  set a DO31 output using ReqSetValue telegram
 */
 static int do31_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
 
-    TBusTelegram        tx_msg;
-    uint8_t             ret;
-    TBusDevSetValueDo31 *sv;
+    TBusDevSetValueDo31              *sv;
+    T_bus_tx                         *tx;
+    struct respSetValue_compare_data *p;
 
-    tx_msg.type = eBusDevReqSetValue;
-    tx_msg.senderAddr = my_addr;
-    tx_msg.msg.devBus.receiverAddr = addr;
-    tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
-    sv = &tx_msg.msg.devBus.x.devReq.setValue.setValue.do31;
+    tx = (T_bus_tx *)malloc(sizeof(T_bus_tx));
+    p = (struct respSetValue_compare_data *)malloc(sizeof(struct respSetValue_compare_data));
+    if ((tx == 0) || (p == 0)) {
+        return -1;
+    }
+
+    tx->tx_msg.type = eBusDevReqSetValue;
+    tx->tx_msg.senderAddr = my_addr;
+    tx->tx_msg.msg.devBus.receiverAddr = addr;
+    tx->tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo31;
+    sv = &tx->tx_msg.msg.devBus.x.devReq.setValue.setValue.do31;
     memcpy(sv->digOut, digout, sizeof(sv->digOut));
     memcpy(sv->shader, shader, sizeof(sv->shader));
-    ret = BusSend(&tx_msg);
 
-    return (ret == BUS_SEND_OK) ? 0 : -1;
+    p->type = eBusDevRespSetValue;
+    p->receiverAddr = my_addr;
+    p->senderAddr = addr;
+
+    tx->compare = RespSetValue_compare;
+    tx->param = p;
+    tx->sent = false;
+
+    LL_APPEND(bus_txq, tx);
+    set_alarm(timerFd, 0); /* run serve_bus immediately */
+
+    return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -256,6 +324,7 @@ static void do31_set_output(uint8_t address, uint8_t output, T_do31_output_type 
         shader[output] = value;
         str = "SH";
     }
+
     if (do31_ReqSetValue(address, digout, shader) != 0) {
         syslog(LOG_ERR, "DO31 %d: can't set value %s%d to %d", address, str, output, value);
     }
@@ -266,20 +335,36 @@ static void do31_set_output(uint8_t address, uint8_t output, T_do31_output_type 
 */
 static int pwm4_ReqSetValue(uint8_t addr, uint8_t set, uint8_t *pwm) {
 
-    TBusTelegram        tx_msg;
-    uint8_t             ret;
-    TBusDevSetValuePwm4 *sv;
+    TBusDevSetValuePwm4              *sv;
+    T_bus_tx                         *tx;
+    struct respSetValue_compare_data *p;
 
-    tx_msg.type = eBusDevReqSetValue;
-    tx_msg.senderAddr = my_addr;
-    tx_msg.msg.devBus.receiverAddr = addr;
-    tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypePwm4;
-    sv = &tx_msg.msg.devBus.x.devReq.setValue.setValue.pwm4;
+    tx = (T_bus_tx *)malloc(sizeof(T_bus_tx));
+    p = (struct respSetValue_compare_data *)malloc(sizeof(struct respSetValue_compare_data));
+    if ((tx == 0) || (p == 0)) {
+        return -1;
+    }
+
+    tx->tx_msg.type = eBusDevReqSetValue;
+    tx->tx_msg.senderAddr = my_addr;
+    tx->tx_msg.msg.devBus.receiverAddr = addr;
+    tx->tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypePwm4;
+    sv = &tx->tx_msg.msg.devBus.x.devReq.setValue.setValue.pwm4;
     sv->set = set;
     memcpy(sv->pwm, pwm, sizeof(sv->pwm));
-    ret = BusSend(&tx_msg);
 
-    return (ret == BUS_SEND_OK) ? 0 : -1;
+    p->type = eBusDevRespSetValue;
+    p->receiverAddr = my_addr;
+    p->senderAddr = addr;
+
+    tx->compare = RespSetValue_compare;
+    tx->param = p;
+    tx->sent = false;
+
+    LL_APPEND(bus_txq, tx);
+    set_alarm(timerFd, 0); /* run serve_bus immediately */
+
+    return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -310,19 +395,35 @@ static void pwm4_set_output(uint8_t address, uint8_t output, bool on) {
 */
 static int sw8_ReqSetValue(uint8_t addr, uint8_t *digout) {
 
-    TBusTelegram        tx_msg;
-    uint8_t             ret;
-    TBusDevSetValueSw8  *sv;
+    TBusDevSetValueSw8               *sv;
+    T_bus_tx                         *tx;
+    struct respSetValue_compare_data *p;
 
-    tx_msg.type = eBusDevReqSetValue;
-    tx_msg.senderAddr = my_addr;
-    tx_msg.msg.devBus.receiverAddr = addr;
-    tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeSw8;
-    sv = &tx_msg.msg.devBus.x.devReq.setValue.setValue.sw8;
+    tx = (T_bus_tx *)malloc(sizeof(T_bus_tx));
+    p = (struct respSetValue_compare_data *)malloc(sizeof(struct respSetValue_compare_data));
+    if ((tx == 0) || (p == 0)) {
+        return -1;
+    }
+
+    tx->tx_msg.type = eBusDevReqSetValue;
+    tx->tx_msg.senderAddr = my_addr;
+    tx->tx_msg.msg.devBus.receiverAddr = addr;
+    tx->tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeSw8;
+    sv = &tx->tx_msg.msg.devBus.x.devReq.setValue.setValue.sw8;
     memcpy(sv->digOut, digout, sizeof(sv->digOut));
-    ret = BusSend(&tx_msg);
 
-    return (ret == BUS_SEND_OK) ? 0 : -1;
+    p->type = eBusDevRespSetValue;
+    p->receiverAddr = my_addr;
+    p->senderAddr = addr;
+
+    tx->compare = RespSetValue_compare;
+    tx->param = p;
+    tx->sent = false;
+
+    LL_APPEND(bus_txq, tx);
+    set_alarm(timerFd, 0); /* run serve_bus immediately */
+
+    return 0;
 }
 
 /*-----------------------------------------------------------------------------
@@ -360,29 +461,97 @@ static void sw8_set_output(uint8_t address, uint8_t output, T_sw8_port_type type
 }
 
 /*-----------------------------------------------------------------------------
+*  compare function for RespActualValueEvent telegram
+*/
+struct respActualValueEvent_compare_data {
+    TBusMsgType                 type;
+    uint8_t                     receiverAddr;
+    uint8_t                     senderAddr;
+    TBusDevRespActualValueEvent ave;
+};
+
+static int RespActualValueEvent_compare(TBusTelegram *msg, void *param) {
+    int ret = -1;
+    struct respActualValueEvent_compare_data *p = (struct respActualValueEvent_compare_data *)param;
+
+    if ((p->type == msg->type)                            &&
+        (p->receiverAddr == msg->msg.devBus.receiverAddr) &&
+        (p->senderAddr == msg->senderAddr)) {
+        switch (p->ave.devType) {
+        case eBusDevTypeSw8:
+            if (p->ave.actualValue.sw8.state == msg->msg.devBus.x.devResp.actualValueEvent.actualValue.sw8.state) {
+                ret = 0;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    return ret;
+}
+
+/*-----------------------------------------------------------------------------
 *  send a SW8 actual value event ReqActualValueEvent telegram
 */
 static void sw8_ReqActualValueEvent(uint8_t addr, uint8_t receiver, uint8_t digin, uint8_t value) {
 
-    TBusTelegram tx_msg;
-    uint8_t      ret;
-    uint8_t      state;
+    uint8_t                                  state;
+    T_bus_tx                                 *tx;
+    struct respActualValueEvent_compare_data *p;
 
-    tx_msg.type = eBusDevReqActualValueEvent;
-    tx_msg.senderAddr = addr;
-    tx_msg.msg.devBus.receiverAddr = receiver;
-    tx_msg.msg.devBus.x.devReq.actualValueEvent.devType = eBusDevTypeSw8;
+    tx = (T_bus_tx *)malloc(sizeof(T_bus_tx));
+    p = (struct respActualValueEvent_compare_data *)malloc(sizeof(struct respActualValueEvent_compare_data));
+    if ((tx == 0) || (p == 0)) {
+        syslog(LOG_ERR, "SW8 %d: ReqActualValueEvent bus send error (digin %d, value %d) ", addr, digin, value);
+        return;
+    }
+
+    tx->tx_msg.type = eBusDevReqActualValueEvent;
+    tx->tx_msg.senderAddr = addr;
+    tx->tx_msg.msg.devBus.receiverAddr = receiver;
+    tx->tx_msg.msg.devBus.x.devReq.actualValueEvent.devType = eBusDevTypeSw8;
     if (value == 0) {
         state = 0;
     } else {
         state = (1 << digin);
     }
-    tx_msg.msg.devBus.x.devReq.actualValueEvent.actualValue.sw8.state = state;
+    tx->tx_msg.msg.devBus.x.devReq.actualValueEvent.actualValue.sw8.state = state;
 
-    ret = BusSend(&tx_msg);
-    if (ret != BUS_SEND_OK) {
-        syslog(LOG_ERR, "SW8 %d: ReqActualValueEvent bus send error (state %d) ", addr, state);
+    p->type = eBusDevRespActualValueEvent;
+    p->receiverAddr = addr;
+    p->senderAddr = receiver;
+    p->ave.devType = eBusDevTypeSw8;
+    p->ave.actualValue.sw8.state = state;
+
+    tx->compare = RespActualValueEvent_compare;
+    tx->param = p;
+    tx->sent = false;
+
+    LL_APPEND(bus_txq, tx);
+    set_alarm(timerFd, 0); /* run serve_bus immediately */
+}
+
+/*-----------------------------------------------------------------------------
+*  compare function for RespSetVar telegram
+*/
+struct respSetVar_compare_data {
+    TBusMsgType       type;
+    uint8_t           receiverAddr;
+    uint8_t           senderAddr;
+    TBusDevRespSetVar sv;
+};
+
+static int RespSetVar_compare(TBusTelegram *msg, void *param) {
+    struct respSetVar_compare_data *p = (struct respSetVar_compare_data *)param;
+
+    if ((p->type == msg->type)                                      &&
+        (p->receiverAddr == msg->msg.devBus.receiverAddr)           &&
+        (p->senderAddr == msg->senderAddr)                          &&
+        (msg->msg.devBus.x.devResp.setVar.result == eBusVarSuccess) &&
+        (p->sv.index == msg->msg.devBus.x.devResp.setVar.index)) {
+        return 0;
     }
+    return -1;
 }
 
 /*-----------------------------------------------------------------------------
@@ -390,20 +559,37 @@ static void sw8_ReqActualValueEvent(uint8_t addr, uint8_t receiver, uint8_t digi
 */
 static int var_ReqSetVar(uint8_t addr, uint8_t index, uint8_t size, uint8_t *value) {
 
-    TBusTelegram        tx_msg;
-    uint8_t             ret;
-    uint8_t             *data;
+    uint8_t                        *data;
+    T_bus_tx                       *tx;
+    struct respSetVar_compare_data *p;
 
-    tx_msg.type = eBusDevReqSetVar;
-    tx_msg.senderAddr = my_addr;
-    tx_msg.msg.devBus.receiverAddr = addr;
-    tx_msg.msg.devBus.x.devReq.setVar.index = index;
-    tx_msg.msg.devBus.x.devReq.setVar.length = size;
-    data = tx_msg.msg.devBus.x.devReq.setVar.data;
+    tx = (T_bus_tx *)malloc(sizeof(T_bus_tx));
+    p = (struct respSetVar_compare_data *)malloc(sizeof(struct respSetVar_compare_data));
+    if ((tx == 0) || (p == 0)) {
+        return -1;
+    }
+
+    tx->tx_msg.type = eBusDevReqSetVar;
+    tx->tx_msg.senderAddr = my_addr;
+    tx->tx_msg.msg.devBus.receiverAddr = addr;
+    tx->tx_msg.msg.devBus.x.devReq.setVar.index = index;
+    tx->tx_msg.msg.devBus.x.devReq.setVar.length = size;
+    data = tx->tx_msg.msg.devBus.x.devReq.setVar.data;
     memcpy(data, value, size);
-    ret = BusSend(&tx_msg);
 
-    return (ret == BUS_SEND_OK) ? 0 : -1;
+    p->type = eBusDevRespSetVar;
+    p->receiverAddr = my_addr;
+    p->senderAddr = addr;
+    p->sv.index = index;
+
+    tx->compare = RespSetVar_compare;
+    tx->param = p;
+    tx->sent = false;
+
+    LL_APPEND(bus_txq, tx);
+    set_alarm(timerFd, 0); /* run serve_bus immediately */
+
+    return 0;
 }
 /*-----------------------------------------------------------------------------
 *  convert readable hex sting to uint8_t array
@@ -894,6 +1080,19 @@ static void publish_var(
     }
 }
 
+static void put_next(T_bus_tx **tx) {
+    T_bus_tx  *next;
+    T_bus_tx  *curr = *tx;
+
+    next = curr->next;
+    LL_DELETE(*tx, curr);
+    free(curr->param);
+    free(curr);
+    if (next) {
+        set_alarm(timerFd, 0); // call serve_bus immediately
+    }
+}
+
 static void serve_bus(void) {
     uint8_t                     busRet;
     TBusTelegram                *pRxBusMsg;
@@ -903,12 +1102,38 @@ static void serve_bus(void) {
     uint32_t                    phys_dev;
     TBusDevType                 dev_type;
     TBusTelegram                tx_msg;
+    T_bus_tx                    *tx;
+
+    // check for a job in txq
+    if (bus_txq) {
+        tx = bus_txq;
+        if (!tx->sent) {
+            BusSend(&tx->tx_msg);
+            tx->sent = true;
+            tx->send_ts = get_tick_count();
+        }
+        if ((get_tick_count() - tx->send_ts) > BUS_RESPONSE_TIMEOUT) {
+            put_next(&bus_txq);
+        } else {
+            set_alarm(timerFd, 10); // call serve_bus in 10 ms
+        }
+    }
 
     busRet = BusCheck();
     if (busRet != BUS_MSG_OK) {
         return;
     }
     pRxBusMsg = BusMsgBufGet();
+
+    // check if response to txq request
+    if (bus_txq) {
+        tx = bus_txq;
+        if (tx->compare && tx->compare(pRxBusMsg, tx->param) == 0) {
+            put_next(&bus_txq);
+            return;
+        }
+    }
+
     if (((pRxBusMsg->type != eBusDevReqActualValueEvent) || (pRxBusMsg->msg.devBus.receiverAddr != event_addr)) &&
         ((pRxBusMsg->type != eBusDevReqSetVar) || (pRxBusMsg->msg.devBus.receiverAddr != my_addr))) {
         return;
@@ -1227,7 +1452,13 @@ int main(int argc, char *argv[]) {
     }
 
     busFd = SioGetFd(busHandle);
-    maxFd = busFd;
+    timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
+    if (timerFd == -1) {
+        syslog(LOG_ERR, "can't create timerfd");
+        return -1;
+    }
+
+    maxFd = max(busFd, timerFd);
 
     HASH_ITER(hh, topic_desc, topic_entry, topic_tmp) {
         printf("topic %s: type " , topic_entry->topic);
@@ -1315,13 +1546,18 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        FD_SET(timerFd, &rfds);
         FD_SET(busFd, &rfds);
         FD_SET(mosqFd, &rfds);
         tv.tv_sec = 0;
         tv.tv_usec = 100000;
-        maxFd = max(mosqFd, busFd);
-        ret = select(maxFd + 1, &rfds, 0, 0, &tv);
+        ret = select(max(mosqFd, maxFd) + 1, &rfds, 0, 0, &tv);
         if ((ret > 0) && FD_ISSET(busFd, &rfds)) {
+            serve_bus();
+        }
+        if ((ret > 0) && FD_ISSET(timerFd, &rfds)) {
+            uint64_t u64;
+            read(timerFd, &u64, sizeof(u64));
             serve_bus();
         }
         if ((ret > 0) && FD_ISSET(mosqFd, &rfds)) {
