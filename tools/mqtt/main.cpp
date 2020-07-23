@@ -535,10 +535,12 @@ static void sw8_ReqActualValueEvent(uint8_t addr, uint8_t receiver, uint8_t digi
 *  compare function for RespSetVar telegram
 */
 struct respSetVar_compare_data {
-    TBusMsgType       type;
-    uint8_t           receiverAddr;
-    uint8_t           senderAddr;
-    TBusDevRespSetVar sv;
+    TBusMsgType type;
+    uint8_t     receiverAddr;
+    uint8_t     senderAddr;
+    uint8_t     index;
+    uint8_t     size;
+    uint8_t     value[BUS_MAX_VAR_SIZE];
 };
 
 static int RespSetVar_compare(TBusTelegram *msg, void *param) {
@@ -548,7 +550,8 @@ static int RespSetVar_compare(TBusTelegram *msg, void *param) {
         (p->receiverAddr == msg->msg.devBus.receiverAddr)           &&
         (p->senderAddr == msg->senderAddr)                          &&
         (msg->msg.devBus.x.devResp.setVar.result == eBusVarSuccess) &&
-        (p->sv.index == msg->msg.devBus.x.devResp.setVar.index)) {
+        (p->index == msg->msg.devBus.x.devResp.setVar.index)) {
+        publish_var((uint8_t)eBusDevTypeInv | (p->senderAddr << 8), p->index, p->size, p->value);
         return 0;
     }
     return -1;
@@ -580,7 +583,9 @@ static int var_ReqSetVar(uint8_t addr, uint8_t index, uint8_t size, uint8_t *val
     p->type = eBusDevRespSetVar;
     p->receiverAddr = my_addr;
     p->senderAddr = addr;
-    p->sv.index = index;
+    p->index = index;
+    p->size = size;
+    memcpy(p->value, value, size);
 
     tx->compare = RespSetVar_compare;
     tx->param = p;
@@ -657,9 +662,8 @@ printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
     case eBusDevTypeInv:
         /* set variable */
         /* we expect the payload to contain a printable hex array: e.g. "1 02 55 aa" for the 4-byte array 0x01, 0x02, 0x55, 0xaa */
-        if ((payload_to_uint8((const char *)message->payload, message->payloadlen, value, (int)sizeof(value)) == cfg->io.var.size) &&
-            (var_ReqSetVar(cfg->io.var.address, cfg->io.var.index, cfg->io.var.size, value) == 0)) {
-            publish_var((uint8_t)eBusDevTypeInv | (cfg->io.var.address << 8), cfg->io.var.index, cfg->io.var.size, value);
+        if (payload_to_uint8((const char *)message->payload, message->payloadlen, value, (int)sizeof(value)) == cfg->io.var.size) {
+            var_ReqSetVar(cfg->io.var.address, cfg->io.var.index, cfg->io.var.size, value);
         }
         break;
     default:
