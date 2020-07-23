@@ -58,9 +58,10 @@ private slots:
     void onMqtt_messageReceived(const QByteArray &, const QMqttTopicName &);
 
 private:
-    void messageActionStateBit(const QMqttTopicName &, const QByteArray &, const char *, quint32 *, quint32);
-    void messageActionVar(const QMqttTopicName &, const QByteArray &, const char *, quint8 *, quint8);
+    void messageActionStateBit(const QByteArray &, quint32 *, quint32);
+    void messageActionVar(const QByteArray &, quint8 *, quint8);
     void message_to_byteArray(const QString &, QByteArray &);
+    void mqtt_subscribe(const QString &, int index);
     Ui::MainWindow *ui;
     egwindow *uiEg;
     ogwindow *uiOg;
@@ -92,6 +93,7 @@ private:
     ioState *io;
 
     QMqttClient *mqttClient;
+    QHash<QString, int> topic_hash;
 };
 
 #endif // MAINWINDOW_H

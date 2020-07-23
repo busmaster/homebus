@@ -133,56 +133,71 @@ MainWindow::~MainWindow() {
     }
 }
 
+void MainWindow::mqtt_subscribe(const QString &topic, int index) {
+
+   mqttClient->subscribe(QMqttTopicFilter(topic), 1);
+   topic_hash[topic] = index;
+
+}
+
 void MainWindow::onMqtt_connected() {
 
     qDebug() << "mqtt connected";
 
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/arbeit/schreibtisch/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/arbeit/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/schrank/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/schlaf/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/bad/spiegel/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/bad/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/vorraum/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/wohn/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/wohn/lesen/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/vorraum/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/wc/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/glocke/taster/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/glocke/disable/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/ug/lager/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/ug/stiege/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/ug/arbeit/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/ug/fitness/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/ug/vorraum/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/ug/technik/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/gang/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/anna/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/severin/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/wc/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/wand/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/geschirrspueler/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/abwasch/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/kaffeemaschine/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/kueche/dunstabzug/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/speis/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eg/ess/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/netzteil/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht1/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht2/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht3/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht4/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht5/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/og/stiege/licht6/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/garage/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/garage/tor/status/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/terrasse/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eingang/licht/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/eingang/licht/mode/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/internet/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/kamera/actual"), 1);
-    mqttClient->subscribe(QMqttTopicFilter("home/smartmeter/actual"), 1);
+    mqtt_subscribe("home/eg/arbeit/schreibtisch/actual", 0);
+    mqtt_subscribe("home/eg/arbeit/licht/actual", 1);
+    mqtt_subscribe("home/eg/wohn/licht/actual", 2);
+    mqtt_subscribe("home/eg/wohn/lesen/licht/actual", 3);
+    mqtt_subscribe("home/eg/vorraum/licht/actual", 4);
+    mqtt_subscribe("home/eg/gang/licht/actual", 5);
+    mqtt_subscribe("home/eg/wc/licht/actual", 6);
+    mqtt_subscribe("home/eg/ess/licht/actual", 7);
+    mqtt_subscribe("home/eg/speis/licht/actual", 8);
+    mqtt_subscribe("home/eg/kueche/licht/actual", 9);
+    mqtt_subscribe("home/eg/kueche/wand/licht/actual", 10);
+    mqtt_subscribe("home/eg/kueche/geschirrspueler/licht/actual", 11);
+    mqtt_subscribe("home/eg/kueche/abwasch/licht/actual", 12);
+    mqtt_subscribe("home/eg/kueche/kaffeemaschine/licht/actual", 13);
+    mqtt_subscribe("home/eg/kueche/dunstabzug/licht/actual", 14);
+
+    mqtt_subscribe("home/og/schrank/licht/actual", 20);
+    mqtt_subscribe("home/og/schlaf/licht/actual", 21);
+    mqtt_subscribe("home/og/bad/spiegel/licht/actual", 22);
+    mqtt_subscribe("home/og/bad/licht/actual", 23);
+    mqtt_subscribe("home/og/vorraum/licht/actual", 24);
+    mqtt_subscribe("home/og/anna/licht/actual", 25);
+    mqtt_subscribe("home/og/severin/licht/actual", 26);
+    mqtt_subscribe("home/og/wc/licht/actual", 27);
+    mqtt_subscribe("home/og/stiege/netzteil/actual", 28);
+    mqtt_subscribe("home/og/stiege/licht1/actual", 29);
+    mqtt_subscribe("home/og/stiege/licht2/actual", 30);
+    mqtt_subscribe("home/og/stiege/licht3/actual", 31);
+    mqtt_subscribe("home/og/stiege/licht4/actual", 32);
+    mqtt_subscribe("home/og/stiege/licht5/actual", 33);
+    mqtt_subscribe("home/og/stiege/licht6/actual", 34);
+
+    mqtt_subscribe("home/ug/lager/licht/actual", 40);
+    mqtt_subscribe("home/ug/stiege/licht/actual", 41);
+    mqtt_subscribe("home/ug/arbeit/licht/actual", 42);
+    mqtt_subscribe("home/ug/fitness/licht/actual", 43);
+    mqtt_subscribe("home/ug/vorraum/licht/actual", 44);
+    mqtt_subscribe("home/ug/technik/licht/actual", 45);
+
+    mqtt_subscribe("home/glocke/taster/actual", 50);
+    mqtt_subscribe("home/glocke/disable/actual", 51);
+
+    mqtt_subscribe("home/garage/licht/actual", 60);
+    mqtt_subscribe("home/garage/tor/status/actual", 61);
+
+    mqtt_subscribe("home/terrasse/licht/actual", 70);
+
+    mqtt_subscribe("home/eingang/licht/actual", 80);
+    mqtt_subscribe("home/eingang/licht/mode/actual", 81);
+
+    mqtt_subscribe("home/internet/actual", 90);
+    mqtt_subscribe("home/kamera/actual", 91);
+
+    mqtt_subscribe("home/smartmeter/actual", 100);
 }
 void MainWindow::onMqtt_disconnected() {
 
@@ -227,23 +242,24 @@ void MainWindow::cycTimerEvent() {
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 
-   if (event->type() == QEvent::MouseButtonPress)
-   {
-       scrTimer->start();
-       if (screensaverOn) {
-           screensaverOn = false;
-           if (fbBlankIsAvailable) {
-               fbBlank->write("0");
-               fbBlank->flush();
-           }
-           if (backlightIsAvailable) {
-               backlightBrightness->write("6");
-               backlightBrightness->flush();
-           }
-           return true;
-       }
-   }
-  return false;
+    (void)obj;
+
+    if (event->type() == QEvent::MouseButtonPress) {
+        scrTimer->start();
+        if (screensaverOn) {
+            screensaverOn = false;
+            if (fbBlankIsAvailable) {
+                fbBlank->write("0");
+                fbBlank->flush();
+            }
+            if (backlightIsAvailable) {
+                backlightBrightness->write("6");
+                backlightBrightness->flush();
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 void MainWindow::onDisableScreenSaver(void) {
@@ -258,15 +274,13 @@ void MainWindow::onMessagePublish(const char *topic, const char *message) {
 }
 
 
-void MainWindow::messageActionStateBit(const QMqttTopicName &topic, const QByteArray &message, const char *compare_str, quint32 *state, quint32 mask) {
+void MainWindow::messageActionStateBit(const QByteArray &message, quint32 *state, quint32 mask) {
 
-    if (QString::compare(topic.name(), compare_str) == 0) {
-        if (QString::compare(message, "1") == 0) {
-            *state |= mask;
-        } else {
-            *state &= ~mask;
-        }
-    }
+   if (QString::compare(message, "1") == 0) {
+       *state |= mask;
+   } else {
+       *state &= ~mask;
+   }
 }
 
 void MainWindow::message_to_byteArray(const QString &message, QByteArray &data) {
@@ -280,15 +294,13 @@ void MainWindow::message_to_byteArray(const QString &message, QByteArray &data) 
     }
 }
 
-void MainWindow::messageActionVar(const QMqttTopicName &topic, const QByteArray &message, const char *compare_str, quint8 *data, quint8 data_len) {
+void MainWindow::messageActionVar(const QByteArray &message, quint8 *data, quint8 data_len) {
 
     QByteArray buf;
 
-    if (QString::compare(topic.name(), compare_str) == 0) {
-        message_to_byteArray(QString(message), buf);
-        if (buf.size() == data_len) {
-            memcpy(data, buf.constData(), data_len);
-        }
+    message_to_byteArray(QString(message), buf);
+    if (buf.size() == data_len) {
+        memcpy(data, buf.constData(), data_len);
     }
 }
 
@@ -304,63 +316,65 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
     quint32 var_glocke_disable = io->var_glocke_disable;
     quint32 var_mode_LightEingang = io->var_mode_LightEingang;
     bool smChanged = false;
+    int index = topic_hash[topic.name()];
 
-    qDebug() << topic.name() << ":" << message;
+    qDebug() << topic.name() << ": " << index << ": " << message ;
 
-    messageActionStateBit(topic, message, "home/eg/arbeit/schreibtisch/actual", &io->egLight, ioState::egLightBits::egLightSchreibtisch);
-    messageActionStateBit(topic, message, "home/eg/arbeit/licht/actual", &io->egLight, ioState::egLightBits::egLightArbeit);
-    messageActionStateBit(topic, message, "home/eg/wohn/licht/actual", &io->egLight, ioState::egLightBits::egLightWohn);
-    messageActionStateBit(topic, message, "home/eg/wohn/lesen/licht/actual", &io->egLight, ioState::egLightBits::egLightWohnLese);
-    messageActionStateBit(topic, message, "home/eg/vorraum/licht/actual", &io->egLight, ioState::egLightBits::egLightVorraum);
-    messageActionStateBit(topic, message, "home/eg/wc/licht/actual", &io->egLight, ioState::egLightBits::egLightWC);
-    messageActionStateBit(topic, message, "home/eg/ess/licht/actual", &io->egLight, ioState::egLightBits::egLightEss);
-    messageActionStateBit(topic, message, "home/eg/gang/licht/actual", &io->egLight, ioState::egLightBits::egLightGang);
-    messageActionStateBit(topic, message, "home/terrasse/licht/actual", &io->egLight, ioState::egLightBits::egLightTerrasse);
-    messageActionStateBit(topic, message, "home/eingang/licht/actual", &io->egLight, ioState::egLightBits::egLightEingang);
+    switch (index) {
+    case 0:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightSchreibtisch); break;
+    case 1:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightArbeit); break;
+    case 2:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightWohn); break;
+    case 3:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightWohnLese); break;
+    case 4:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightVorraum); break;
+    case 5:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightGang); break;
+    case 6:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightWC); break;
+    case 7:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightEss); break;
+    case 8:  messageActionStateBit(message, &io->kueche, ioState::kuecheLightBits::kuecheLightSpeis); break;
+    case 9:  messageActionStateBit(message, &io->kueche,  ioState::kuecheLightBits::kuecheLight); break;
+    case 10: messageActionStateBit(message, &io->kueche,  ioState::kuecheLightBits::kuecheLightWand); break;
+    case 11: messageActionStateBit(message, &io->kueche,  ioState::kuecheLightBits::kuecheLightGeschirrspueler); break;
+    case 12: messageActionStateBit(message, &io->kueche,  ioState::kuecheLightBits::kuecheLightAbwasch); break;
+    case 13: messageActionStateBit(message, &io->kueche,  ioState::kuecheLightBits::kuecheLightKaffee); break;
+    case 14: messageActionStateBit(message, &io->kueche,  ioState::kuecheLightBits::kuecheLightDunstabzug); break;
 
-    messageActionStateBit(topic, message, "home/og/schrank/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightSchrank);
-    messageActionStateBit(topic, message, "home/og/schlaf/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightSchlaf);
-    messageActionStateBit(topic, message, "home/og/bad/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightBad);
-    messageActionStateBit(topic, message, "home/og/bad/spiegel/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightBadSpiegel);
-    messageActionStateBit(topic, message, "home/og/vorraum/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightVorraum);
-    messageActionStateBit(topic, message, "home/og/anna/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightAnna);
-    messageActionStateBit(topic, message, "home/og/severin/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightSeverin);
-    messageActionStateBit(topic, message, "home/og/wc/licht/actual", &io->ogLight, ioState::ogLightBits::ogLightWC);
-    messageActionStateBit(topic, message, "home/og/stiege/netzteil/actual", &io->ogLight, ioState::ogLightBits::ogLightStiegePwr);
-    messageActionStateBit(topic, message, "home/og/stiege/licht1/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege1);
-    messageActionStateBit(topic, message, "home/og/stiege/licht2/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege2);
-    messageActionStateBit(topic, message, "home/og/stiege/licht3/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege3);
-    messageActionStateBit(topic, message, "home/og/stiege/licht4/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege4);
-    messageActionStateBit(topic, message, "home/og/stiege/licht5/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege5);
-    messageActionStateBit(topic, message, "home/og/stiege/licht6/actual", &io->ogLight, ioState::ogLightBits::ogLightStiege6);
+    case 20: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightSchrank); break;
+    case 21: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightSchlaf); break;
+    case 22: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightBadSpiegel); break;
+    case 23: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightBad); break;
+    case 24: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightVorraum); break;
+    case 25: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightAnna); break;
+    case 26: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightSeverin); break;
+    case 27: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightWC); break;
+    case 28: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightStiegePwr); break;
+    case 29: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightStiege1); break;
+    case 30: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightStiege2); break;
+    case 31: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightStiege3); break;
+    case 32: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightStiege4); break;
+    case 33: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightStiege5); break;
+    case 34: messageActionStateBit(message, &io->ogLight,  ioState::ogLightBits::ogLightStiege6); break;
 
-    messageActionStateBit(topic, message, "home/ug/lager/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightLager);
-    messageActionStateBit(topic, message, "home/ug/stiege/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightStiege);
-    messageActionStateBit(topic, message, "home/ug/fitness/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightFitness);
-    messageActionStateBit(topic, message, "home/ug/arbeit/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightArbeit);
-    messageActionStateBit(topic, message, "home/ug/vorraum/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightVorraum);
-    messageActionStateBit(topic, message, "home/ug/technik/licht/actual", &io->ugLight, ioState::ugLightBits::ugLightTechnik);
+    case 40: messageActionStateBit(message, &io->ugLight,  ioState::ugLightBits::ugLightLager); break;
+    case 41: messageActionStateBit(message, &io->ugLight,  ioState::ugLightBits::ugLightStiege); break;
+    case 42: messageActionStateBit(message, &io->ugLight,  ioState::ugLightBits::ugLightArbeit); break;
+    case 43: messageActionStateBit(message, &io->ugLight,  ioState::ugLightBits::ugLightFitness); break;
+    case 44: messageActionStateBit(message, &io->ugLight,  ioState::ugLightBits::ugLightVorraum); break;
+    case 45: messageActionStateBit(message, &io->ugLight,  ioState::ugLightBits::ugLightTechnik); break;
 
-    messageActionStateBit(topic, message, "home/eg/kueche/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLight);
-    messageActionStateBit(topic, message, "home/eg/kueche/wand/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightWand);
-    messageActionStateBit(topic, message, "home/eg/kueche/geschirrspueler/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightGeschirrspueler);
-    messageActionStateBit(topic, message, "home/eg/kueche/abwasch/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightAbwasch);
-    messageActionStateBit(topic, message, "home/eg/kueche/kaffeemaschine/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightKaffee);
-    messageActionStateBit(topic, message, "home/eg/kueche/dunstabzug/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightDunstabzug);
-    messageActionStateBit(topic, message, "home/eg/speis/licht/actual", &io->kueche, ioState::kuecheLightBits::kuecheLightSpeis);
+    case 50: messageActionStateBit(message, &io->glocke_taster, 1); break;
+    case 51: messageActionVar(message, &io->var_glocke_disable, 1); break;
 
-    messageActionStateBit(topic, message, "home/garage/licht/actual", &io->garage, ioState::garageBits::garageLight);
-    messageActionStateBit(topic, message, "home/garage/tor/status/actual", &io->garage, ioState::garageBits::garageDoorClosed);
+    case 60: messageActionStateBit(message, &io->garage, ioState::garageBits::garageLight); break;
+    case 61: messageActionStateBit(message, &io->garage, ioState::garageBits::garageDoorClosed); break;
 
-    messageActionStateBit(topic, message, "home/internet/actual", &io->sockets, ioState::socketBits::socketInternet);
-    messageActionStateBit(topic, message, "home/kamera/actual", &io->sockets, ioState::socketBits::socketCamera);
+    case 70: messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightTerrasse); break;
 
-    messageActionStateBit(topic, message, "home/glocke/taster/actual", &io->glocke_taster, 1 /* 1 bit */);
+    case 80: messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightEingang); break;
+    case 81: messageActionVar(message, &io->var_mode_LightEingang, 1); break;
 
-    messageActionVar(topic, message, "home/glocke/disable/actual", &io->var_glocke_disable, 1);
-    messageActionVar(topic, message, "home/eingang/licht/mode/actual", &io->var_mode_LightEingang, 1);
+    case 90: messageActionStateBit(message, &io->sockets, ioState::socketBits::socketInternet); break;
+    case 91: messageActionStateBit(message, &io->sockets, ioState::socketBits::socketCamera); break;
 
-    if (QString::compare(topic.name(), "home/smartmeter/actual") == 0) {
+    case 100: {
         QJsonDocument doc = QJsonDocument::fromJson(message);
         QJsonObject jObject = doc.object();
         QJsonValue response;
@@ -379,6 +393,10 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         io->sm.q_plus = responseObj.value("Q+").toInt();
         io->sm.q_minus = responseObj.value("Q-").toInt();
         smChanged = true;
+        break;
+    }
+    default:
+        break;
     }
 
     if ((egLight != io->egLight)                             ||
