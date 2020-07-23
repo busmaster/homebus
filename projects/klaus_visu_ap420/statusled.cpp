@@ -14,6 +14,7 @@ statusled::statusled(QObject *parent) : QObject(parent) {
     if (!check_device(led_green) ||
         !check_device(led_red)) {
         delete file;
+        file = 0;
         ledIsAvailable = false;
         return;
     }
