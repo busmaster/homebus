@@ -56,6 +56,7 @@ private slots:
     void onMqtt_connected();
     void onMqtt_disconnected();
     void onMqtt_messageReceived(const QByteArray &, const QMqttTopicName &);
+    void mqttReconnectTimerEvent();
 
 private:
     void messageActionStateBit(const QByteArray &, quint32 *, quint32);
@@ -93,6 +94,7 @@ private:
     ioState *io;
 
     QMqttClient *mqttClient;
+    QTimer *mqttReconnectTimer;
     QHash<QString, int> topic_hash;
 };
 

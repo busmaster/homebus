@@ -84,14 +84,14 @@ MainWindow::MainWindow(QWidget *parent) :
     uiSmartmeter = new smartmeterwindow(this, io);
     uiKameraeingang = new kameraeingangwindow(this, io);
 
+    mqttReconnectTimer = 0;
     mqttClient = new QMqttClient(this);
     mqttClient->setHostname(QString("10.0.0.200"));
     mqttClient->setPort(1883);
-    mqttClient->connectToHost();
-
     connect(mqttClient, SIGNAL(connected()), this, SLOT(onMqtt_connected()));
     connect(mqttClient, SIGNAL(disconnected()), this, SLOT(onMqtt_disconnected()));
     connect(mqttClient, SIGNAL(messageReceived(const QByteArray &, const QMqttTopicName &)), this, SLOT(onMqtt_messageReceived(const QByteArray &, const QMqttTopicName &)));
+    mqttClient->connectToHost();
 
     ui->pushButtonEG->setStyleSheet("background-color: green");
     ui->pushButtonOG->setStyleSheet("background-color: green");
@@ -143,6 +143,12 @@ void MainWindow::mqtt_subscribe(const QString &topic, int index) {
 void MainWindow::onMqtt_connected() {
 
     qDebug() << "mqtt connected";
+    if (mqttReconnectTimer) {
+        mqttReconnectTimer->stop();
+        delete mqttReconnectTimer;
+        mqttReconnectTimer = 0;
+        topic_hash.clear();
+    }
 
     mqtt_subscribe("home/eg/arbeit/schreibtisch/actual", 0);
     mqtt_subscribe("home/eg/arbeit/licht/actual", 1);
@@ -202,6 +208,17 @@ void MainWindow::onMqtt_connected() {
 void MainWindow::onMqtt_disconnected() {
 
     qDebug() << "disconnected";
+
+    mqttReconnectTimer = new QTimer(this);
+    connect(mqttReconnectTimer, SIGNAL(timeout()), this, SLOT(mqttReconnectTimerEvent()));
+    mqttReconnectTimer->start(5000);
+
+}
+
+void MainWindow::mqttReconnectTimerEvent() {
+
+    qDebug() << "reconnect timer";
+    mqttClient->connectToHost();
 }
 
 void MainWindow::scrTimerEvent() {
