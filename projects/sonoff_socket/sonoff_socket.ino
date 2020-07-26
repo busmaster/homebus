@@ -254,8 +254,6 @@ void MqttReconnect() {
     if (client.connect(clientID.c_str())) {
       Serial.print("connected as clientID:");
       Serial.println(clientID);
-      //publish ready
-      client.publish(mqtt_out_topic, "mqtt client ready");
       //subscribe in topic
       client.subscribe(mqtt_in_topic);
     } else {
