@@ -349,7 +349,7 @@ static bool SendDataPacket(bool next) {
 
         /* falls Fileende erreicht, ist letztes Paket kann nicht mehr so gro� wie Puffer */
         /* nicht def. Daten werden auf 0xff gesetzt */
-        memset((void *)((int)txBusMsg.msg.devBus.x.devReq.updData.data + len), 0xff, lenToRead - len);
+        memset((void *)((intptr_t)txBusMsg.msg.devBus.x.devReq.updData.data + len), 0xff, lenToRead - len);
         BusSend(&txBusMsg);
         return true;
     }
