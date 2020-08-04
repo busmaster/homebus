@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>480</width>
-    <height>250</height>
+    <width>800</width>
+    <height>436</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -25,10 +25,10 @@
   <widget class="QPushButton" name="pushButtonBack">
    <property name="geometry">
     <rect>
-     <x>361</x>
-     <y>168</y>
-     <width>115</width>
-     <height>78</height>
+     <x>601</x>
+     <y>292</y>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -47,10 +47,10 @@
   <widget class="QPushButton" name="pushButtonLightAnna">
    <property name="geometry">
     <rect>
-     <x>361</x>
+     <x>601</x>
      <y>4</y>
-     <width>115</width>
-     <height>78</height>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -66,10 +66,10 @@
   <widget class="QPushButton" name="pushButtonLightSeverin">
    <property name="geometry">
     <rect>
-     <x>361</x>
-     <y>86</y>
-     <width>115</width>
-     <height>78</height>
+     <x>601</x>
+     <y>148</y>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -85,10 +85,10 @@
   <widget class="QPushButton" name="pushButtonLightWC">
    <property name="geometry">
     <rect>
-     <x>242</x>
-     <y>86</y>
-     <width>115</width>
-     <height>78</height>
+     <x>402</x>
+     <y>148</y>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -104,10 +104,10 @@
   <widget class="QPushButton" name="pushButtonLightBad">
    <property name="geometry">
     <rect>
-     <x>123</x>
-     <y>86</y>
-     <width>115</width>
-     <height>78</height>
+     <x>203</x>
+     <y>148</y>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -124,9 +124,9 @@
    <property name="geometry">
     <rect>
      <x>4</x>
-     <y>86</y>
-     <width>115</width>
-     <height>78</height>
+     <y>148</y>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -142,10 +142,10 @@
   <widget class="QPushButton" name="pushButtonLightVorraum">
    <property name="geometry">
     <rect>
-     <x>242</x>
+     <x>402</x>
      <y>4</y>
-     <width>115</width>
-     <height>78</height>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -161,10 +161,10 @@
   <widget class="QPushButton" name="pushButtonLightStiege">
    <property name="geometry">
     <rect>
-     <x>123</x>
+     <x>203</x>
      <y>4</y>
-     <width>115</width>
-     <height>78</height>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -182,8 +182,8 @@
     <rect>
      <x>4</x>
      <y>4</y>
-     <width>115</width>
-     <height>78</height>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -199,10 +199,10 @@
   <widget class="QPushButton" name="pushButtonLightBadSpiegel">
    <property name="geometry">
     <rect>
-     <x>123</x>
-     <y>168</y>
-     <width>115</width>
-     <height>78</height>
+     <x>203</x>
+     <y>292</y>
+     <width>195</width>
+     <height>140</height>
     </rect>
    </property>
    <property name="sizePolicy">

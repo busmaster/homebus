@@ -138,7 +138,7 @@ void kameraeingangwindow::proto(unsigned char *buf, unsigned int bufSize) {
                 jpgLenIdx++;
                 bufIdx++;
             }
-            if ((buf[bufIdx] == '\r')) {
+            if (buf[bufIdx] == '\r') {
                 jpgLenBuf[jpgLenIdx] = '\0';
                 jpgLen = strtoul(jpgLenBuf, &endPtr, 0);
                 jpgState = eStateJpgLenTermination;
@@ -167,9 +167,9 @@ void kameraeingangwindow::proto(unsigned char *buf, unsigned int bufSize) {
                 bufIdx++;
             }
             if (jpgIdx == jpgLen) {
-                if (rate_reduction >= 3) {
+                if (rate_reduction >= 0) {
                     pic.loadFromData(jpgBuf, jpgLen, "JPG");
-                    small = pic.scaledToWidth(480);
+                    small = pic.scaledToHeight(480);
                     ui->label->setPixmap(small);
                     rate_reduction = 0;
                 }
