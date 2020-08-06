@@ -18,25 +18,31 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow) {
+
+    QString name;
     ui->setupUi(this);
 
-    backlightIsAvailable =  false;
     backlightBrightness = new QFile("/sys/class/backlight/backlight/brightness");
-    if (backlightBrightness && backlightBrightness->exists()) {
-        backlightIsAvailable = backlightBrightness->open(QIODevice::ReadWrite);
-        if (backlightIsAvailable) {
+    if (backlightBrightness) {
+        if (backlightBrightness->exists()) {
+            backlightBrightness->open(QIODevice::ReadWrite);
             backlightBrightness->write("6");
             backlightBrightness->flush();
+        } else {
+            delete backlightBrightness;
+            backlightBrightness = 0;
         }
     }
 
-    fbBlankIsAvailable =  false;
     fbBlank = new QFile("/sys/class/graphics/fb0/blank");
-    if (fbBlank && fbBlank->exists()) {
-        fbBlankIsAvailable = fbBlank->open(QIODevice::ReadWrite);
-        if (fbBlankIsAvailable) {
+    if (fbBlank) {
+        if (fbBlank->exists()) {
+            fbBlank->open(QIODevice::ReadWrite);
             fbBlank->write("0");
             fbBlank->flush();
+        } else {
+            delete fbBlank;
+            fbBlank = 0;
         }
     }
 
@@ -48,20 +54,32 @@ MainWindow::MainWindow(QWidget *parent) :
     scrTimer->start(60000);
 
     // cyclic timer for measurement display
-    roomTemperature = new QFile("/sys/class/hwmon/hwmon2/temp1_input");
-    if (roomTemperature && roomTemperature->exists()) {
-        roomTemperatureIsAvailable = true;
-        roomTemperatureStr = new QString();
-    } else {
-        roomTemperatureIsAvailable = false;
+    roomTemperature = 0;
+    roomTemperatureStr = 0;
+    if (get_hwmon_dev("roomtemp", name)) {
+        roomTemperature = new QFile(name + "temp1_input");
+        if (roomTemperature) {
+            if (roomTemperature->exists()) {
+                roomTemperatureStr = new QString();
+            } else {
+                delete roomTemperature;
+                roomTemperature = 0;
+            }
+        }
     }
 
-    roomHumidity = new QFile("/sys/class/hwmon/hwmon3/humidity1_input");
-    if (roomHumidity && roomHumidity->exists()) {
-        roomHumidityIsAvailable = true;
-        roomHumidityStr = new QString();
-    } else {
-        roomHumidityIsAvailable = false;
+    roomHumidity = 0;
+    roomHumidityStr = 0;
+    if (get_hwmon_dev("humidity", name)) {
+        roomHumidity = new QFile(name + "humidity1_input");
+        if (roomHumidity) {
+            if (roomHumidity->exists()) {
+                roomHumidityStr = new QString();
+            } else {
+                delete roomHumidity;
+                roomHumidity = 0;
+            }
+        }
     }
 
     statusLed = new statusled(this);
@@ -112,25 +130,64 @@ MainWindow::~MainWindow() {
     delete uiSmartmeter;
     delete io;
 
-    if (backlightIsAvailable) {
+    if (backlightBrightness) {
         backlightBrightness->close();
         delete backlightBrightness;
+        backlightBrightness = 0;
     }
-    if (fbBlankIsAvailable) {
+    if (fbBlank) {
         fbBlank->close();
         delete fbBlank;
+        fbBlank = 0;
     }
-    if (roomTemperatureIsAvailable) {
+    if (roomTemperature) {
         roomTemperature->close();
         delete roomTemperature;
+        roomTemperature = 0;
     }
-    if (roomHumidityIsAvailable) {
+    if (roomTemperatureStr) {
+        delete roomTemperatureStr;
+        roomTemperatureStr = 0;
+    }
+    if (roomHumidity) {
         roomHumidity->close();
         delete roomHumidity;
+        roomHumidity = 0;
+    }
+    if (roomHumidityStr) {
+        delete roomHumidityStr;
+        roomHumidityStr = 0;
     }
     if (statusLed) {
         delete statusLed;
     }
+}
+
+#define MAX_HWMON 10
+bool MainWindow::get_hwmon_dev(const QString &name, QString &result) {
+
+    int i;
+    bool rc = false;
+
+    for (i = 0; i < MAX_HWMON; i++) {
+        QString filename("/sys/class/hwmon/hwmon");
+        filename.append(QString::number(i));
+        filename.append("/name");
+        QFile file(filename);
+        if (file.open(QIODevice::ReadOnly)) {
+            QTextStream in(&file);
+            QString line = in.readLine();
+            file.close();
+            if (!line.isNull() && QString::compare(line, name) == 0) {
+                result = "/sys/class/hwmon/hwmon" + QString::number(i) + "/";
+                rc = true;
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    return rc;
 }
 
 void MainWindow::mqtt_subscribe(const QString &topic, int index) {
@@ -223,11 +280,11 @@ void MainWindow::mqttReconnectTimerEvent() {
 
 void MainWindow::scrTimerEvent() {
     screensaverOn = true;
-    if (backlightIsAvailable) {
+    if (backlightBrightness) {
         backlightBrightness->write("0");
         backlightBrightness->flush();
     }
-    if (fbBlankIsAvailable) {
+    if (fbBlank) {
         fbBlank->write("4");
         fbBlank->flush();
     }
@@ -236,7 +293,7 @@ void MainWindow::scrTimerEvent() {
 
 void MainWindow::cycTimerEvent() {
 
-    if (roomTemperatureIsAvailable) {
+    if (roomTemperature) {
         roomTemperature->open(QIODevice::ReadOnly);
         roomTemperatureStr->clear();
         roomTemperatureStr->append(roomTemperature->readLine());
@@ -246,7 +303,7 @@ void MainWindow::cycTimerEvent() {
         roomTemperature->close();
         ui->temperature->setText(*roomTemperatureStr);
     }
-    if (roomHumidityIsAvailable) {
+    if (roomHumidity) {
         roomHumidity->open(QIODevice::ReadOnly);
         roomHumidityStr->clear();
         roomHumidityStr->append(roomHumidity->readLine());
@@ -265,11 +322,11 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
         scrTimer->start();
         if (screensaverOn) {
             screensaverOn = false;
-            if (fbBlankIsAvailable) {
+            if (fbBlank) {
                 fbBlank->write("0");
                 fbBlank->flush();
             }
-            if (backlightIsAvailable) {
+            if (backlightBrightness) {
                 backlightBrightness->write("6");
                 backlightBrightness->flush();
             }
@@ -335,7 +392,7 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
     bool smChanged = false;
     int index = topic_hash[topic.name()];
 
-    qDebug() << topic.name() << ": " << index << ": " << message ;
+//    qDebug() << topic.name() << ": " << index << ": " << message ;
 
     switch (index) {
     case 0:  messageActionStateBit(message, &io->egLight, ioState::egLightBits::egLightSchreibtisch); break;
