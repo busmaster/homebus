@@ -34,7 +34,7 @@ statusled::~statusled() {
 bool statusled::check_device(const char *device) {
 
     char name[100];
-    char line[100];
+    char line[1024];
     bool rc = false;
 
     snprintf(name, sizeof(name), "%s/brightness", device);

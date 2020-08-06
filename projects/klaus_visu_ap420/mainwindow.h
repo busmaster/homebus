@@ -63,6 +63,7 @@ private:
     void messageActionVar(const QByteArray &, quint8 *, quint8);
     void message_to_byteArray(const QString &, QByteArray &);
     void mqtt_subscribe(const QString &, int index);
+    bool get_hwmon_dev(const QString &, QString &);
     Ui::MainWindow *ui;
     egwindow *uiEg;
     ogwindow *uiOg;
@@ -78,17 +79,12 @@ private:
     bool screensaverOn;
 
     QFile *backlightBrightness;
-    bool backlightIsAvailable;
-
     QFile *fbBlank;
-    bool fbBlankIsAvailable;
 
     QFile *roomTemperature;
-    bool roomTemperatureIsAvailable;
     QString *roomTemperatureStr;
 
     QFile *roomHumidity;
-    bool roomHumidityIsAvailable;
     QString *roomHumidityStr;
 
     ioState *io;
