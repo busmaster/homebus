@@ -31,6 +31,7 @@
 #include "application.h"
 #include "digout.h"
 #include "shader.h"
+#include "bus.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros
@@ -195,7 +196,7 @@ static const TUserFunc sApplicationFuncs[] PROGMEM = {
 * Rueckgabe der Versioninfo (max. Laenge 15 Zeichen)
 */
 const char *ApplicationVersion(void) {
-   return "Klaus1_0.06";
+   return "Klaus1_1.00";
 }
 
 /*-----------------------------------------------------------------------------
@@ -235,6 +236,65 @@ void ApplicationEventButton(TButtonEvent *pButtonEvent) {
 }
 
 void ApplicationInit(void) {
+
+   /* bit position for busvar 0 and 1 */
+   #define SH_ENABLE_0   (1 << 0)
+   #define SH_ENABLE_1   (1 << 1)
+   #define SH_ENABLE_3   (1 << 3)
+   #define SH_ENABLE_4   (1 << 4)
+   #define SH_ENABLE_5   (1 << 5)
+   #define SH_ENABLE_6   (1 << 6)
+   #define SH_ENABLE_7   (1 << 7)
+   #define SH_ENABLE_8   (1 << 8)
+   #define SH_ENABLE_9   (1 << 9)
+   #define SH_ENABLE_10  (1 << 10)
+   #define SH_ENABLE_11  (1 << 11)
+
+   /* Helligkeitsautomatik Rollladen Released37_0 (Nacht):
+    * Bit = 1: schließen bei Released37_0
+    *       0: keine Aktion
+    *
+    * Bit 0: eShader0
+    *     1: eShader1
+    *     2: unused (Markise)
+    *     3: eShader3
+    *     4: eShader4
+    *     5: eShader5
+    *     6: eShader6
+    *     7: eShader7
+    *     8: eShader8
+    *     9: eShader9
+    *    10: eShader10
+    *    11: eShader11
+    *    12: unused
+    *    13: unused
+    *    14: unused
+    *    15: unused
+    */
+   BusVarAdd(0, sizeof(uint16_t), true);
+
+   /* Helligkeitsautomatik Rollladen Pressed37_1 (Mittag):
+    * Bit = 1: schließen bei Pressed37_1
+    *       0: keine Aktion
+    *
+    * Bit 0: eShader0
+    *     1: eShader1
+    *     2: unused (Markise)
+    *     3: eShader3
+    *     4: eShader4
+    *     5: eShader5
+    *     6: eShader6
+    *     7: eShader7
+    *     8: eShader8
+    *     9: eShader9
+    *    10: eShader10
+    *    11: eShader11
+    *    12: unused
+    *    13: unused
+    *    14: unused
+    *    15: unused
+    */
+   BusVarAdd(1, sizeof(uint16_t), true);
 
    /* Rollladen Wohnzimmer feststehende Doppeltuer */
    ShaderSetConfig(eShader0,  eDigOut0,  eDigOut1, 28500, 27000);
@@ -784,27 +844,49 @@ void ApplicationPressed36_1(void) {}
 void ApplicationReleased36_1(void) {}
 
 void ApplicationPressed37_0(void) {}
-void ApplicationReleased37_0(void) {
+void ApplicationReleased37_0(void) { /* Unterschreitung unterer Schwellwert (Nacht) */
 
-   /*
-    * alle Rollo ausgenommen Terrassentuer/Kueche (1) und Markise (2)
-    * werden helligkeitsabhängig geschlossen
-    */
-   ShaderSetAction(eShader0, eShaderClose);
-   ShaderSetAction(eShader3, eShaderClose);
-   ShaderSetAction(eShader4, eShaderClose);
-   ShaderSetAction(eShader5, eShaderClose);
-   ShaderSetAction(eShader6, eShaderClose);
-   ShaderSetAction(eShader7, eShaderClose);
-   ShaderSetAction(eShader8, eShaderClose);
-   ShaderSetAction(eShader9, eShaderClose);
-   ShaderSetAction(eShader10, eShaderClose);
-   ShaderSetAction(eShader11, eShaderClose);
+   uint16_t enable;
+   TBusVarResult result;
+
+   if (BusVarRead(0, &enable, sizeof(enable), &result) != sizeof(enable)) {
+      return;
+   }
+
+   /* Rollos helligkeitsabhängig schließen */
+   if (enable & SH_ENABLE_0)  ShaderSetAction(eShader0, eShaderClose);
+   if (enable & SH_ENABLE_1)  ShaderSetAction(eShader1, eShaderClose);
+   if (enable & SH_ENABLE_3)  ShaderSetAction(eShader3, eShaderClose);
+   if (enable & SH_ENABLE_4)  ShaderSetAction(eShader4, eShaderClose);
+   if (enable & SH_ENABLE_5)  ShaderSetAction(eShader5, eShaderClose);
+   if (enable & SH_ENABLE_6)  ShaderSetAction(eShader6, eShaderClose);
+   if (enable & SH_ENABLE_7)  ShaderSetAction(eShader7, eShaderClose);
+   if (enable & SH_ENABLE_8)  ShaderSetAction(eShader8, eShaderClose);
+   if (enable & SH_ENABLE_9)  ShaderSetAction(eShader9, eShaderClose);
+   if (enable & SH_ENABLE_10) ShaderSetAction(eShader10, eShaderClose);
+   if (enable & SH_ENABLE_11) ShaderSetAction(eShader11, eShaderClose);
 }
-void ApplicationPressed37_1(void) {
+void ApplicationPressed37_1(void) {  /* Überschreitung oberer Schwellwert (Mittag) */
 
-   /* Rollo Schlafzimmer bei helligkeitsabhängig teilweise schließen */
-    ShaderSetPosition(eShader8, 20);
+   uint16_t enable;
+   TBusVarResult result;
+
+   if (BusVarRead(1, &enable, sizeof(enable), &result) != sizeof(enable)) {
+      return;
+   }
+
+   /* Rollo helligkeitsabhängig teilweise schließen */
+   if (enable & SH_ENABLE_0)  ShaderSetAction(eShader0, 20);
+   if (enable & SH_ENABLE_1)  ShaderSetAction(eShader1, 20);
+   if (enable & SH_ENABLE_3)  ShaderSetAction(eShader3, 20);
+   if (enable & SH_ENABLE_4)  ShaderSetAction(eShader4, 20);
+   if (enable & SH_ENABLE_5)  ShaderSetAction(eShader5, 20);
+   if (enable & SH_ENABLE_6)  ShaderSetAction(eShader6, 20);
+   if (enable & SH_ENABLE_7)  ShaderSetAction(eShader7, 20);
+   if (enable & SH_ENABLE_8)  ShaderSetAction(eShader8, 20);
+   if (enable & SH_ENABLE_9)  ShaderSetAction(eShader9, 20);
+   if (enable & SH_ENABLE_10) ShaderSetAction(eShader10, 20);
+   if (enable & SH_ENABLE_11) ShaderSetAction(eShader11, 20);
 }
 void ApplicationReleased37_1(void) {}
 
