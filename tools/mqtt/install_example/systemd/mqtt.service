@@ -5,8 +5,8 @@ After=network.target portserver.service
  
 [Service]
 Type=simple
- 
 ExecStart=/usr/bin/homebus/mqtt -c /dev/hausbus12 -a 251 -f /home/pi/config.yaml -e 250 -m 10.0.0.200 -p 1883
+StandardOutput=null
  
 [Install]
 WantedBy=multi-user.target
