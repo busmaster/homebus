@@ -325,6 +325,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeSmIf:
                     printf("SMIF");
                     break;
+                case eBusDevTypeKeyb:
+                    printf("KEYB");
+                    break;
                 default:
                     break;
                 }
@@ -541,6 +544,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeSmIf:
                     printf("SMIF");
                     break;
+                case eBusDevTypeKeyb:
+                    printf("KEYB");
+                    break;
                 default:
                     break;
                 }
@@ -594,6 +600,9 @@ int main(int argc, char *argv[]) {
                             break;
                         case eBusDevTypeSmIf:
                             printf("%-8s", "SMIF");
+                            break;
+                        case eBusDevTypeKeyb:
+                            printf("%-8s", "KEYB");
                             break;
                         default:
                             break;
@@ -691,6 +700,9 @@ int main(int argc, char *argv[]) {
                     break;
                 case eBusDevTypeSmIf:
                     printf("SMIF");
+                    break;
+                case eBusDevTypeKeyb:
+                    printf("KEYB");
                     break;
                 default:
                     break;
