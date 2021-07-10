@@ -155,6 +155,9 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoSmIf;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoKeyb;
+
 typedef enum {
    eBusDevTypeDo31    = 0x00,
    eBusDevTypeSw8     = 0x01,
@@ -166,7 +169,8 @@ typedef enum {
    eBusDevTypeRs485If = 0x07,
    eBusDevTypePwm4    = 0x08,
    eBusDevTypeSmIf    = 0x09,
-   eBusDevTypePwm16   = 0x0a,   
+   eBusDevTypePwm16   = 0x0a,
+   eBusDevTypeKeyb    = 0x0b,
    eBusDevTypeInv     = 0xff
 } __attribute__ ((packed)) TBusDevType;
 
@@ -184,7 +188,8 @@ typedef struct {
       TBusDevInfoRs485If rs485if;
       TBusDevInfoPwm4    pwm4;
       TBusDevInfoSmIf    smif;
-      TBusDevInfoPwm16   pwm16;	  
+      TBusDevInfoPwm16   pwm16;
+      TBusDevInfoKeyb    keyb;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
 
@@ -334,7 +339,7 @@ typedef struct {
       TBusDevSetValueSw16    sw16;
       TBusDevSetValueRs485if rs485if;
       TBusDevSetValuePwm4    pwm4;
-      TBusDevSetValuePwm16   pwm16;	  
+      TBusDevSetValuePwm16   pwm16;
    } setValue;
 } __attribute__ ((packed)) TBusDevReqSetValue;   /* Type 0x1d */
 
@@ -404,6 +409,10 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValueSmif;
 
 typedef struct {
+   uint8_t keyCode;
+} __attribute__ ((packed)) TBusDevActualValueKeyb;
+
+typedef struct {
    TBusDevType devType;
    union {
       TBusDevActualValueDo31    do31;
@@ -416,6 +425,7 @@ typedef struct {
       TBusDevActualValuePwm4    pwm4;
       TBusDevActualValueSmif    smif;
       TBusDevActualValuePwm16   pwm16;
+      TBusDevActualValueKeyb    keyb;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
@@ -433,6 +443,7 @@ typedef struct {
       TBusDevActualValuePwm4    pwm4;
       TBusDevActualValueSmif    smif;
       TBusDevActualValuePwm16   pwm16;
+      TBusDevActualValueKeyb    keyb;
    } actualValue;
 } __attribute__ ((packed)) TBusDevReqActualValueEvent;  /* Type 0x21 */
 
@@ -449,6 +460,7 @@ typedef struct {
       TBusDevActualValuePwm4    pwm4;
       TBusDevActualValueSmif    smif;
       TBusDevActualValuePwm16   pwm16;
+      TBusDevActualValueKeyb    keyb;
    } actualValue; /* same as request */
 } __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
 

@@ -325,6 +325,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeSmIf:
                     printf("SMIF");
                     break;
+                case eBusDevTypeKeyb:
+                    printf("KEYB");
+                    break;
                 default:
                     break;
                 }
@@ -428,6 +431,9 @@ int main(int argc, char *argv[]) {
                     printf("P-: %d W\n", actVal.actualValue.smif.activePower_minus);
                     printf("Q+: %d var\n", actVal.actualValue.smif.reactivePower_plus);
                     printf("Q-: %d var\n", actVal.actualValue.smif.reactivePower_minus);
+                    break;
+                case eBusDevTypeKeyb:
+                    printf("\nkeycode: %d\n", actVal.actualValue.keyb.keyCode);
                     break;
                 default:
                     break;
@@ -541,6 +547,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeSmIf:
                     printf("SMIF");
                     break;
+                case eBusDevTypeKeyb:
+                    printf("KEYB");
+                    break;
                 default:
                     break;
                 }
@@ -594,6 +603,9 @@ int main(int argc, char *argv[]) {
                             break;
                         case eBusDevTypeSmIf:
                             printf("%-8s", "SMIF");
+                            break;
+                        case eBusDevTypeKeyb:
+                            printf("%-8s", "KEYB");
                             break;
                         default:
                             break;
@@ -691,6 +703,9 @@ int main(int argc, char *argv[]) {
                     break;
                 case eBusDevTypeSmIf:
                     printf("SMIF");
+                    break;
+                case eBusDevTypeKeyb:
+                    printf("KEYB");
                     break;
                 default:
                     break;
@@ -952,6 +967,9 @@ static bool ModuleGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) 
             pBuf->actualValue.smif.countA_minus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countA_minus;
             pBuf->actualValue.smif.countR_plus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countR_plus;
             pBuf->actualValue.smif.countR_minus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countR_minus;
+            break;
+        case eBusDevTypeKeyb:
+            pBuf->actualValue.keyb.keyCode = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.keyb.keyCode;
             break;
         default:
             break;

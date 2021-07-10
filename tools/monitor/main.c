@@ -394,6 +394,9 @@ static void BusMonDecoded(int sioHandle) {
                 case eBusDevTypeSmIf:
                     fprintf(spOutput, SPACE "device: SMIF\r\n");
                     break;
+                case eBusDevTypeKeyb:
+                    fprintf(spOutput, SPACE "device: KEYB\r\n");
+                    break;
                 default:
                     fprintf(spOutput, SPACE "device: unknown\r\n");
                     break;
@@ -753,6 +756,10 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, SPACE "Q+: %d var\r\n",  pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.reactivePower_plus);
                     fprintf(spOutput, SPACE "Q-: %d var",      pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.reactivePower_minus);
                     break;
+                case eBusDevTypeKeyb:
+                    fprintf(spOutput, SPACE "device: KEYB\r\n");
+                    fprintf(spOutput, SPACE "keycode: %d\r\n", pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.keyb.keyCode);
+                    break;
                 default:
                     fprintf(spOutput, SPACE "device: unknown");
                     break;
@@ -841,6 +848,10 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, SPACE "Q+: %d var\r\n",  pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.reactivePower_plus);
                     fprintf(spOutput, SPACE "Q-: %d var",      pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.smif.reactivePower_minus);
                     break;
+                case eBusDevTypeKeyb:
+                    fprintf(spOutput, SPACE "device: KEYB\r\n");
+                    fprintf(spOutput, SPACE "keycode: %d\r\n",   pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.keyb.keyCode);
+                    break;
                 default:
                     fprintf(spOutput, SPACE "device: unknown");
                     break;
@@ -915,6 +926,10 @@ static void BusMonDecoded(int sioHandle) {
                         fprintf(spOutput, "%04x ",
                                 pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.pwm4.pwm[i]);
                     }
+                    break;
+                case eBusDevTypeKeyb:
+                    fprintf(spOutput, SPACE "device: KEYB\r\n");
+                    fprintf(spOutput, SPACE "keycode: %d\r\n", pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.keyb.keyCode);
                     break;
                 default:
                     fprintf(spOutput, SPACE "device: unknown");
