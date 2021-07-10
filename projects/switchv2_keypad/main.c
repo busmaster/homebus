@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * Copyright 2021 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,18 @@
  *
  *
  */
+
+/*
+ * The keyboard type is a two wire keyboard that switches different resistors
+ * values on keypress. Each button has a different resistor value. This firmware
+ * uses the ADC on pin PC0. The keyboard is connected to GND and to a 1k pullup
+ * to PC1. So a voltage divider is set up with 1k to PC1 (that is set to output
+ * high) and the keyboard connected to GND.
+ *
+ * Supported keyboard types: gebatronic cody keypads and brandlabeled devices,
+ * e.g Somfy
+ *
+ * */
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -65,8 +77,6 @@
 
 #define IDLE_SIO  0x01
 
-#define INPUT_BUTTON           (PINC & 0b00000011) /* two lower bits on port C*/
-
 /* Port D bit 5 controls bus transceiver power down */
 #define BUS_TRANSCEIVER_POWER_DOWN \
    PORTD |= (1 << 5)
@@ -74,10 +84,9 @@
 #define BUS_TRANSCEIVER_POWER_UP \
    PORTD &= ~(1 << 5)
 
-/* button telegram state machine */
-#define BUTTON_TX_OFF     0
-#define BUTTON_TX_ON      1
-#define BUTTON_TX_TIMEOUT 2
+#define DEBOUNCE_CYCLES 3 /* 3 * Timer0 cyles */
+
+#define BEEP_TIME_MS 100
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -97,6 +106,11 @@ typedef struct {
    uint16_t requestTimeStamp;
 } TClient;
 
+typedef enum {
+   eBeepOff,
+   eBeepOn
+} TBeepState;
+
 /*-----------------------------------------------------------------------------
 *  Variables
 */
@@ -113,23 +127,24 @@ static TClient      sClient[BUS_MAX_CLIENT_NUM];
 static uint8_t      sNumClients;
 
 static uint8_t      sMyAddr;
-
 static uint8_t      sKeyCur = 0;          
-
 static uint8_t      sIdle = 0;
+static bool         sStartBeep = false;
+static TBeepState   sBeepState = eBeepOff;
 
 /*-----------------------------------------------------------------------------
 *  Functions
 */
-static void    PortInit(void);
-static void    TimerInit(void);
-static void    Idle(void);
-static void    ProcessBus(void);
-static void    SendStartupMsg(void);
-static void    IdleSio(bool setIdle);
-static void    BusTransceiverPowerDown(bool powerDown);
-static void    CheckEvent(void);
-static void    GetClientListFromEeprom(void);
+static void PortInit(void);
+static void TimerInit(void);
+static void Idle(void);
+static void ProcessBus(void);
+static void SendStartupMsg(void);
+static void IdleSio(bool setIdle);
+static void BusTransceiverPowerDown(bool powerDown);
+static void CheckEvent(void);
+static void GetClientListFromEeprom(void);
+static void Beep(void);
 
 /*-----------------------------------------------------------------------------
 *  program start
@@ -168,8 +183,39 @@ int main(void) {
         Idle();
         CheckEvent();
         ProcessBus();
+        Beep();
    }
    return 0;  /* never reached */
+}
+
+/*-----------------------------------------------------------------------------
+*  Beep on button release
+*/
+static void Beep(void) {
+
+    uint16_t        actualTime;
+    static uint16_t sStartTime;
+
+    switch (sBeepState) {
+    case eBeepOff:
+        if (sStartBeep) {
+           sStartBeep = false;
+           sBeepState = eBeepOn;
+           GET_TIME_MS16(sStartTime);
+           TCCR2B = 2 << CS00;
+        }
+        break;
+    case eBeepOn:
+        GET_TIME_MS16(actualTime);
+        if (((uint16_t)(actualTime - sStartTime)) >= BEEP_TIME_MS) {
+            sBeepState = eBeepOff;
+            TCCR2B = 0;
+            PORTC |= (1 << 1); /* ensure power supply for voltage divider */
+        }
+        break;
+     default:
+        break;
+    }
 }
 
 /*-----------------------------------------------------------------------------
@@ -264,6 +310,9 @@ static void CheckEvent(void) {
         sActualClient = 0;
         sNewClientCycleDelay = false;
         InitClientState();
+        if (sKeyCur == 0) {
+           sStartBeep = true;
+        }
     }
 
     if (sActualClient == 0xff) {
@@ -579,10 +628,19 @@ static void PortInit(void) {
 */
 static void TimerInit(void) {
 
-    /* configure Timer 0 */
+    /* configure Timer 0 (system timer) */
     /* prescaler clk/64 -> Interrupt period 256/1000000 * 64 = 16.384 ms */
     TCCR0B = 3 << CS00;
     TIMSK0 = 1 << TOIE0;
+
+    /* Timer 1 is used by sio */
+
+    /* configure Timer 2 (beep timer) */
+    /* prescaler clk/8 -> Interrupt period OCR2A/1000000 * 8 = 1.024 ms -> 488 Hz Beep */
+    TCCR2A = 2 << WGM20; /* CTC */
+    TCCR2B = 0; /* stopped */
+    OCR2A = 128;
+    TIMSK2 = 1 << OCIE2A;
 }
 
 /*-----------------------------------------------------------------------------
@@ -607,7 +665,6 @@ static void SendStartupMsg(void) {
     BusSend(&sTxBusMsg);
 }
 
-#define DEBOUNCE 3
 /*-----------------------------------------------------------------------------
 *  Timer 0 overflow ISR
 *  period:  16.384 ms
@@ -615,7 +672,7 @@ static void SendStartupMsg(void) {
 ISR(TIMER0_OVF_vect) {
 
     static uint8_t intCnt = 0;
-    static uint8_t sKey[DEBOUNCE];
+    static uint8_t sKey[DEBOUNCE_CYCLES];
     static uint8_t sKeyIdx = 0;
     uint16_t adc;
     uint8_t i;
@@ -629,6 +686,10 @@ ISR(TIMER0_OVF_vect) {
         gTimeS++;
     }
     
+    if (sBeepState == eBeepOn) {
+        return;
+    }
+
     adc = ADCW;
     // trigger next conversion
     ADCSRA |= (1 << ADSC);
@@ -639,7 +700,7 @@ ISR(TIMER0_OVF_vect) {
        sKey[sKeyIdx] = 0;
     }
     sKeyIdx++;
-    if (sKeyIdx >= DEBOUNCE) {
+    if (sKeyIdx >= DEBOUNCE_CYCLES) {
         sKeyIdx = 0;
     }
     for (i = 0; i < (ARRAY_CNT(sKey) - 1); i++) {
@@ -650,13 +711,12 @@ ISR(TIMER0_OVF_vect) {
     if (i == (ARRAY_CNT(sKey) - 1)) {
         sKeyCur = sKey[0];
     }
-/*    
-    if (out == 1) {
-        PORTC |= (1 << 1);
-        out = 0;
-    } else {
-        PORTC &= ~(1 << 1);
-        out = 1;
-    }
+}
+
+/*-----------------------------------------------------------------------------
+* Timer 2 comare A - Beep
 */
+ISR(TIMER2_COMPA_vect) {
+
+    PORTC ^= (1 << PC1);
 }
