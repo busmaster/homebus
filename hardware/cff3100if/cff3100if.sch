@@ -25674,22 +25674,19 @@ www.irf.com&lt;p&gt;
 </net>
 <net name="N$5" class="0">
 <segment>
-<wire x1="119.38" y1="121.92" x2="119.38" y2="162.56" width="0.1524" layer="91"/>
 <pinref part="R1" gate="G$1" pin="2"/>
-<wire x1="119.38" y1="162.56" x2="121.92" y2="162.56" width="0.1524" layer="91"/>
 <pinref part="IC6" gate="G$1" pin="PC0(ADC0)"/>
 <wire x1="81.28" y1="58.42" x2="104.14" y2="58.42" width="0.1524" layer="91"/>
-<wire x1="104.14" y1="58.42" x2="104.14" y2="121.92" width="0.1524" layer="91"/>
-<wire x1="104.14" y1="121.92" x2="119.38" y2="121.92" width="0.1524" layer="91"/>
+<wire x1="104.14" y1="58.42" x2="104.14" y2="162.56" width="0.1524" layer="91"/>
+<wire x1="104.14" y1="162.56" x2="121.92" y2="162.56" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$6" class="0">
 <segment>
-<wire x1="121.92" y1="119.38" x2="121.92" y2="152.4" width="0.1524" layer="91"/>
 <pinref part="R2" gate="G$1" pin="2"/>
-<wire x1="106.68" y1="119.38" x2="121.92" y2="119.38" width="0.1524" layer="91"/>
+<wire x1="106.68" y1="152.4" x2="121.92" y2="152.4" width="0.1524" layer="91"/>
 <pinref part="IC6" gate="G$1" pin="PC1(ADC1)"/>
-<wire x1="106.68" y1="119.38" x2="106.68" y2="55.88" width="0.1524" layer="91"/>
+<wire x1="106.68" y1="152.4" x2="106.68" y2="55.88" width="0.1524" layer="91"/>
 <wire x1="106.68" y1="55.88" x2="81.28" y2="55.88" width="0.1524" layer="91"/>
 </segment>
 </net>
@@ -25706,30 +25703,26 @@ www.irf.com&lt;p&gt;
 </net>
 <net name="N$13" class="0">
 <segment>
-<wire x1="124.46" y1="116.84" x2="124.46" y2="142.24" width="0.1524" layer="91"/>
-<wire x1="124.46" y1="142.24" x2="149.86" y2="142.24" width="0.1524" layer="91"/>
+<wire x1="109.22" y1="142.24" x2="149.86" y2="142.24" width="0.1524" layer="91"/>
 <pinref part="R7" gate="G$1" pin="2"/>
 <pinref part="C23" gate="G$1" pin="1"/>
 <wire x1="149.86" y1="142.24" x2="157.48" y2="142.24" width="0.1524" layer="91"/>
 <wire x1="149.86" y1="137.16" x2="149.86" y2="142.24" width="0.1524" layer="91"/>
 <junction x="149.86" y="142.24"/>
-<wire x1="124.46" y1="116.84" x2="109.22" y2="116.84" width="0.1524" layer="91"/>
-<wire x1="109.22" y1="116.84" x2="109.22" y2="53.34" width="0.1524" layer="91"/>
+<wire x1="109.22" y1="142.24" x2="109.22" y2="53.34" width="0.1524" layer="91"/>
 <pinref part="IC6" gate="G$1" pin="PC2(ADC2)"/>
 <wire x1="109.22" y1="53.34" x2="81.28" y2="53.34" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$14" class="0">
 <segment>
-<wire x1="127" y1="114.3" x2="127" y2="132.08" width="0.1524" layer="91"/>
-<wire x1="127" y1="132.08" x2="149.86" y2="132.08" width="0.1524" layer="91"/>
+<wire x1="111.76" y1="132.08" x2="149.86" y2="132.08" width="0.1524" layer="91"/>
 <pinref part="R9" gate="G$1" pin="2"/>
 <pinref part="C24" gate="G$1" pin="2"/>
 <wire x1="149.86" y1="132.08" x2="157.48" y2="132.08" width="0.1524" layer="91"/>
 <wire x1="149.86" y1="127" x2="149.86" y2="132.08" width="0.1524" layer="91"/>
 <junction x="149.86" y="132.08"/>
-<wire x1="127" y1="114.3" x2="111.76" y2="114.3" width="0.1524" layer="91"/>
-<wire x1="111.76" y1="114.3" x2="111.76" y2="50.8" width="0.1524" layer="91"/>
+<wire x1="111.76" y1="132.08" x2="111.76" y2="50.8" width="0.1524" layer="91"/>
 <pinref part="IC6" gate="G$1" pin="PC3(ADC3)"/>
 <wire x1="111.76" y1="50.8" x2="81.28" y2="50.8" width="0.1524" layer="91"/>
 </segment>
@@ -25779,15 +25772,13 @@ www.irf.com&lt;p&gt;
 </net>
 <net name="N$15" class="0">
 <segment>
-<wire x1="129.54" y1="111.76" x2="129.54" y2="121.92" width="0.1524" layer="91"/>
 <pinref part="R12" gate="G$1" pin="2"/>
-<wire x1="129.54" y1="121.92" x2="149.86" y2="121.92" width="0.1524" layer="91"/>
+<wire x1="114.3" y1="121.92" x2="149.86" y2="121.92" width="0.1524" layer="91"/>
 <pinref part="C25" gate="G$1" pin="2"/>
 <wire x1="149.86" y1="121.92" x2="157.48" y2="121.92" width="0.1524" layer="91"/>
 <wire x1="149.86" y1="116.84" x2="149.86" y2="121.92" width="0.1524" layer="91"/>
 <junction x="149.86" y="121.92"/>
-<wire x1="129.54" y1="111.76" x2="114.3" y2="111.76" width="0.1524" layer="91"/>
-<wire x1="114.3" y1="111.76" x2="114.3" y2="48.26" width="0.1524" layer="91"/>
+<wire x1="114.3" y1="121.92" x2="114.3" y2="48.26" width="0.1524" layer="91"/>
 <pinref part="IC6" gate="G$1" pin="PC4(ADC4/SDA)"/>
 <wire x1="114.3" y1="48.26" x2="81.28" y2="48.26" width="0.1524" layer="91"/>
 </segment>
