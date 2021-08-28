@@ -41,8 +41,8 @@
 *  Macros
 */
 /* offset addresses in EEPROM */
-#define MODUL_ADDRESS     0
-#define OSCCAL_CORR       1
+#define MODUL_ADDRESS      0
+#define OSCCAL_CORR        1
 
 /* keycode offsets in EEPROM */
 #define KEYCODE_UNLOCK_LEN 16
@@ -52,31 +52,36 @@
 #define KEYCODE_ETO_LEN    48
 #define KEYCODE_ETO        49
 /* max 15 bytes code */
-#define MAX_KEYCODE_LEN   15
+#define MAX_KEYCODE_LEN    15
+#define KEY_FIFO_SIZE      (MAX_KEYCODE_LEN + 1)
 
 /* our bus address */
-#define MY_ADDR           sMyAddr
+#define MY_ADDR            sMyAddr
 
-#define IDLE_SIO          0x01
+#define IDLE_SIO           0x01
 
 /* lock/unlock button (pull to GND) on portc.0 and portc.1 */
-#define LOCK_PRESS        PORTC &= ~(1 << 0)
-#define LOCK_RELEASE      PORTC |= (1 << 0)
-#define UNLOCK_PRESS      PORTC &= ~(1 << 1)
-#define UNLOCK_RELEASE    PORTC |= (1 << 1)
+#define LOCK_PRESS         PORTC &= ~(1 << 0)
+#define LOCK_RELEASE       PORTC |= (1 << 0)
+#define UNLOCK_PRESS       PORTC &= ~(1 << 1)
+#define UNLOCK_RELEASE     PORTC |= (1 << 1)
+#define BUTTONS_RELEASED   ((PINC & 0x03) == 0x03)
 
-#define ETO_PRESS         PORTD |= (1 << 7)
-#define ETO_RELEASE       PORTD &= ~(1 << 7)
+#define ETO_PRESS          PORTD |= (1 << 7)
+#define ETO_RELEASE        PORTD &= ~(1 << 7)
+
+#define LED_RED            (PINC & (1 << 2)) /* unlocked */
+#define LED_GREEN          (PINC & (1 << 3)) /* locked */
+#define LED_STATE          (PINC & 0x0c)
+#define LEDS_ON            ((PINC & 0x0c) == 0x0c)
+
+/* clock calibraation */
+#define TIMER1_PRESCALER   (0b001 << CS10) // prescaler clk/1
+#define MAX_CAL_TEL        31
 
 /* Port D bit 3 controls bus transceiver power down (inverted) */
 #define BUS_TRANSCEIVER_POWER_DOWN  PORTD &= ~(1 << 3)
 #define BUS_TRANSCEIVER_POWER_UP    PORTD |= (1 << 3)
-
-#define TIMER1_PRESCALER (0b001 << CS10) // prescaler clk/1
-
-#define MAX_CAL_TEL       31
-
-#define KEY_FIFO_SIZE     (MAX_KEYCODE_LEN + 1)
 
 /*-----------------------------------------------------------------------------
 *  Typedes
@@ -99,10 +104,21 @@ typedef enum {
    eRcActionGarageTrigger
 } TRcAction;
 
+typedef enum {
+    eLockStateIdle,
+    eLockStateWaitReleaseLockUnlock,
+    eLockStateWaitLedsOn,
+    eLockStateWaitLedsOff,
+    eLockStateWaitRead,
+    eLockStateRead,
+    eLockStateTerminate,
+    eLockStateWaitAlternatingBlink
+} TLockState;
+
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-char version[] = "keyrc 1.00";
+char version[] = "keyrc 1.01";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -134,6 +150,9 @@ static uint8_t   sKeyCodeGarage[MAX_KEYCODE_LEN];
 static uint8_t   sKeyCodeLenEto;
 static uint8_t   sKeyCodeEto[MAX_KEYCODE_LEN];
 
+static bool      sGetLockState = false;
+static uint8_t   sGetLockStateRequestAddr = 0;
+
 /*-----------------------------------------------------------------------------
 *  Functions
 */
@@ -149,6 +168,9 @@ static void BusTransceiverPowerDown(bool powerDown);
 static void InitTimer1(void);
 static void InitComm(void);
 static void ExitComm(void);
+static void CheckLockState(void);
+
+//static void LogLedState(void);
 
 /*-----------------------------------------------------------------------------
 *  program start
@@ -188,9 +210,138 @@ int main(void) {
       ProcessBus(ret);
       ProcessKey();
       ProcessRcAction();
+      CheckLockState();
+//      LogLedState();
    }
    return 0;  /* never reached */
 }
+
+static void RespActval(TBusLockState state) {
+
+    sTxBusMsg.type = eBusDevRespActualValue;
+    sTxBusMsg.senderAddr = MY_ADDR;
+    sTxBusMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeKeyRc;
+    sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.keyrc.state = state;
+    sTxBusMsg.msg.devBus.receiverAddr = sGetLockStateRequestAddr;
+    BusSend(&sTxBusMsg);
+    /* enable next request */
+    sGetLockStateRequestAddr = 0;
+}
+
+static void CheckLockState(void) {
+
+    static uint16_t sStartTime = 0;
+    static TLockState sLockState = eLockStateIdle;
+    static uint8_t sOldLedState = 0;
+    static bool sBlink = false;
+    uint16_t curTime;
+    uint8_t ledState;
+
+    GET_TIME_MS16(curTime);
+
+    switch (sLockState) {
+    case eLockStateIdle:
+        if (sGetLockState) {
+            sRcAction = eRcActionPressLockUnlock;
+            sLockState = eLockStateWaitReleaseLockUnlock;
+            sStartTime = curTime;
+            sGetLockState = false;
+        }
+        break;
+    case eLockStateWaitReleaseLockUnlock:
+        if (BUTTONS_RELEASED) {
+            sLockState = eLockStateWaitLedsOn;
+            sStartTime = curTime;
+        } else if ((uint16_t)(curTime - sStartTime) > 1000) {
+            sLockState = eLockStateIdle;
+            RespActval(eBusLockInternal); // internal error: buttons not released
+        }
+        break;
+    case eLockStateWaitLedsOn:
+        if (LEDS_ON) {
+            sLockState = eLockStateWaitLedsOff;
+            sStartTime = curTime;
+        } else if ((uint16_t)(curTime - sStartTime) > 200) {
+            sLockState = eLockStateIdle;
+            RespActval(eBusLockInvalid1); // leds not on after buttons released
+        }
+        break;
+    case eLockStateWaitLedsOff:
+        if (!LEDS_ON) {
+            sLockState = eLockStateWaitRead;
+            sStartTime = curTime;
+        } else if ((uint16_t)(curTime - sStartTime) > 3000) {
+            sLockState = eLockStateIdle;
+            RespActval(eBusLockInvalid2); // leds not off after on
+        }
+        break;
+    case eLockStateWaitRead:
+        if ((uint16_t)(curTime - sStartTime) > 1000) {
+            sLockState = eLockStateRead;
+        }
+        break;
+    case eLockStateRead:
+        sStartTime = curTime;
+        if (LED_RED && LED_GREEN) {
+            RespActval(eBusLockUncalib);
+            sLockState = eLockStateTerminate;
+        } else if (LED_RED && !LED_GREEN) {
+            RespActval(eBusLockUnlocked);
+            sLockState = eLockStateTerminate;
+        } else if (!LED_RED && LED_GREEN) {
+            RespActval(eBusLockLocked);
+            sLockState = eLockStateTerminate;
+        } else if (!LED_RED && !LED_GREEN) {
+            // no connection or no state signal
+            sLockState = eLockStateWaitAlternatingBlink;
+        }
+        break;
+    case eLockStateTerminate:
+        if ((uint16_t)(curTime - sStartTime) > 2500) {
+            sLockState = eLockStateIdle;
+        }
+        break;
+    case eLockStateWaitAlternatingBlink:
+        // 3.5 secs after the leds go off it will bink 4.5 secs
+        ledState = LED_STATE;
+        if (sOldLedState != ledState) {
+            sBlink = true;
+        }
+        sOldLedState = ledState;
+        if ((uint16_t)(curTime - sStartTime) > 10000) {
+            if (sBlink) {
+                RespActval(eBusLockNoConnection);
+            } else {
+                RespActval(eBusLockNoResp);
+            }
+            sLockState = eLockStateIdle;
+            sBlink = false;
+            sOldLedState = 0;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+#if 0
+static void LogLedState(void) {
+
+    uint8_t curr;
+    static uint8_t ledstate = 0;
+
+    curr = LED_STATE;
+    if (curr != ledstate) {
+        ledstate = curr;
+        sTxBusMsg.type = eBusDevReqActualValueEvent;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.x.devReq.actualValueEvent.devType = eBusDevTypeSw8;
+        sTxBusMsg.msg.devBus.x.devReq.actualValueEvent.actualValue.sw8.state = ledstate;
+        sTxBusMsg.msg.devBus.receiverAddr = 150;
+        BusSend(&sTxBusMsg);
+    }
+}
+#endif
 
 /*-----------------------------------------------------------------------------
 *  switch to Idle mode
@@ -355,19 +506,19 @@ static void ProcessRcAction(void) {
         sRcAction = eRcActionIdle;
         break;
     case eRcPressedLock:
-        if ((uint16_t)(curTime - sStartTime) > 500) {
+        if ((uint16_t)(curTime - sStartTime) > 100) {
             LOCK_RELEASE;
             sRcState = eRcIdle;
         }
         break;
     case eRcPressedUnlock:
-        if ((uint16_t)(curTime - sStartTime) > 500) {
+        if ((uint16_t)(curTime - sStartTime) > 100) {
             UNLOCK_RELEASE;
             sRcState = eRcIdle;
         }
         break;
     case eRcPressedLockUnlock:
-        if ((uint16_t)(curTime - sStartTime) > 500) {
+        if ((uint16_t)(curTime - sStartTime) > 100) {
             LOCK_RELEASE;
             UNLOCK_RELEASE;
             sRcState = eRcIdle;
@@ -525,7 +676,8 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqInfo:
         case eBusDevReqEepromRead:
         case eBusDevReqEepromWrite:
-        case eBusDevReqActualValueEvent:
+        case eBusDevReqActualValueEvent: /* keyb input */
+        case eBusDevReqActualValue:      /* request lock state */
         case eBusDevReqDoClockCalib:
             if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
@@ -594,6 +746,21 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeKeyb;
         sTxMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.keyb.keyEvent = val8;
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        break;
+    case eBusDevReqActualValue:
+        /* lock state requested:
+         * the current lock state can't be read immediatly. From the CFF3100, it
+         * has to be requested by pressing the buttons lock+unlock at the same
+         * time. The lock state is reflected by the led state after a few secs.
+         */
+        /* no response here due to delayed state detection
+         * see CheckLockState()
+         */
+        /* if no request in progress */
+        if (sGetLockStateRequestAddr == 0) {
+            sGetLockState = true;
+            sGetLockStateRequestAddr = spRxBusMsg->senderAddr;
+        }
         break;
     case eBusDevReqDoClockCalib: {
         uint8_t         old_osccal;
@@ -697,7 +864,7 @@ static void PortInit(void) {
     PORTB = 0b00000000;
     DDRB =  0b11111111;
 
-    PORTC = 0b00000011;
+    PORTC = 0b00010011; // PC4: input not used, enable pull up
     DDRC =  0b00100011;
 
     PORTD = 0b00000111;
@@ -709,8 +876,8 @@ static void PortInit(void) {
 */
 static void TimerInit(void) {
     /* configure Timer 0 */
-    /* prescaler clk/64 -> Interrupt period 256/1000000 * 64 = 16.384 ms */
-    TCCR0B = 3 << CS00;
+    /* prescaler clk/8 -> Interrupt period 256/1000000 * 8 = 2.048 ms */
+    TCCR0B = 2 << CS00;
     TIMSK0 = 1 << TOIE0;
 }
 
@@ -780,17 +947,17 @@ static void SendStartupMsg(void) {
 
 /*-----------------------------------------------------------------------------
 *  Timer 0 overflow ISR
-*  period:  16.384 ms
+*  period:  2.048 ms
 */
 ISR(TIMER0_OVF_vect) {
 
-    static uint8_t intCnt = 0;
+    static uint16_t intCnt = 0;
 
     /* ms counter */
-    gTimeMs16 += 16;
-    gTimeMs += 16;
+    gTimeMs16 += 2;
+    gTimeMs += 2;
     intCnt++;
-    if (intCnt >= 61) { /* 16.384 ms * 61 = 1 s*/
+    if (intCnt >= 488) { /* 2.048 ms * 488 = 1 s*/
         intCnt = 0;
         gTimeS++;
     }

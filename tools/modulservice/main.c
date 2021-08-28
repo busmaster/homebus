@@ -46,7 +46,8 @@
 #define MY_ADDR    myAddr
 
 /* default timeout for receiption of response telegram */
-#define RESPONSE_TIMEOUT   1000 /* ms */
+#define RESPONSE_TIMEOUT          1000 /* ms */
+#define RESPONSE_TIMEOUT_ACTVAL   15000 /* ms */
 
 #define OP_INVALID                          0
 #define OP_SET_NEW_ADDRESS                  1
@@ -328,6 +329,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeKeyb:
                     printf("KEYB");
                     break;
+                case eBusDevTypeKeyRc:
+                    printf("KEYRC");
+                    break;
                 default:
                     break;
                 }
@@ -431,6 +435,22 @@ int main(int argc, char *argv[]) {
                     printf("P-: %d W\n", actVal.actualValue.smif.activePower_minus);
                     printf("Q+: %d var\n", actVal.actualValue.smif.reactivePower_plus);
                     printf("Q-: %d var\n", actVal.actualValue.smif.reactivePower_minus);
+                    break;
+                case eBusDevTypeKeyRc:
+                    printf("\n");
+                    printf("lock state: ");
+                    switch (actVal.actualValue.keyrc.state) {
+                    case eBusLockInternal:     printf("internal"); break;
+                    case eBusLockInvalid1:     printf("invalid1"); break;
+                    case eBusLockInvalid2:     printf("invalid2"); break;
+                    case eBusLockNoResp:       printf("no response"); break;
+                    case eBusLockNoConnection: printf("no connection"); break;
+                    case eBusLockUncalib:      printf("not calibrated"); break;
+                    case eBusLockUnlocked:     printf("unlocked"); break;
+                    case eBusLockLocked:       printf("locked"); break;
+                    default:                   printf("unsupported state");break;
+                    }
+                    printf("\n");
                     break;
                 default:
                     break;
@@ -547,6 +567,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeKeyb:
                     printf("KEYB");
                     break;
+                case eBusDevTypeKeyRc:
+                    printf("KEYRC");
+                    break;
                 default:
                     break;
                 }
@@ -603,6 +626,9 @@ int main(int argc, char *argv[]) {
                             break;
                         case eBusDevTypeKeyb:
                             printf("%-8s", "KEYB");
+                            break;
+                        case eBusDevTypeKeyRc:
+                            printf("%-8s", "KEYRC");
                             break;
                         default:
                             break;
@@ -703,6 +729,9 @@ int main(int argc, char *argv[]) {
                     break;
                 case eBusDevTypeKeyb:
                     printf("KEYB");
+                    break;
+                case eBusDevTypeKeyRc:
+                    printf("KEYRC");
                     break;
                 default:
                     break;
@@ -907,7 +936,7 @@ static bool ModuleGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) 
                 responseOk = true;
             }
         } else {
-            if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT) {
+            if ((actualTimeMs - startTimeMs) > RESPONSE_TIMEOUT_ACTVAL) {
                 timeOut = true;
             }
         }
@@ -964,6 +993,9 @@ static bool ModuleGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) 
             pBuf->actualValue.smif.countA_minus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countA_minus;
             pBuf->actualValue.smif.countR_plus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countR_plus;
             pBuf->actualValue.smif.countR_minus = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.smif.countR_minus;
+            break;
+        case eBusDevTypeKeyRc:
+            pBuf->actualValue.keyrc.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.keyrc.state;
             break;
         default:
             break;

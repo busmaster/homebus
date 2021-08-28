@@ -158,6 +158,9 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoKeyb;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoKeyrc;
+
 typedef enum {
    eBusDevTypeDo31    = 0x00,
    eBusDevTypeSw8     = 0x01,
@@ -171,7 +174,7 @@ typedef enum {
    eBusDevTypeSmIf    = 0x09,
    eBusDevTypePwm16   = 0x0a,
    eBusDevTypeKeyb    = 0x0b,
-   eBusDevTypeKeyRc   = 0x0c,
+   eBusDevTypeKeyRc   = 0x0c, /* cff3100if */
    eBusDevTypeInv     = 0xff
 } __attribute__ ((packed)) TBusDevType;
 
@@ -413,6 +416,22 @@ typedef struct {
     uint8_t keyEvent; /* MSB = 0: released, MSB = 1: pressed */
 } __attribute__ ((packed)) TBusDevActualValueKeyb;
 
+
+typedef enum {
+    eBusLockInternal     = 0, /* internal error */
+    eBusLockInvalid1     = 1, /* no button pressed reaction */
+    eBusLockInvalid2     = 2, /* no termination of button pressed reaction */
+    eBusLockNoResp       = 3, /* no lock state led signal */
+    eBusLockNoConnection = 4, /* alternating red/green led blinking 500ms */
+    eBusLockUncalib      = 5, /* red+green led */
+    eBusLockUnlocked     = 6, /* red led */
+    eBusLockLocked       = 7, /* green led*/
+} __attribute__ ((packed)) TBusLockState;
+
+typedef struct {
+    TBusLockState state;
+} __attribute__ ((packed)) TBusDevActualValueKeyrc;
+
 typedef struct {
    TBusDevType devType;
    union {
@@ -427,6 +446,7 @@ typedef struct {
       TBusDevActualValueSmif    smif;
       TBusDevActualValuePwm16   pwm16;
       TBusDevActualValueKeyb    keyb;
+      TBusDevActualValueKeyrc   keyrc;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
