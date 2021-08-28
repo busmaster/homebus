@@ -397,6 +397,9 @@ static void BusMonDecoded(int sioHandle) {
                 case eBusDevTypeKeyb:
                     fprintf(spOutput, SPACE "device: KEYB\r\n");
                     break;
+                case eBusDevTypeKeyRc:
+                    fprintf(spOutput, SPACE "device: KEYRC\r\n");
+                    break;
                 default:
                     fprintf(spOutput, SPACE "device: unknown\r\n");
                     break;
@@ -760,6 +763,24 @@ static void BusMonDecoded(int sioHandle) {
                     uint8_t keyEvent = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.keyb.keyEvent;
                     fprintf(spOutput, SPACE "device: KEYB\r\n");
                     fprintf(spOutput, SPACE "key event: %d %s", keyEvent & ~0x80, (keyEvent & 0x80) ? "pressed": "released");
+                    break;
+                }
+                case eBusDevTypeKeyRc: {
+                    TBusLockState state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.keyrc.state;
+                    fprintf(spOutput, SPACE "device: KEYRC\r\n");
+                    fprintf(spOutput, SPACE "lock state: ");
+                    switch (state) {
+                    case eBusLockInternal:     fprintf(spOutput, "internal"); break;
+                    case eBusLockInvalid1:     fprintf(spOutput, "invalid1"); break;
+                    case eBusLockInvalid2:     fprintf(spOutput, "invalid2"); break;
+                    case eBusLockNoResp:       fprintf(spOutput, "no response"); break;
+                    case eBusLockNoConnection: fprintf(spOutput, "no connection"); break;
+                    case eBusLockUncalib:      fprintf(spOutput, "not calibrated"); break;
+                    case eBusLockUnlocked:     fprintf(spOutput, "unlocked"); break;
+                    case eBusLockLocked:       fprintf(spOutput, "locked"); break;
+                    default:                   fprintf(spOutput, "unsupported state"); break;
+                    }
+                    fprintf(spOutput, " (%d)", state);
                     break;
                 }
                 default:
