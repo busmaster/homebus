@@ -665,6 +665,18 @@ static void BusMonDecoded(int sioHandle) {
                         fprintf(spOutput, "%04x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.pwm4.pwm[i]);
                     }
                     break;
+                case eBusDevTypeKeyRc:
+                    fprintf(spOutput, SPACE "device: KEYRC\r\n");
+                    fprintf(spOutput, SPACE "command: ");
+                    switch (pBusMsg->msg.devBus.x.devReq.setValue.setValue.keyrc.command) {
+                    case eBusLockCmdNoAction: fprintf(spOutput, "no action"); break;
+                    case eBusLockCmdLock:     fprintf(spOutput, "lock"); break;
+                    case eBusLockCmdUnlock:   fprintf(spOutput, "unlock"); break;
+                    case eBusLockCmdEto:      fprintf(spOutput, "eto"); break;
+                    default: break;
+                    }
+                    fprintf(spOutput, " (%d)", pBusMsg->msg.devBus.x.devReq.setValue.setValue.keyrc.command);
+                    break;
                   default:
                     fprintf(spOutput, SPACE "device: unknown");
                     break;

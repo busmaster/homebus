@@ -63,15 +63,16 @@
 #define OP_SET_VALUE_SW16                   11
 #define OP_SET_VALUE_RS485IF                13
 #define OP_SET_VALUE_PWM4                   14
-#define OP_INFO                             15
-#define OP_EXIT                             16
-#define OP_CLOCK_CALIB                      17
-#define OP_SWITCH_STATE                     18
-#define OP_HELP                             19
-#define OP_GET_INFO_RANGE                   20
-#define OP_DIAG                             21
-#define OP_SET_VAR                          22
-#define OP_GET_VAR                          23
+#define OP_SET_VALUE_KEYRC                  15
+#define OP_INFO                             16
+#define OP_EXIT                             17
+#define OP_CLOCK_CALIB                      18
+#define OP_SWITCH_STATE                     19
+#define OP_HELP                             20
+#define OP_GET_INFO_RANGE                   21
+#define OP_DIAG                             22
+#define OP_SET_VAR                          23
+#define OP_GET_VAR                          24
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -527,6 +528,14 @@ int main(int argc, char *argv[]) {
                     k++;
                 }
             }
+            ret = ModuleSetValue(moduleAddr, &setVal);
+            if (ret) {
+                printf("OK\n");
+            }
+            break;
+        case OP_SET_VALUE_KEYRC:
+            setVal.devType = eBusDevTypeKeyRc;
+            setVal.setValue.keyrc.command = (uint8_t)atoi(argv[argi]);
             ret = ModuleSetValue(moduleAddr, &setVal);
             if (ret) {
                 printf("OK\n");
@@ -1645,6 +1654,13 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             } else {
                 break;
             }
+        } else if (strcmp(argv[i], "-setvalkeyrc") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SET_VALUE_KEYRC;
+            } else {
+                break;
+            }
         } else if (strcmp(argv[i], "-info") == 0) {
             operation = OP_INFO;
         } else if (strcmp(argv[i], "-clockcalib") == 0) {
@@ -1714,6 +1730,7 @@ static void PrintUsage(void) {
     printf("                              -setvalsw16 led0 .. led7           |\n");
     printf("                              -setvalrs485if data0 .. data31     |\n");
     printf("                              -setvalpwm4 set0 pwm0 .. set3 pwm3 |\n");
+    printf("                              -setvalkeyrc command               |\n");
     printf("                              -info                              |\n");
     printf("                              -inforange start stopp             |\n");
     printf("                              -clockcalib addr                   |\n");
@@ -1739,6 +1756,7 @@ static void PrintUsage(void) {
     printf("-setvalsw16 led0 .. led7: set value for led\n");
     printf("-setvalrs485if data0 .. data31: set byte value for rs485if\n");
     printf("-setvalpwm4 set0 pwm0 .. set3 pwm3: setX = command, pwmX = 16 bit value\n");
+    printf("-setvalkeyrc command: 0 = no action, 1 = lock, 2 = unlock, 3 = eto\n");
     printf("-info: read type and version string from modul\n");
     printf("-inforange start stopp: read type and version string from modul start to stopp address\n");	
     printf("-clockcalib: clock calibration\n");
