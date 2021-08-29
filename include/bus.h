@@ -335,6 +335,17 @@ typedef struct {
     uint16_t pwm[BUS_PWM16_PWM_SIZE_SET_VALUE];
 } __attribute__ ((packed)) TBusDevSetValuePwm16;
 
+typedef enum {
+    eBusLockCmdNoAction = 0,
+    eBusLockCmdLock     = 1,
+    eBusLockCmdUnlock   = 2,
+    eBusLockCmdEto      = 3
+} __attribute__ ((packed)) TBusLockCommand;
+
+typedef struct {
+    TBusLockCommand command;
+} __attribute__ ((packed)) TBusDevSetValueKeyrc;
+
 typedef struct {
    TBusDevType devType;
    union {
@@ -344,6 +355,7 @@ typedef struct {
       TBusDevSetValueRs485if rs485if;
       TBusDevSetValuePwm4    pwm4;
       TBusDevSetValuePwm16   pwm16;
+      TBusDevSetValueKeyrc   keyrc;
    } setValue;
 } __attribute__ ((packed)) TBusDevReqSetValue;   /* Type 0x1d */
 

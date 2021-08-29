@@ -155,6 +155,7 @@ static TBusLenDevType sReqSetValueSize = {
         {eBusDevTypeRs485If, BASE_SIZE + sizeof(TBusDevSetValueRs485if)},
         {eBusDevTypePwm4,    BASE_SIZE + sizeof(TBusDevSetValuePwm4)},
         {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevSetValuePwm16)},
+        {eBusDevTypeKeyRc,   BASE_SIZE + sizeof(TBusDevSetValueKeyrc)},
         {eBusDevTypeInv,     0}
     }
 };

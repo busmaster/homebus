@@ -682,6 +682,7 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqEepromWrite:
         case eBusDevReqActualValueEvent: /* keyb input */
         case eBusDevReqActualValue:      /* request lock state */
+        case eBusDevReqSetValue:         /* set lock/unlock */
         case eBusDevReqDoClockCalib:
             if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
@@ -765,6 +766,29 @@ static void ProcessBus(uint8_t ret) {
             sGetLockState = true;
             sGetLockStateRequestAddr = spRxBusMsg->senderAddr;
         }
+        break;
+    case eBusDevReqSetValue:
+        if (spRxBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypeKeyRc) {
+            break;
+        }
+        switch (spRxBusMsg->msg.devBus.x.devReq.setValue.setValue.keyrc.command) {
+        case eBusLockCmdLock:
+            sRcAction = eRcActionPressLock;
+            break;
+        case eBusLockCmdUnlock:
+            sRcAction = eRcActionPressUnlock;
+            break;
+        case eBusLockCmdEto:
+            sRcAction = eRcActionPressEto;
+            break;
+        case eBusLockCmdNoAction:
+        default:
+            break;
+        }
+        sTxMsg.type = eBusDevRespSetValue;
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqDoClockCalib: {
         uint8_t         old_osccal;
