@@ -481,6 +481,9 @@ static void ProcessRcAction(void) {
 
     switch (sRcState) {
     case eRcIdle:
+        if (sRcAction == eRcActionIdle) {
+            break;
+        }
         if (sRcAction == eRcActionPressLock) {
             LOCK_PRESS;
             sStartTime = curTime;
@@ -630,11 +633,12 @@ static void ProcessKey(void) {
     uint16_t curTime;
     uint8_t key[MAX_KEYCODE_LEN];
     uint8_t i;
+    uint8_t num = NumKeys();
 
     GET_TIME_MS16(curTime);
 
     if (sKeybCur == (uint8_t)'k') {
-        if (NumKeys() == 0) {
+        if (num == 0) {
             sRcAction = eRcActionPressLock;
         } else {
             for (i = 0; (i < sizeof(key)) && GetKeyReverse(&key[i]); i++);
@@ -645,7 +649,7 @@ static void ProcessKey(void) {
         PutKey(sKeybCur);
         sPressTime = curTime;
         sKeybCur = 0;
-    } else if ((NumKeys() > 0) && ((uint16_t)(curTime - sPressTime) > 5000)) {
+    } else if ((num > 0) && ((uint16_t)(curTime - sPressTime) > 5000)) {
         ClearKeys();
     }
 }
@@ -875,10 +879,14 @@ static void PortInit(void) {
 *  port init
 */
 static void TimerInit(void) {
-    /* configure Timer 0 */
-    /* prescaler clk/8 -> Interrupt period 256/1000000 * 8 = 2.048 ms */
-    TCCR0B = 2 << CS00;
-    TIMSK0 = 1 << TOIE0;
+
+    /* prescaler clk/64
+     * compare match 125
+     * -> Interrupt period 125/1000000 * 64 = 8 ms */
+    TCCR0A = 2 << WGM20; // CTC
+    TCCR0B = 3 << CS00;
+    OCR0A = 124; /* counting 0-124 */
+    TIMSK0 = 1 << OCIE0A;
 }
 
 static void InitTimer1(void) {
@@ -946,18 +954,18 @@ static void SendStartupMsg(void) {
 }
 
 /*-----------------------------------------------------------------------------
-*  Timer 0 overflow ISR
-*  period:  2.048 ms
+*  Timer 0 COMPA ISR
+*  period:  8.000 ms
 */
-ISR(TIMER0_OVF_vect) {
+ISR(TIMER0_COMPA_vect) {
 
-    static uint16_t intCnt = 0;
+    static uint8_t intCnt = 0;
 
     /* ms counter */
-    gTimeMs16 += 2;
-    gTimeMs += 2;
+    gTimeMs16 += 8;
+    gTimeMs += 8;
     intCnt++;
-    if (intCnt >= 488) { /* 2.048 ms * 488 = 1 s*/
+    if (intCnt >= 125) { /* 8 ms * 125 = 1 s*/
         intCnt = 0;
         gTimeS++;
     }
