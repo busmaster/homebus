@@ -596,31 +596,31 @@ static TRcAction CheckKey(const uint8_t *key, uint8_t len) {
 
     /* Unlock */
     for (i = 0; (i < sKeyCodeLenUnlock) && (i < len); i++) {
-        if (key[len - i - 1] != sKeyCodeUnlock[i]) {
+        if (key[i] != sKeyCodeUnlock[sKeyCodeLenUnlock - 1 - i]) {
            break;
         }
     }
-    if (i == sKeyCodeLenUnlock) {
+    if ((i > 0) && (i == sKeyCodeLenUnlock)) {
         return eRcActionPressUnlock;
     }
 
     /* gargage */
     for (i = 0; (i < sKeyCodeLenGarage) && (i < len); i++) {
-        if (key[len - i - 1] != sKeyCodeGarage[i]) {
+        if (key[i] != sKeyCodeGarage[sKeyCodeLenGarage - 1 -i]) {
            break;
         }
     }
-    if (i == sKeyCodeLenGarage) {
+    if ((i > 0) && (i == sKeyCodeLenGarage)) {
         return eRcActionGarageTrigger;
     }
 
     /* eto */
     for (i = 0; (i < sKeyCodeLenEto) && (i < len); i++) {
-        if (key[len - i - 1] != sKeyCodeEto[i]) {
+        if (key[i] != sKeyCodeEto[sKeyCodeLenEto - 1 - i]) {
            break;
         }
     }
-    if (i == sKeyCodeLenEto) {
+    if ((i > 0) && (i == sKeyCodeLenEto)) {
         return eRcActionPressEto;
     }
 
