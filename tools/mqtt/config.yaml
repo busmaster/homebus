@@ -364,3 +364,9 @@
   physical:
     type: smif
     address: 47
+
+# door lock
+- topic: home/door/lock
+  physical:
+    type: keyrc
+    address: 51

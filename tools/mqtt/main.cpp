@@ -54,13 +54,14 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
-#define MAX_LEN_TOPIC        60
-#define MAX_LEN_MESSAGE      256
-#define MAX_LEN_TOPIC_DESC   50
-#define BUS_RESPONSE_TIMEOUT 100 /* ms */
-#define BUS_MAX_NUM_EVENT_RX 16
+#define MAX_LEN_TOPIC                     60
+#define MAX_LEN_MESSAGE                   256
+#define MAX_LEN_TOPIC_DESC                50
+#define BUS_RESPONSE_TIMEOUT              100 /* ms */
+#define BUS_RESPONSE_TIMEOUT_KEYRC_ACTVAL 8000 /* ms */
+#define BUS_MAX_NUM_EVENT_RX              16
 
-#define PATH_LEN             255
+#define PATH_LEN                          255
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -104,6 +105,9 @@ typedef struct {
             uint8_t index;
             uint8_t size;
         } var;
+        struct {
+            uint8_t address;
+        } keyrc;
     } io;
 
     UT_hash_handle hh;
@@ -124,10 +128,11 @@ typedef struct {
                          */
     /* shadow copy of IO state of device */
     union {
-        TBusDevActualValueDo31 do31;
-        TBusDevActualValuePwm4 pwm4;
-        TBusDevActualValueSw8  sw8;
-        TBusDevActualValueSmif smif;
+        TBusDevActualValueDo31  do31;
+        TBusDevActualValuePwm4  pwm4;
+        TBusDevActualValueSw8   sw8;
+        TBusDevActualValueSmif  smif;
+        TBusDevActualValueKeyrc keyrc;
     } io;
     UT_hash_handle hh;
 } T_dev_desc;
@@ -137,6 +142,7 @@ typedef struct T_bus_tx {
     TBusTelegram    tx_msg;
     bool            sent;
     unsigned long   send_ts;
+    unsigned long   timeout;
     int             (* compare)(TBusTelegram *, void *);
     void            *param;
 } T_bus_tx;
@@ -280,6 +286,7 @@ static int do31_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
     tx->compare = RespSetValue_compare;
     tx->param = p;
     tx->sent = false;
+    tx->timeout = BUS_RESPONSE_TIMEOUT;
 
     LL_APPEND(bus_txq, tx);
     set_alarm(timerFd, 0); /* run serve_bus immediately */
@@ -360,6 +367,7 @@ static int pwm4_ReqSetValue(uint8_t addr, uint8_t set, uint8_t *pwm) {
     tx->compare = RespSetValue_compare;
     tx->param = p;
     tx->sent = false;
+    tx->timeout = BUS_RESPONSE_TIMEOUT;
 
     LL_APPEND(bus_txq, tx);
     set_alarm(timerFd, 0); /* run serve_bus immediately */
@@ -419,6 +427,7 @@ static int sw8_ReqSetValue(uint8_t addr, uint8_t *digout) {
     tx->compare = RespSetValue_compare;
     tx->param = p;
     tx->sent = false;
+    tx->timeout = BUS_RESPONSE_TIMEOUT;
 
     LL_APPEND(bus_txq, tx);
     set_alarm(timerFd, 0); /* run serve_bus immediately */
@@ -461,6 +470,155 @@ static void sw8_set_output(uint8_t address, uint8_t output, T_sw8_port_type type
 }
 
 /*-----------------------------------------------------------------------------
+*  publish data from RespActualValue telegram
+*/
+static void publish_actval(
+    uint32_t               phys_dev,
+	TBusDevRespActualValue *av
+    ) {
+    uint32_t  phys_io;
+    T_io_desc *io_entry;
+    char      topic[MAX_LEN_TOPIC];
+    char      msg[MAX_LEN_MESSAGE];
+    int       len = -1;
+
+    phys_io = phys_dev;
+    HASH_FIND_INT(io_desc, &phys_io, io_entry);
+    if (io_entry) {
+        snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
+        switch (av->devType) {
+        case eBusDevTypeKeyRc:
+            switch (av->actualValue.keyrc.state) {
+            case eBusLockInternal:
+                len = snprintf(msg, sizeof(msg), "%s", "internal");
+                break;
+            case eBusLockInvalid1:
+                len = snprintf(msg, sizeof(msg), "%s", "invalid1");
+                break;
+            case eBusLockInvalid2:
+                len = snprintf(msg, sizeof(msg), "%s", "invalid2");
+                break;
+            case eBusLockNoResp:
+                len = snprintf(msg, sizeof(msg), "%s", "noresp");
+                break;
+            case eBusLockNoConnection:
+                len = snprintf(msg, sizeof(msg), "%s", "noconnection");
+                break;
+            case eBusLockUncalib:
+                len = snprintf(msg, sizeof(msg), "%s", "uncalib");
+                break;
+            case eBusLockUnlocked:
+                len = snprintf(msg, sizeof(msg), "%s", "unlocked");
+                break;
+            case eBusLockLocked:
+                len = snprintf(msg, sizeof(msg), "%s", "locked");
+                break;
+            default:
+                break;
+            }
+        default:
+            break;
+        }
+        if (len > 0) {
+            mosquitto_publish(mosq, 0, topic, len, msg, 1, false);
+        }
+    }
+}
+
+/*-----------------------------------------------------------------------------
+*  compare function for RespActualValue telegram
+*/
+struct respActualValue_compare_data {
+    TBusMsgType            type;
+    uint8_t                receiverAddr;
+    uint8_t                senderAddr;
+    TBusDevRespActualValue av;
+};
+
+static int RespActualValue_compare(TBusTelegram *msg, void *param) {
+    int ret = -1;
+    struct respActualValue_compare_data *p = (struct respActualValue_compare_data *)param;
+
+    if ((p->type == msg->type)                            &&
+        (p->receiverAddr == msg->msg.devBus.receiverAddr) &&
+        (p->senderAddr == msg->senderAddr)                &&
+        (p->av.devType == msg->msg.devBus.x.devResp.actualValue.devType)) {
+        publish_actval((uint8_t)p->av.devType | (p->senderAddr << 8), &msg->msg.devBus.x.devResp.actualValue);
+        ret = 0;
+    }
+    return ret;
+}
+
+/*-----------------------------------------------------------------------------
+*  send actval request
+*/
+static void req_actval(uint8_t address, TBusDevType devType, unsigned long timeout) {
+
+    T_bus_tx                            *tx;
+    struct respActualValue_compare_data *p;
+
+    tx = (T_bus_tx *)malloc(sizeof(T_bus_tx));
+    p = (struct respActualValue_compare_data *)malloc(sizeof(struct respActualValue_compare_data));
+    if ((tx == 0) || (p == 0)) {
+        return;
+    }
+
+    tx->tx_msg.type = eBusDevReqActualValue;
+    tx->tx_msg.senderAddr = my_addr;
+    tx->tx_msg.msg.devBus.receiverAddr = address;
+
+    p->type = eBusDevRespActualValue;
+    p->receiverAddr = my_addr;
+    p->senderAddr = address;
+    p->av.devType = devType;
+
+    tx->compare = RespActualValue_compare;
+    tx->param = p;
+    tx->sent = false;
+    tx->timeout = timeout;
+
+    LL_APPEND(bus_txq, tx);
+    set_alarm(timerFd, 0); /* run serve_bus immediately */
+}
+
+/*-----------------------------------------------------------------------------
+*  send setval request to keyrc
+*/
+static void keyrc_ReqSetValue(uint8_t addr, TBusLockCommand cmd) {
+
+    TBusDevSetValueKeyrc             *sv;
+    T_bus_tx                         *tx;
+    struct respSetValue_compare_data *p;
+
+    tx = (T_bus_tx *)malloc(sizeof(T_bus_tx));
+    p = (struct respSetValue_compare_data *)malloc(sizeof(struct respSetValue_compare_data));
+    if ((tx == 0) || (p == 0)) {
+        return;
+    }
+
+    tx->tx_msg.type = eBusDevReqSetValue;
+    tx->tx_msg.senderAddr = my_addr;
+    tx->tx_msg.msg.devBus.receiverAddr = addr;
+    tx->tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeKeyRc;
+    sv = &tx->tx_msg.msg.devBus.x.devReq.setValue.setValue.keyrc;
+    sv->command = cmd;
+
+    p->type = eBusDevRespSetValue;
+    p->receiverAddr = my_addr;
+    p->senderAddr = addr;
+
+    tx->compare = RespSetValue_compare;
+    tx->param = p;
+    tx->sent = false;
+    tx->timeout = BUS_RESPONSE_TIMEOUT;
+
+    LL_APPEND(bus_txq, tx);
+    set_alarm(timerFd, 0); /* run serve_bus immediately */
+
+    return;
+}
+
+/*-----------------------------------------------------------------------------
 *  compare function for RespActualValueEvent telegram
 */
 struct respActualValueEvent_compare_data {
@@ -491,7 +649,7 @@ static int RespActualValueEvent_compare(TBusTelegram *msg, void *param) {
 }
 
 /*-----------------------------------------------------------------------------
-*  send a SW8 actual value event ReqActualValueEvent telegram
+*  send an SW8 actual value event ReqActualValueEvent telegram
 */
 static void sw8_ReqActualValueEvent(uint8_t addr, uint8_t receiver, uint8_t digin, uint8_t value) {
 
@@ -526,6 +684,7 @@ static void sw8_ReqActualValueEvent(uint8_t addr, uint8_t receiver, uint8_t digi
     tx->compare = RespActualValueEvent_compare;
     tx->param = p;
     tx->sent = false;
+    tx->timeout = BUS_RESPONSE_TIMEOUT;
 
     LL_APPEND(bus_txq, tx);
     set_alarm(timerFd, 0); /* run serve_bus immediately */
@@ -590,6 +749,7 @@ static int var_ReqSetVar(uint8_t addr, uint8_t index, uint8_t size, uint8_t *val
     tx->compare = RespSetVar_compare;
     tx->param = p;
     tx->sent = false;
+    tx->timeout = BUS_RESPONSE_TIMEOUT;
 
     LL_APPEND(bus_txq, tx);
     set_alarm(timerFd, 0); /* run serve_bus immediately */
@@ -664,6 +824,17 @@ printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
         /* we expect the payload to contain a printable hex array: e.g. "1 02 55 aa" for the 4-byte array 0x01, 0x02, 0x55, 0xaa */
         if (payload_to_uint8((const char *)message->payload, message->payloadlen, value, (int)sizeof(value)) == cfg->io.var.size) {
             var_ReqSetVar(cfg->io.var.address, cfg->io.var.index, cfg->io.var.size, value);
+        }
+    case eBusDevTypeKeyRc:
+        if (!message->payload) {
+            // no payload -> request actval
+            req_actval(cfg->io.keyrc.address, eBusDevTypeKeyRc, BUS_RESPONSE_TIMEOUT_KEYRC_ACTVAL);
+        } else if (strcmp("lock", (char *)message->payload) == 0) {
+            keyrc_ReqSetValue(cfg->io.keyrc.address, eBusLockCmdLock);
+        } else if (strcmp("unlock", (char *)message->payload) == 0) {
+            keyrc_ReqSetValue(cfg->io.keyrc.address, eBusLockCmdUnlock);
+        } else if (strcmp("eto", (char *)message->payload) == 0) {
+            keyrc_ReqSetValue(cfg->io.keyrc.address, eBusLockCmdEto);
         }
         break;
     default:
@@ -815,6 +986,14 @@ static int ReadConfig(const char *pFile)  {
         } else if (physical["type"] && (physical["type"].as<std::string>().compare("smif") == 0)) {
             /* smartmeter */
             topic_entry->devtype = eBusDevTypeSmIf;
+            io_entry->phys_io = (uint8_t)topic_entry->devtype;
+            if (physical["address"]) {
+                topic_entry->io.var.address = (uint8_t)strtoul(physical["address"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= (topic_entry->io.var.address << 8);
+            }
+        } else if (physical["type"] && (physical["type"].as<std::string>().compare("keyrc") == 0)) {
+            /* keyrc */
+            topic_entry->devtype = eBusDevTypeKeyRc;
             io_entry->phys_io = (uint8_t)topic_entry->devtype;
             if (physical["address"]) {
                 topic_entry->io.var.address = (uint8_t)strtoul(physical["address"].as<std::string>().c_str(), 0, 0);
@@ -1090,7 +1269,9 @@ static void put_next(T_bus_tx **tx) {
 
     next = curr->next;
     LL_DELETE(*tx, curr);
-    free(curr->param);
+    if (curr->param) {
+        free(curr->param);
+    }
     free(curr);
     if (next) {
         set_alarm(timerFd, 0); // call serve_bus immediately
@@ -1116,7 +1297,7 @@ static void serve_bus(void) {
             tx->sent = true;
             tx->send_ts = get_tick_count();
         }
-        if ((get_tick_count() - tx->send_ts) > BUS_RESPONSE_TIMEOUT) {
+        if ((get_tick_count() - tx->send_ts) > tx->timeout) {
             put_next(&bus_txq);
         } else {
             set_alarm(timerFd, 10); // call serve_bus in 10 ms
@@ -1503,6 +1684,9 @@ int main(int argc, char *argv[]) {
             break;
         case eBusDevTypeSmIf:
             printf("SMIF, address %d", topic_entry->io.smif.address);
+            break;
+        case eBusDevTypeKeyRc:
+            printf("KEYRC, address %d", topic_entry->io.keyrc.address);
             break;
         case eBusDevTypeInv:
             // variable
