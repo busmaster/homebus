@@ -17,6 +17,7 @@
 #include "setupwindow.h"
 #include "smartmeterwindow.h"
 #include "kameraeingangwindow.h"
+#include "doorwindow.h"
 #include "iostate.h"
 #include "statusled.h"
 
@@ -53,6 +54,7 @@ private slots:
     void on_pushButtonSetup_clicked();
     void on_pushButtonSmartMeter_clicked();
     void on_pushButtonKameraEingang_clicked();
+    void on_pushButtonDoor_clicked();
     void onMqtt_connected();
     void onMqtt_disconnected();
     void onMqtt_messageReceived(const QByteArray &, const QMqttTopicName &);
@@ -73,6 +75,7 @@ private:
     setupwindow *uiSetup;
     smartmeterwindow *uiSmartmeter;
     kameraeingangwindow *uiKameraeingang;
+    doorwindow *uiDoor;
 
     QTimer *scrTimer;
     QTimer *cycTimer;

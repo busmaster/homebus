@@ -91,6 +91,21 @@ public:
         quint32 q_plus;
         quint32 q_minus;
     } sm;
+
+    enum doorState {
+        locked,
+        unlocked,
+        internal,
+        invalid1,
+        invalid2,
+        noresp,
+        noconnection,
+        uncalib,
+        again
+    };
+    struct door {
+        enum doorState lockstate;
+    } door;
 };
 
 #endif // IOSTATE_H
