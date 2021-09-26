@@ -30,8 +30,7 @@
    <string>Dialog</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">background-color: rgb(50,50,50);
-background-color: qlineargradient(spread:pad, x1:0.5, y1:0.0, x2:0.5, y2:0.92, stop:0 rgba(50, 50, 50, 255), stop:1 rgba(0, 0, 0, 255));
+   <string notr="true">background-color: qlineargradient(spread:pad, x1:0.5, y1:0.0, x2:0.5, y2:0.92, stop:0 rgba(50, 50, 50, 255), stop:1 rgba(0, 0, 0, 255));
 font: 18pt &quot;Sans&quot;;
 </string>
   </property>
@@ -282,6 +281,22 @@ zähler</string>
    <property name="text">
     <string>Kamera
 Eingang</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonDoor">
+   <property name="geometry">
+    <rect>
+     <x>203</x>
+     <y>292</y>
+     <width>195</width>
+     <height>140</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 255, 255);</string>
+   </property>
+   <property name="text">
+    <string>Haustür</string>
    </property>
   </widget>
  </widget>

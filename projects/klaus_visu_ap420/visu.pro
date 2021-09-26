@@ -13,6 +13,7 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
+    doorwindow.cpp \
         mainwindow.cpp \
     egwindow.cpp \
     iostate.cpp \
@@ -26,6 +27,7 @@ SOURCES += main.cpp\
     kameraeingangwindow.cpp
 
 HEADERS  += mainwindow.h \
+    doorwindow.h \
     egwindow.h \
     iostate.h \
     ogwindow.h \
@@ -38,6 +40,7 @@ HEADERS  += mainwindow.h \
     kameraeingangwindow.h
 
 FORMS    += \
+    doorwindow.ui \
     mainwindow.ui \
     egwindow.ui \
     ogwindow.ui \

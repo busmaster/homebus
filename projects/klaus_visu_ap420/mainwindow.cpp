@@ -101,6 +101,7 @@ MainWindow::MainWindow(QWidget *parent) :
     uiSetup = new setupwindow(this, io);
     uiSmartmeter = new smartmeterwindow(this, io);
     uiKameraeingang = new kameraeingangwindow(this, io);
+    uiDoor = new doorwindow(this, io);
 
     mqttReconnectTimer = 0;
     mqttClient = new QMqttClient(this);
@@ -128,6 +129,7 @@ MainWindow::~MainWindow() {
     delete uiGarage;
     delete uiSetup;
     delete uiSmartmeter;
+    delete uiDoor;
     delete io;
 
     if (backlightBrightness) {
@@ -261,6 +263,8 @@ void MainWindow::onMqtt_connected() {
     mqtt_subscribe("home/kamera/actual", 91);
 
     mqtt_subscribe("home/smartmeter/actual", 100);
+
+    mqtt_subscribe("home/door/lock/actual", 110);
 }
 void MainWindow::onMqtt_disconnected() {
 
@@ -390,6 +394,7 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
     quint32 var_glocke_disable = io->var_glocke_disable;
     quint32 var_mode_LightEingang = io->var_mode_LightEingang;
     bool smChanged = false;
+    bool doorStateChanged = false;
     int index = topic_hash[topic.name()];
 
 //    qDebug() << topic.name() << ": " << index << ": " << message ;
@@ -469,6 +474,28 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         smChanged = true;
         break;
     }
+    case 110:
+        if (QString::compare(message, "locked") == 0) {
+            io->door.lockstate = ioState::doorState::locked;
+        } else if (QString::compare(message, "unlocked") == 0) {
+            io->door.lockstate = ioState::doorState::unlocked;
+        } else if (QString::compare(message, "internal") == 0) {
+            io->door.lockstate = ioState::doorState::internal;
+        } else if (QString::compare(message, "invalid1") == 0) {
+            io->door.lockstate = ioState::doorState::invalid1;
+        } else if (QString::compare(message, "invalid2") == 0) {
+            io->door.lockstate = ioState::doorState::invalid2;
+        } else if (QString::compare(message, "noresp") == 0) {
+            io->door.lockstate = ioState::doorState::noresp;
+        } else if (QString::compare(message, "noconnection") == 0) {
+            io->door.lockstate = ioState::doorState::noconnection;
+        } else if (QString::compare(message, "uncalib") == 0) {
+            io->door.lockstate = ioState::doorState::uncalib;
+        } else if (QString::compare(message, "again") == 0) {
+            io->door.lockstate = ioState::doorState::again;
+        }
+        doorStateChanged = true;
+        break;
     default:
         break;
     }
@@ -482,7 +509,8 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         (glocke_taster != io->glocke_taster)                 ||
         (var_glocke_disable != io->var_glocke_disable)       ||
         (var_mode_LightEingang != io->var_mode_LightEingang) ||
-        smChanged) {
+        smChanged                                            ||
+        doorStateChanged) {
         emit ioChanged();
     }
 
@@ -576,4 +604,8 @@ void MainWindow::on_pushButtonSmartMeter_clicked() {
 
 void MainWindow::on_pushButtonKameraEingang_clicked() {
     uiKameraeingang->show();
+}
+
+void MainWindow::on_pushButtonDoor_clicked() {
+    uiDoor->show();
 }
