@@ -151,7 +151,10 @@ static uint8_t   sKeyCodeLenEto;
 static uint8_t   sKeyCodeEto[MAX_KEYCODE_LEN];
 
 static bool      sGetLockState = false;
-static uint8_t   sGetLockStateRequestAddr = 0;
+static uint8_t   sGetLockStateRequestAddr;
+
+static TRcState   sRcState = eRcIdle;
+static TLockState sLockState = eLockStateIdle;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -224,14 +227,11 @@ static void RespActval(TBusLockState state) {
     sTxBusMsg.msg.devBus.x.devResp.actualValue.actualValue.keyrc.state = state;
     sTxBusMsg.msg.devBus.receiverAddr = sGetLockStateRequestAddr;
     BusSend(&sTxBusMsg);
-    /* enable next request */
-    sGetLockStateRequestAddr = 0;
 }
 
 static void CheckLockState(void) {
 
     static uint16_t sStartTime = 0;
-    static TLockState sLockState = eLockStateIdle;
     static uint8_t sOldLedState = 0;
     static bool sBlink = false;
     uint16_t curTime;
@@ -474,7 +474,6 @@ static bool GarageToggle(void) {
 static void ProcessRcAction(void) {
 
     static uint16_t sStartTime = 0;
-    static TRcState sRcState = eRcIdle;
     uint16_t curTime;
 
     GET_TIME_MS16(curTime);
@@ -627,6 +626,18 @@ static TRcAction CheckKey(const uint8_t *key, uint8_t len) {
     return eRcActionIdle;
 }
 
+static bool RcIsBusy(void) {
+
+    if (sRcState != eRcIdle) {
+        return true;
+    }
+    if (sLockState != eLockStateIdle) {
+        return true;
+    }
+    return false;
+}
+
+
 static void ProcessKey(void) {
 
     static uint16_t sPressTime = 0;
@@ -638,13 +649,15 @@ static void ProcessKey(void) {
     GET_TIME_MS16(curTime);
 
     if (sKeybCur == (uint8_t)'k') {
-        if (num == 0) {
-            sRcAction = eRcActionPressLock;
-        } else {
-            for (i = 0; (i < sizeof(key)) && GetKeyReverse(&key[i]); i++);
-            sRcAction = CheckKey(key, i);
+        if (!RcIsBusy()) {
+            if (num == 0) {
+                sRcAction = eRcActionPressLock;
+            } else {
+                for (i = 0; (i < sizeof(key)) && GetKeyReverse(&key[i]); i++);
+                sRcAction = CheckKey(key, i);
+            }
+            sKeybCur = 0;
         }
-        sKeybCur = 0;
     } else if (sKeybCur != 0) {
         PutKey(sKeybCur);
         sPressTime = curTime;
@@ -758,17 +771,30 @@ static void ProcessBus(uint8_t ret) {
          * has to be requested by pressing the buttons lock+unlock at the same
          * time. The lock state is reflected by the led state after a few secs.
          */
-        /* no response here due to delayed state detection
-         * see CheckLockState()
-         */
-        /* if no request in progress */
-        if (sGetLockStateRequestAddr == 0) {
+        if (!RcIsBusy()) {
+            /* if no rc command in progress */
+            /* no response here due to delayed state detection
+             * see CheckLockState()
+             */
             sGetLockState = true;
             sGetLockStateRequestAddr = spRxBusMsg->senderAddr;
+        } else {
+            sTxMsg.type = eBusDevRespActualValue;
+            sTxMsg.senderAddr = MY_ADDR;
+            sTxMsg.msg.devBus.x.devResp.actualValue.devType = eBusDevTypeKeyRc;
+            sTxMsg.msg.devBus.x.devResp.actualValue.actualValue.keyrc.state = eBusLockAgain;
+            sTxMsg.msg.devBus.receiverAddr = sGetLockStateRequestAddr;
+            sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         }
         break;
     case eBusDevReqSetValue:
         if (spRxBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypeKeyRc) {
+            break;
+        }
+        if (RcIsBusy()) {
+            /* it is not possible to return an error state in eBusDevRespSetValue
+             * telegram, so no response if rc command is in progress
+             */
             break;
         }
         switch (spRxBusMsg->msg.devBus.x.devReq.setValue.setValue.keyrc.command) {

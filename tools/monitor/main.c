@@ -790,6 +790,7 @@ static void BusMonDecoded(int sioHandle) {
                     case eBusLockUncalib:      fprintf(spOutput, "not calibrated"); break;
                     case eBusLockUnlocked:     fprintf(spOutput, "unlocked"); break;
                     case eBusLockLocked:       fprintf(spOutput, "locked"); break;
+                    case eBusLockAgain:        fprintf(spOutput, "again"); break;
                     default:                   fprintf(spOutput, "unsupported state"); break;
                     }
                     fprintf(spOutput, " (%d)", state);

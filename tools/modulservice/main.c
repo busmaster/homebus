@@ -449,6 +449,7 @@ int main(int argc, char *argv[]) {
                     case eBusLockUncalib:      printf("not calibrated"); break;
                     case eBusLockUnlocked:     printf("unlocked"); break;
                     case eBusLockLocked:       printf("locked"); break;
+                    case eBusLockAgain:        printf("again"); break;
                     default:                   printf("unsupported state");break;
                     }
                     printf("\n");

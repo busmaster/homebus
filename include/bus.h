@@ -438,6 +438,7 @@ typedef enum {
     eBusLockUncalib      = 5, /* red+green led */
     eBusLockUnlocked     = 6, /* red led */
     eBusLockLocked       = 7, /* green led*/
+    eBusLockAgain        = 8, /* previous request is in progress, try again */
 } __attribute__ ((packed)) TBusLockState;
 
 typedef struct {

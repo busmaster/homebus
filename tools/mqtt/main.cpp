@@ -474,7 +474,7 @@ static void sw8_set_output(uint8_t address, uint8_t output, T_sw8_port_type type
 */
 static void publish_actval(
     uint32_t               phys_dev,
-	TBusDevRespActualValue *av
+    TBusDevRespActualValue *av
     ) {
     uint32_t  phys_io;
     T_io_desc *io_entry;
@@ -512,6 +512,9 @@ static void publish_actval(
                 break;
             case eBusLockLocked:
                 len = snprintf(msg, sizeof(msg), "%s", "locked");
+                break;
+            case eBusLockAgain:
+                len = snprintf(msg, sizeof(msg), "%s", "again");
                 break;
             default:
                 break;
