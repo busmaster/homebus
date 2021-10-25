@@ -118,7 +118,7 @@ typedef enum {
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-char version[] = "keyrc 1.01";
+char version[] = "keyrc 1.02";
 
 static TBusTelegram *spRxBusMsg;
 static TBusTelegram sTxBusMsg;
@@ -234,6 +234,7 @@ static void CheckLockState(void) {
     static uint16_t sStartTime = 0;
     static uint8_t sOldLedState = 0;
     static bool sBlink = false;
+    static TBusLockState resp;
     uint16_t curTime;
     uint8_t ledState;
 
@@ -283,13 +284,13 @@ static void CheckLockState(void) {
     case eLockStateRead:
         sStartTime = curTime;
         if (LED_RED && LED_GREEN) {
-            RespActval(eBusLockUncalib);
+            resp = eBusLockUncalib;
             sLockState = eLockStateTerminate;
         } else if (LED_RED && !LED_GREEN) {
-            RespActval(eBusLockUnlocked);
+            resp = eBusLockUnlocked;
             sLockState = eLockStateTerminate;
         } else if (!LED_RED && LED_GREEN) {
-            RespActval(eBusLockLocked);
+            resp = eBusLockLocked;
             sLockState = eLockStateTerminate;
         } else if (!LED_RED && !LED_GREEN) {
             // no connection or no state signal
@@ -297,7 +298,8 @@ static void CheckLockState(void) {
         }
         break;
     case eLockStateTerminate:
-        if ((uint16_t)(curTime - sStartTime) > 2500) {
+        if (!LEDS_ON || (uint16_t)(curTime - sStartTime) > 2500) {
+            RespActval(resp);
             sLockState = eLockStateIdle;
         }
         break;
