@@ -161,6 +161,9 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoKeyrc;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoSg;
+
 typedef enum {
    eBusDevTypeDo31    = 0x00,
    eBusDevTypeSw8     = 0x01,
@@ -175,6 +178,7 @@ typedef enum {
    eBusDevTypePwm16   = 0x0a,
    eBusDevTypeKeyb    = 0x0b,
    eBusDevTypeKeyRc   = 0x0c, /* cff3100if */
+   eBusDevTypeSg      = 0x0d, /* stoveguard */
    eBusDevTypeInv     = 0xff
 } __attribute__ ((packed)) TBusDevType;
 
@@ -194,9 +198,10 @@ typedef struct {
       TBusDevInfoSmIf    smif;
       TBusDevInfoPwm16   pwm16;
       TBusDevInfoKeyb    keyb;
+      TBusDevInfoKeyrc   keyrc;
+      TBusDevInfoSg      sg;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
-
 
 typedef struct {
    uint8_t digOut[BUS_DO31_DIGOUT_SIZE_SET];/* je Ausgang 2 Bit:           */
@@ -446,6 +451,10 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValueKeyrc;
 
 typedef struct {
+    uint16_t current[3];
+} __attribute__ ((packed)) TBusDevActualValueSg;
+
+typedef struct {
    TBusDevType devType;
    union {
       TBusDevActualValueDo31    do31;
@@ -460,6 +469,7 @@ typedef struct {
       TBusDevActualValuePwm16   pwm16;
       TBusDevActualValueKeyb    keyb;
       TBusDevActualValueKeyrc   keyrc;
+      TBusDevActualValueSg      sg;
    } actualValue;
 } __attribute__ ((packed)) TBusDevRespActualValue;  /* Type 0x20 */
 
@@ -478,6 +488,7 @@ typedef struct {
       TBusDevActualValueSmif    smif;
       TBusDevActualValuePwm16   pwm16;
       TBusDevActualValueKeyb    keyb;
+      TBusDevActualValueSg      sg;
    } actualValue;
 } __attribute__ ((packed)) TBusDevReqActualValueEvent;  /* Type 0x21 */
 
@@ -495,6 +506,7 @@ typedef struct {
       TBusDevActualValueSmif    smif;
       TBusDevActualValuePwm16   pwm16;
       TBusDevActualValueKeyb    keyb;
+      TBusDevActualValueSg      sg;
    } actualValue; /* same as request */
 } __attribute__ ((packed)) TBusDevRespActualValueEvent;  /* Type 0x22 */
 
