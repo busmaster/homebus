@@ -119,6 +119,7 @@ static TBusLenDevType sRespInfoSize = {
         {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevInfoPwm16)},
         {eBusDevTypeKeyb,    BASE_SIZE + sizeof(TBusDevInfoKeyb)},
         {eBusDevTypeKeyRc,   BASE_SIZE + sizeof(TBusDevInfoKeyrc)},
+        {eBusDevTypeSg,      BASE_SIZE + sizeof(TBusDevInfoSg)},
         {eBusDevTypeInv,     0}
     }
 };

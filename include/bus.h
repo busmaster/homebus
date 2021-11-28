@@ -161,6 +161,9 @@ typedef struct {
 typedef struct {
 } __attribute__ ((packed)) TBusDevInfoKeyrc;
 
+typedef struct {
+} __attribute__ ((packed)) TBusDevInfoSg;
+
 typedef enum {
    eBusDevTypeDo31    = 0x00,
    eBusDevTypeSw8     = 0x01,
@@ -175,6 +178,7 @@ typedef enum {
    eBusDevTypePwm16   = 0x0a,
    eBusDevTypeKeyb    = 0x0b,
    eBusDevTypeKeyRc   = 0x0c, /* cff3100if */
+   eBusDevTypeSg      = 0x0d, /* stoveguard */
    eBusDevTypeInv     = 0xff
 } __attribute__ ((packed)) TBusDevType;
 
@@ -194,9 +198,10 @@ typedef struct {
       TBusDevInfoSmIf    smif;
       TBusDevInfoPwm16   pwm16;
       TBusDevInfoKeyb    keyb;
+      TBusDevInfoKeyrc   keyrc;
+      TBusDevInfoSg      sg;
    } devInfo;
 } __attribute__ ((packed)) TBusDevRespInfo;     /* Type 0x0c */
-
 
 typedef struct {
    uint8_t digOut[BUS_DO31_DIGOUT_SIZE_SET];/* je Ausgang 2 Bit:           */
