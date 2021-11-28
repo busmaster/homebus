@@ -119,6 +119,7 @@ static TBusLenDevType sRespInfoSize = {
         {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevInfoPwm16)},
         {eBusDevTypeKeyb,    BASE_SIZE + sizeof(TBusDevInfoKeyb)},
         {eBusDevTypeKeyRc,   BASE_SIZE + sizeof(TBusDevInfoKeyrc)},
+        {eBusDevTypeSg,      BASE_SIZE + sizeof(TBusDevInfoSg)},
         {eBusDevTypeInv,     0}
     }
 };
@@ -177,6 +178,7 @@ static TBusLenDevType sRespActualValueSize = {
         {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevActualValuePwm16)},
         {eBusDevTypeKeyb,    BASE_SIZE + sizeof(TBusDevActualValueKeyb)},
         {eBusDevTypeKeyRc,   BASE_SIZE + sizeof(TBusDevActualValueKeyrc)},
+        {eBusDevTypeSg,      BASE_SIZE + sizeof(TBusDevActualValueSg)},
         {eBusDevTypeInv,     0}
     }
 };
@@ -197,6 +199,7 @@ static TBusLenDevType sReqActualValueEventSize = {
         {eBusDevTypeSmIf,    BASE_SIZE + sizeof(TBusDevActualValueSmif)},
         {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevActualValuePwm16)},
         {eBusDevTypeKeyb,    BASE_SIZE + sizeof(TBusDevActualValueKeyb)},
+        {eBusDevTypeSg,      BASE_SIZE + sizeof(TBusDevActualValueSg)},
         {eBusDevTypeInv,     0}
     }
 };
@@ -217,6 +220,7 @@ static TBusLenDevType sRespActualValueEventSize = {
         {eBusDevTypeSmIf,    BASE_SIZE + sizeof(TBusDevActualValueSmif)},
         {eBusDevTypePwm16,   BASE_SIZE + sizeof(TBusDevActualValuePwm16)},
         {eBusDevTypeKeyb,    BASE_SIZE + sizeof(TBusDevActualValueKeyb)},
+        {eBusDevTypeSg,      BASE_SIZE + sizeof(TBusDevActualValueSg)},
         {eBusDevTypeInv,     0}
     }
 };
