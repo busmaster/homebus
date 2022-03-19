@@ -34,34 +34,26 @@ private:
 
     ioState *io;
 
-    bool seqCompare(const unsigned char *seq, unsigned int seq_len,
-                    const unsigned char *data, unsigned int data_len,
-                    unsigned int *seq_idx, unsigned int *buf_idx);
-    void proto(unsigned char *buf, unsigned int bufSize);
+    void proto(char *buf, unsigned int bufSize);
+    char *copyJpgData(char *ch, unsigned int bufSize);
 
     QTcpSocket *socket;
     QByteArray data;
 
     enum {
-        eStateInit,
+        eStateHttpGet,
         eStateHttpHdr,
-        eStateJpgHdr,
-        eStateJpgLen,
-        eStateJpgLenTermination,
-        eStateJpgData,
-        eStateJpgReady
-    } jpgState;
+        eStateChunkFirst,
+        eStateChunkNext,
+        eStateChunkHdr
+    } httpState;
 
-    unsigned int seqIdx;
+    unsigned int  chunkLen;
+    unsigned int  chunkIdx;
 
-    char          jpgLenBuf[20];
-    unsigned int  jpgLenIdx;
     unsigned int  jpgLen;
-
-    unsigned char jpgBuf[200000];
     unsigned int  jpgIdx;
-
-    unsigned int rate_reduction;
+    unsigned char jpgBuf[200000];
 
     QPixmap pic;
     QPixmap small;

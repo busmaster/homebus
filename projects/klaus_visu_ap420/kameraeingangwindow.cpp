@@ -9,18 +9,6 @@
 #include "kameraeingangwindow.h"
 #include "ui_kameraeingangwindow.h"
 
-const unsigned char crlfcrlf[] = { '\r', '\n', '\r', '\n'};
-const unsigned char lfcrlf[] = { '\n', '\r', '\n'};
-const unsigned char jpgHdr[] = { '-',  '-',  'B',  'o',  'u',  'n',  'd',  'a',
-                                 'r',  'y',  'S',  't',  'r',  'i',  'n',  'g',
-                                 '\r', '\n', 'C',  'o',  'n',  't',  'e',  'n',
-                                 't',  '-',  't',  'y',  'p',  'e',  ':',  ' ',
-                                 'i',  'm',  'a',  'g',  'e',  '/',  'j',  'p',
-                                 'e',  'g',  '\r', '\n', 'C',  'o',  'n',  't',
-                                 'e',  'n',  't',  '-',  'L',  'e',  'n',  'g',
-                                 't',  'h',  ':'
-                               };
-
 kameraeingangwindow::kameraeingangwindow(QWidget *parent, ioState *state) :
     QDialog(parent),
     ui(new Ui::kameraeingangwindow) {
@@ -32,8 +20,7 @@ kameraeingangwindow::kameraeingangwindow(QWidget *parent, ioState *state) :
     connect(parent, SIGNAL(screenSaverActivated()), this, SLOT(onScreenSaverActivation()));
     connect(this, SIGNAL(disableScreenSaver()), parent, SLOT(onDisableScreenSaver()));
     connect(socket, SIGNAL(readyRead()), SLOT(readTcpData()));
-    jpgState = eStateInit;
-    rate_reduction = -1;
+    httpState = eStateHttpHdr;
 }
 
 kameraeingangwindow::~kameraeingangwindow() {
@@ -42,7 +29,7 @@ kameraeingangwindow::~kameraeingangwindow() {
 
 void kameraeingangwindow::readTcpData(void) {
     data = socket->readAll();
-    proto((unsigned char*)(data.data()), data.count());
+    proto((char*)(data.data()), data.count());
 }
 
 void kameraeingangwindow::onScreenSaverActivation(void) {
@@ -66,116 +53,99 @@ void kameraeingangwindow::hide(void) {
 
 void kameraeingangwindow::show(void) {
     isVisible = true;
-    rate_reduction = -1;
-    jpgState = eStateInit;
-    socket->connectToHost("10.0.0.203", 8081);
+    httpState = eStateHttpGet;
+    kameraeingangwindow::proto(0, 0);
     QDialog::show();
 }
 
-bool kameraeingangwindow::seqCompare(
-    const unsigned char *seq, unsigned int seqLen,
-    const unsigned char *data, unsigned int dataLen,
-    unsigned int *seqIdx, unsigned int *bufIdx) {
+char *kameraeingangwindow::copyJpgData(char *buf, unsigned int bufSize) {
 
-    unsigned int i;
-    unsigned int j = *seqIdx;
+    char *ch = buf;
 
-    for (i = 0; (i < dataLen) && (j < seqLen); i++) {
-       if (seq[j] == data[i]) {
-          j++;
-       } else {
-          j = 0;
-       }
+    while ((jpgIdx < jpgLen)      &&
+           (ch < (buf + bufSize)) &&
+           (chunkIdx < chunkLen)  &&
+           (jpgIdx < sizeof(jpgBuf))) {
+        jpgBuf[jpgIdx] = *ch;
+        jpgIdx++;
+        ch++;
+        chunkIdx++;
     }
-    *bufIdx += i;
-    if (j == seqLen) {
-        return true;
-    } else {
-        *seqIdx = j;
-        return false;
-    }
+
+    return ch;
 }
 
-void kameraeingangwindow::proto(unsigned char *buf, unsigned int bufSize) {
+void kameraeingangwindow::proto(char *buf, unsigned int bufSize) {
 
-    unsigned int bufIdx = 0;
     bool         again = false;
-    char         *endPtr;
+    char         *ch = buf;
+    char         *pos;
 
     do {
-        switch (jpgState) {
-        case eStateInit:
-            seqIdx = 0;
-            jpgState = eStateHttpHdr;
-            again = true;
+        switch (httpState) {
+        case eStateHttpGet:
+            socket->connectToHost("10.0.0.203", 8081);
+            socket->write("GET / HTTP/1.1\r\nHost: 10.0.0.203:8081\r\nConnection: keep-alive\r\n\r\n");
+            httpState = eStateHttpHdr;
             break;
         case eStateHttpHdr:
-            if (seqCompare(crlfcrlf, sizeof(crlfcrlf), buf + bufIdx,
-                           bufSize - bufIdx, &seqIdx, &bufIdx)) {
-                jpgState = eStateJpgHdr;
-                seqIdx = 0;
-                again = true;
-            } else {
-                again = false;
-            }
+            httpState = eStateChunkHdr;
+            jpgLen = 0;
             break;
-        case eStateJpgHdr:
-            if (seqCompare(jpgHdr, sizeof(jpgHdr), buf + bufIdx,
-                           bufSize - bufIdx, &seqIdx, &bufIdx)) {
-                jpgState = eStateJpgLen;
-                seqIdx = 0;
-                jpgLenIdx = 0;
-                again = true;
-            } else {
+        case eStateChunkHdr:
+            if ((bufSize - (ch - buf)) == 0) {
                 again = false;
+                break;
             }
-            break;
-        case eStateJpgLen:
-            while ((jpgLenIdx < sizeof(jpgLenBuf)) &&
-                   (bufIdx < bufSize) &&
-                   (buf[bufIdx] != '\r')) {
-                jpgLenBuf[jpgLenIdx] = buf[bufIdx];
-                jpgLenIdx++;
-                bufIdx++;
-            }
-            if (buf[bufIdx] == '\r') {
-                jpgLenBuf[jpgLenIdx] = '\0';
-                jpgLen = strtoul(jpgLenBuf, &endPtr, 0);
-                jpgState = eStateJpgLenTermination;
-                again = true;
-            } else {
-                again = false;
-            }
-            break;
-        case eStateJpgLenTermination:
-            if (seqCompare(lfcrlf, sizeof(lfcrlf), buf + bufIdx,
-                           bufSize - bufIdx, &seqIdx, &bufIdx)) {
-                jpgState = eStateJpgData;
-                seqIdx = 0;
+            chunkLen = strtoul(ch, &ch, 16);
+            ch += 2; /* \r\n */
+            chunkIdx = 0;
+            if (jpgLen == 0) {
+                httpState = eStateChunkFirst;
                 jpgIdx = 0;
-                again = true;
             } else {
-                again = false;
+                httpState = eStateChunkNext;
+            }
+            again = true;
+            break;
+        case eStateChunkFirst:
+            /* the first chunk contains Content-Length, i.e. the jpg size */
+            pos = ch;
+            ch = strstr(ch, "Content-Length:");
+            if (ch) {
+                ch += sizeof("Content-Length:");
+                jpgLen = strtoul(ch, &ch, 10);
+                ch += 4; /* \r\n\r\n */
+                chunkIdx += (ch - pos);
+                ch = copyJpgData(ch, bufSize - (ch - buf));
+                if ((bufSize - (ch - buf)) > 0) {
+                    again = true;
+                    httpState = eStateChunkHdr;
+                } else {
+                    again = false;
+                    httpState = eStateChunkNext;
+                }
+            } else {
+                httpState = eStateHttpGet;
+                again = true;
+                socket->disconnectFromHost();
             }
             break;
-        case eStateJpgData:
-            while ((bufIdx < bufSize) &&
-                   (jpgIdx < jpgLen) &&
-                   (jpgIdx < sizeof(jpgBuf))) {
-                jpgBuf[jpgIdx] = buf[bufIdx];
-                jpgIdx++;
-                bufIdx++;
-            }
+        case eStateChunkNext:
+            ch = copyJpgData(ch, bufSize - (ch - buf));
             if (jpgIdx == jpgLen) {
-                if (rate_reduction >= 0) {
-                    pic.loadFromData(jpgBuf, jpgLen, "JPG");
-                    small = pic.scaledToHeight(480);
-                    ui->label->setPixmap(small);
-                    rate_reduction = 0;
-                }
-                rate_reduction++;
-                /* next jpg */
-                jpgState = eStateJpgHdr;
+                pic.loadFromData(jpgBuf, jpgLen, "JPG");
+                small = pic.scaledToHeight(480);
+                ui->label->setPixmap(small);
+                ch += 4; /* terminating \r\n\r\n */
+                jpgLen = 0;
+                httpState = eStateChunkHdr;
+                again = true;
+                break;
+            }
+            if (chunkIdx == chunkLen) {
+                ch += 2; /* \r\n */
+                httpState = eStateChunkHdr;
                 again = true;
             } else {
                 again = false;
