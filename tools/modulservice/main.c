@@ -287,7 +287,11 @@ int main(int argc, char *argv[]) {
             eepromAddress = atoi(argv[argi]);
             eepromLength = 0;
             for (j = argi + 1, k = 0; (j < argc) && (k < (int)sizeof(eepromData)); j++, k++) {
-                eepromData[k] = atoi(argv[j]);
+                int base = 10;
+                if ((strncmp(argv[j], "0x", 2) == 0) || (strncmp(argv[j], "0X", 2) == 0)) {
+                    base = 16;
+                }
+                eepromData[k] = (uint8_t)strtoul(argv[j], 0, base);
                 eepromLength++;
             }
             ret = ModuleWriteEeprom(moduleAddr, eepromData, eepromLength, eepromAddress);
