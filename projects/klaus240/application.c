@@ -881,7 +881,14 @@ void ApplicationReleased50_0(void) {}
 void ApplicationPressed50_1(void) {}
 void ApplicationReleased50_1(void) {}
 
-void ApplicationPressed51_0(void) {}
+void ApplicationPressed51_0(void) {
+   /* Eingang */
+   if (DigOutState(eDigOut30)) {
+      DigOutOff(eDigOut30);
+   } else {
+      DigOutDelayedOff(eDigOut30, 60000 /* 1 min */);
+   }
+}
 void ApplicationReleased51_0(void) {}
 void ApplicationPressed51_1(void) {}
 void ApplicationReleased51_1(void) {}
