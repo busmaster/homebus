@@ -51,6 +51,12 @@
 #define KEYCODE_GARAGE     33
 #define KEYCODE_ETO_LEN    48
 #define KEYCODE_ETO        49
+#define KEYCODE_BUTTON_LEN 64
+#define KEYCODE_BUTTON     65
+
+/* send button eBusButtonPressedX telegram on BUTTON key code */
+#define BUTTON_INPUT       80
+
 /* max 15 bytes code */
 #define MAX_KEYCODE_LEN    15
 #define KEY_FIFO_SIZE      (MAX_KEYCODE_LEN + 1)
@@ -87,21 +93,23 @@
 *  Typedes
 */
 typedef enum {
-   eRcIdle,
-   eRcPressedLock,
-   eRcPressedUnlock,
-   eRcPressedLockUnlock,
-   eRcPressedEto,
-   eRcRetryGarageTrigger,
+    eRcIdle,
+    eRcPressedLock,
+    eRcPressedUnlock,
+    eRcPressedLockUnlock,
+    eRcPressedEto,
+    eRcRetryGarageTrigger,
+    eRcRetryButton,
 } TRcState;
 
 typedef enum {
-   eRcActionIdle,
-   eRcActionPressUnlock,
-   eRcActionPressLock,
-   eRcActionPressLockUnlock,
-   eRcActionPressEto,
-   eRcActionGarageTrigger
+    eRcActionIdle,
+    eRcActionPressUnlock,
+    eRcActionPressLock,
+    eRcActionPressLockUnlock,
+    eRcActionPressEto,
+    eRcActionGarageTrigger,
+    eRcActionButton,
 } TRcAction;
 
 typedef enum {
@@ -150,6 +158,10 @@ static uint8_t   sKeyCodeGarage[MAX_KEYCODE_LEN];
 static uint8_t   sKeyCodeLenEto;
 static uint8_t   sKeyCodeEto[MAX_KEYCODE_LEN];
 
+static uint8_t   sKeyCodeLenButton;
+static uint8_t   sKeyCodeButton[MAX_KEYCODE_LEN];
+static uint8_t   sButtonInput;
+
 static bool      sGetLockState = false;
 static uint8_t   sGetLockStateRequestAddr;
 
@@ -196,6 +208,10 @@ int main(void) {
 
    sKeyCodeLenEto = eeprom_read_byte((const uint8_t *)KEYCODE_ETO_LEN);
    eeprom_read_block(&sKeyCodeEto, (const void *)(KEYCODE_ETO), MAX_KEYCODE_LEN);
+
+   sKeyCodeLenButton = eeprom_read_byte((const uint8_t *)KEYCODE_BUTTON_LEN);
+   eeprom_read_block(&sKeyCodeButton, (const void *)(KEYCODE_BUTTON), MAX_KEYCODE_LEN);
+   sButtonInput = eeprom_read_byte((const uint8_t *)BUTTON_INPUT);
 
    PortInit();
    TimerInit();
@@ -473,6 +489,19 @@ static bool GarageToggle(void) {
     return rc;
 }
 
+static bool Button(void) {
+
+    bool rc = true;
+
+    sTxBusMsg.type = sButtonInput;
+    sTxBusMsg.senderAddr = MY_ADDR;
+    if (BusSend(&sTxBusMsg) != BUS_SEND_OK) {
+        rc = false;
+    }
+
+    return rc;
+}
+
 static void ProcessRcAction(void) {
 
     static uint16_t sStartTime = 0;
@@ -506,6 +535,10 @@ static void ProcessRcAction(void) {
             if (!GarageToggle()) {
                 sRcState = eRcRetryGarageTrigger;
             }
+        } else if (sRcAction == eRcActionButton) {
+            if (!Button()) {
+                sRcState = eRcRetryButton;
+            }
         }
         sRcAction = eRcActionIdle;
         break;
@@ -536,6 +569,11 @@ static void ProcessRcAction(void) {
         break;
     case eRcRetryGarageTrigger:
         if (GarageToggle()) {
+            sRcState = eRcIdle;
+        }
+        break;
+    case eRcRetryButton:
+        if (Button()) {
             sRcState = eRcIdle;
         }
         break;
@@ -623,6 +661,16 @@ static TRcAction CheckKey(const uint8_t *key, uint8_t len) {
     }
     if ((i > 0) && (i == sKeyCodeLenEto)) {
         return eRcActionPressEto;
+    }
+
+    /* eBusButtonPressedX */
+    for (i = 0; (i < sKeyCodeLenButton) && (i < len); i++) {
+        if (key[i] != sKeyCodeButton[sKeyCodeLenButton - 1 - i]) {
+           break;
+        }
+    }
+    if ((i > 0) && (i == sKeyCodeLenButton)) {
+        return eRcActionButton;
     }
 
     return eRcActionIdle;
