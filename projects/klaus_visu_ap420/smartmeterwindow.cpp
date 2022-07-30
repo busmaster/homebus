@@ -32,10 +32,16 @@ void smartmeterwindow::show(void) {
 
     isVisible = true;
     QString str;
-    str = "Zählerstand: ";
+    str = "Zählerstand A+: ";
     ui->label_aplus->setText(str);
-    str = "Wirkleistung: ";
+    str = "Zählerstand A-: ";
+    ui->label_aminus->setText(str);
+    str = "Wirkleistung P+: ";
     ui->label_pplus->setText(str);
+    str = "Wirkleistung P-: ";
+    ui->label_pminus->setText(str);
+    str = "Wirkleistung P: ";
+    ui->label_p->setText(str);
     QDialog::show();
 }
 
@@ -54,10 +60,16 @@ void smartmeterwindow::onIoStateChanged(void) {
     }
 
     QString str;
-    str = "Zählerstand: " + QString::number(io->sm.a_plus / 1000) +  " kWh";
-    ui->label_aplus->setText(str);
-    str = "Wirkleistung: " + QString::number(io->sm.p_plus) + " W";
-    ui->label_pplus->setText(str);
+    str = QString::number(io->sm.a_plus / 1000) +  " kWh";
+    ui->label_aplus_val->setText(str);
+    str = QString::number(io->sm.a_minus / 1000) +  " kWh";
+    ui->label_aminus_val->setText(str);
+    str = QString::number(io->sm.p_plus) + " W";
+    ui->label_pplus_val->setText(str);
+    str = QString::number(io->sm.p_minus) + " W";
+    ui->label_pminus_val->setText(str);
+    str = QString::number(io->sm.p_plus - io->sm.p_minus) + " W";
+    ui->label_p_val->setText(str);
 }
 
 void smartmeterwindow::on_pushButtonBack_clicked() {
