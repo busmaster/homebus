@@ -16,7 +16,7 @@ kameraeingangwindow::kameraeingangwindow(QWidget *parent, ioState *state) :
     io = state;
     isVisible = false;
     socket = new QTcpSocket(this);
-    connect(parent, SIGNAL(ioChanged(void)), this, SLOT(onIoStateChanged(void)));
+    connect(parent, SIGNAL(ioChanged()), this, SLOT(onIoStateChanged()));
     connect(parent, SIGNAL(screenSaverActivated()), this, SLOT(onScreenSaverActivation()));
     connect(this, SIGNAL(disableScreenSaver()), parent, SLOT(onDisableScreenSaver()));
     connect(socket, SIGNAL(readyRead()), SLOT(readTcpData()));
@@ -52,6 +52,9 @@ void kameraeingangwindow::hide(void) {
 }
 
 void kameraeingangwindow::show(void) {
+    if (isVisible) {
+        return;
+    }
     isVisible = true;
     httpState = eStateHttpGet;
     kameraeingangwindow::proto(0, 0);

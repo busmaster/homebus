@@ -9,10 +9,10 @@ ogwindow::ogwindow(QWidget *parent, ioState *state) :
     ui->setupUi(this);
     io = state;
     isVisible = false;
-    connect(parent, SIGNAL(ioChanged(void)),
-            this, SLOT(onIoStateChanged(void)));
-    connect(this, SIGNAL(messagePublish(const char *, const char *)),
-            parent, SLOT(onMessagePublish(const char *, const char *)));
+    connect(parent, SIGNAL(ioChanged()),
+            this, SLOT(onIoStateChanged()));
+    connect(this, SIGNAL(messagePublish(const char*,const char*)),
+            parent, SLOT(onMessagePublish(const char*,const char*)));
 }
 
 ogwindow::~ogwindow() {
