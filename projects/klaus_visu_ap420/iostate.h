@@ -90,7 +90,18 @@ public:
         quint32 p_minus;
         quint32 q_plus;
         quint32 q_minus;
+        quint32 a_plus_midnight;
+        quint32 a_minus_midnight;
     } sm;
+
+    struct solar {
+        quint32 oben_ost;
+        quint32 oben_mitte;
+        quint32 oben_west;
+        quint32 unten_ost;
+        quint32 unten_mitte;
+        quint32 unten_west;
+    } solar;
 
     enum doorState {
         locked,

@@ -109,7 +109,7 @@ MainWindow::MainWindow(QWidget *parent) :
     mqttClient->setPort(1883);
     connect(mqttClient, SIGNAL(connected()), this, SLOT(onMqtt_connected()));
     connect(mqttClient, SIGNAL(disconnected()), this, SLOT(onMqtt_disconnected()));
-    connect(mqttClient, SIGNAL(messageReceived(const QByteArray &, const QMqttTopicName &)), this, SLOT(onMqtt_messageReceived(const QByteArray &, const QMqttTopicName &)));
+    connect(mqttClient, SIGNAL(messageReceived(QByteArray,QMqttTopicName)), this, SLOT(onMqtt_messageReceived(QByteArray,QMqttTopicName)));
     mqttClient->connectToHost();
 
     ui->pushButtonEG->setStyleSheet("background-color: green");
@@ -265,6 +265,16 @@ void MainWindow::onMqtt_connected() {
     mqtt_subscribe("home/smartmeter/actual", 100);
 
     mqtt_subscribe("home/door/lock/actual", 110);
+
+    mqtt_subscribe("home/smartmeter/midnight/consumed", 120);
+    mqtt_subscribe("home/smartmeter/midnight/produced", 121);
+    mqtt_subscribe("solar/114181014906/1/yieldday", 122);
+    mqtt_subscribe("solar/114181014906/2/yieldday", 123);
+    mqtt_subscribe("solar/114183081983/1/yieldday", 124);
+    mqtt_subscribe("solar/114183081983/2/yieldday", 125);
+    mqtt_subscribe("solar/114183084705/1/yieldday", 126);
+    mqtt_subscribe("solar/114183084705/2/yieldday", 127);
+
 }
 void MainWindow::onMqtt_disconnected() {
 
@@ -395,7 +405,9 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
     quint32 var_mode_LightEingang = io->var_mode_LightEingang;
     bool smChanged = false;
     bool doorStateChanged = false;
+    bool solarChanged = false;
     int index = topic_hash[topic.name()];
+    QList<QByteArray> l;
 
 //    qDebug() << topic.name() << ": " << index << ": " << message ;
 
@@ -496,6 +508,87 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         }
         doorStateChanged = true;
         break;
+    case 120:
+        io->sm.a_plus_midnight = message.toInt();
+        smChanged = true;
+        break;
+    case 121:
+        io->sm.a_minus_midnight = message.toInt();
+        smChanged = true;
+        break;
+    case 122:{
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->solar.oben_ost = l[0].toInt();
+        } else if (l.count() == 2) {
+            io->solar.oben_ost = l[0].toInt() * 1000 + l[1].toInt();
+        } else {
+            io->solar.oben_ost = 0;
+        }
+        solarChanged =true;
+        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.oben_ost;
+    }
+        break;
+    case 123:
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->solar.oben_mitte = l[0].toInt();
+        } else if (l.count() == 2) {
+            io->solar.oben_mitte = l[0].toInt() * 1000 + l[1].toInt();
+        } else {
+            io->solar.oben_mitte = 0;
+        }
+        solarChanged =true;
+        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.oben_mitte;
+        break;
+    case 124:
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->solar.oben_west = l[0].toInt();
+        } else if (l.count() == 2) {
+            io->solar.oben_west = l[0].toInt() * 1000 + l[1].toInt();
+        } else {
+            io->solar.oben_west = 0;
+        }
+        solarChanged =true;
+        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.oben_west;
+        break;
+    case 125:
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->solar.unten_ost = l[0].toInt();
+        } else if (l.count() == 2) {
+            io->solar.unten_ost = l[0].toInt() * 1000 + l[1].toInt();
+        } else {
+            io->solar.unten_ost = 0;
+        }
+        solarChanged =true;
+        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.unten_ost;
+        break;
+    case 126:
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->solar.unten_mitte = l[0].toInt();
+        } else if (l.count() == 2) {
+            io->solar.unten_mitte = l[0].toInt() * 1000 + l[1].toInt();
+        } else {
+            io->solar.unten_mitte = 0;
+        }
+        solarChanged =true;
+        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.unten_mitte;
+        break;
+    case 127:
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->solar.unten_west = l[0].toInt();
+        } else if (l.count() == 2) {
+            io->solar.unten_west = l[0].toInt() * 1000 + l[1].toInt();
+        } else {
+            io->solar.unten_west = 0;
+        }
+        solarChanged =true;
+        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.unten_west;
+        break;
     default:
         break;
     }
@@ -510,7 +603,8 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         (var_glocke_disable != io->var_glocke_disable)       ||
         (var_mode_LightEingang != io->var_mode_LightEingang) ||
         smChanged                                            ||
-        doorStateChanged) {
+        doorStateChanged                                     ||
+        solarChanged) {
         emit ioChanged();
     }
 
