@@ -10,10 +10,10 @@ setupwindow::setupwindow(QWidget *parent, ioState *state) :
     ui->setupUi(this);
     isVisible = false;
     io = state;
-    connect(parent, SIGNAL(ioChanged(void)),
-            this, SLOT(onIoStateChanged(void)));
-    connect(this, SIGNAL(messagePublish(const char *, const char *)),
-            parent, SLOT(onMessagePublish(const char *, const char *)));
+    connect(parent, SIGNAL(ioChanged()),
+            this, SLOT(onIoStateChanged()));
+    connect(this, SIGNAL(messagePublish(const char*,const char*)),
+            parent, SLOT(onMessagePublish(const char*,const char*)));
 }
 
 setupwindow::~setupwindow() {

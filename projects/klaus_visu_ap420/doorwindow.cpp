@@ -11,10 +11,10 @@ doorwindow::doorwindow(QWidget *parent, ioState *state) :
     ui->pushButtonUnlock->setStyleSheet("background-color: red; color: black");
     io = state;
     isVisible = false;
-    connect(parent, SIGNAL(ioChanged(void)),
-            this, SLOT(onIoStateChanged(void)));
-    connect(this, SIGNAL(messagePublish(const char *, const char *)),
-            parent, SLOT(onMessagePublish(const char *, const char *)));
+    connect(parent, SIGNAL(ioChanged()),
+            this, SLOT(onIoStateChanged()));
+    connect(this, SIGNAL(messagePublish(const char*,const char*)),
+            parent, SLOT(onMessagePublish(const char*,const char*)));
 
     openButtonTimer = new QTimer(this);
     openButtonTimer->setSingleShot(true);
