@@ -307,7 +307,7 @@ font: 24pt &quot;Sans&quot;;</string>
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>320</y>
+     <y>280</y>
      <width>280</width>
      <height>40</height>
     </rect>
@@ -333,7 +333,7 @@ font: 24pt &quot;Sans&quot;;</string>
    <property name="geometry">
     <rect>
      <x>300</x>
-     <y>320</y>
+     <y>280</y>
      <width>200</width>
      <height>40</height>
     </rect>
@@ -359,7 +359,7 @@ font: 24pt &quot;Sans&quot;;</string>
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>280</y>
+     <y>240</y>
      <width>280</width>
      <height>40</height>
     </rect>
@@ -385,7 +385,7 @@ font: 24pt &quot;Sans&quot;;</string>
    <property name="geometry">
     <rect>
      <x>300</x>
-     <y>280</y>
+     <y>240</y>
      <width>200</width>
      <height>40</height>
     </rect>
@@ -411,7 +411,7 @@ font: 24pt &quot;Sans&quot;;</string>
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>380</y>
+     <y>320</y>
      <width>280</width>
      <height>40</height>
     </rect>
@@ -437,7 +437,59 @@ font: 24pt &quot;Sans&quot;;</string>
    <property name="geometry">
     <rect>
      <x>300</x>
-     <y>380</y>
+     <y>320</y>
+     <width>200</width>
+     <height>40</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Sans</family>
+     <pointsize>24</pointsize>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: rgba(255, 255, 255, 0);
+color: rgb(255, 255, 255);
+font: 24pt &quot;Sans&quot;;</string>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_solar_power">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>360</y>
+     <width>280</width>
+     <height>40</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Sans</family>
+     <pointsize>24</pointsize>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: rgba(255, 255, 255, 0);
+color: rgb(255, 255, 255);
+font: 24pt &quot;Sans&quot;;</string>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_solar_power_val">
+   <property name="geometry">
+    <rect>
+     <x>300</x>
+     <y>360</y>
      <width>200</width>
      <height>40</height>
     </rect>
