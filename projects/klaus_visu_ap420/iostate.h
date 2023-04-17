@@ -94,14 +94,20 @@ public:
         quint32 a_minus_midnight;
     } sm;
 
-    struct solar {
+    struct solaryield {
         quint32 oben_ost;
         quint32 oben_mitte;
         quint32 oben_west;
         quint32 unten_ost;
         quint32 unten_mitte;
         quint32 unten_west;
-    } solar;
+    } sy;
+
+    struct solarpower {
+        quint32 links;
+        quint32 mitte;
+        quint32 rechts;
+    } sp;
 
     enum doorState {
         locked,

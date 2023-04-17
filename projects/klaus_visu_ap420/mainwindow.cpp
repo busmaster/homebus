@@ -274,7 +274,9 @@ void MainWindow::onMqtt_connected() {
     mqtt_subscribe("solar/114183081983/2/yieldday", 125);
     mqtt_subscribe("solar/114183084705/1/yieldday", 126);
     mqtt_subscribe("solar/114183084705/2/yieldday", 127);
-
+    mqtt_subscribe("solar/114181014906/0/power", 128);
+    mqtt_subscribe("solar/114183081983/0/power", 129);
+    mqtt_subscribe("solar/114183084705/0/power", 130);
 }
 void MainWindow::onMqtt_disconnected() {
 
@@ -519,75 +521,102 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
     case 122:{
         l = message.split('.');
         if (l.count() == 1) {
-            io->solar.oben_ost = l[0].toInt();
+            io->sy.oben_ost = l[0].toInt();
         } else if (l.count() == 2) {
-            io->solar.oben_ost = l[0].toInt() * 1000 + l[1].toInt();
+            io->sy.oben_ost = l[0].toInt() * 1000 + l[1].toInt();
         } else {
-            io->solar.oben_ost = 0;
+            io->sy.oben_ost = 0;
         }
-        solarChanged =true;
-        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.oben_ost;
+        solarChanged = true;
     }
         break;
     case 123:
         l = message.split('.');
         if (l.count() == 1) {
-            io->solar.oben_mitte = l[0].toInt();
+            io->sy.oben_mitte = l[0].toInt();
         } else if (l.count() == 2) {
-            io->solar.oben_mitte = l[0].toInt() * 1000 + l[1].toInt();
+            io->sy.oben_mitte = l[0].toInt() * 1000 + l[1].toInt();
         } else {
-            io->solar.oben_mitte = 0;
+            io->sy.oben_mitte = 0;
         }
-        solarChanged =true;
-        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.oben_mitte;
+        solarChanged = true;
         break;
     case 124:
         l = message.split('.');
         if (l.count() == 1) {
-            io->solar.oben_west = l[0].toInt();
+            io->sy.oben_west = l[0].toInt();
         } else if (l.count() == 2) {
-            io->solar.oben_west = l[0].toInt() * 1000 + l[1].toInt();
+            io->sy.oben_west = l[0].toInt() * 1000 + l[1].toInt();
         } else {
-            io->solar.oben_west = 0;
+            io->sy.oben_west = 0;
         }
-        solarChanged =true;
-        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.oben_west;
+        solarChanged = true;
         break;
     case 125:
         l = message.split('.');
         if (l.count() == 1) {
-            io->solar.unten_ost = l[0].toInt();
+            io->sy.unten_ost = l[0].toInt();
         } else if (l.count() == 2) {
-            io->solar.unten_ost = l[0].toInt() * 1000 + l[1].toInt();
+            io->sy.unten_ost = l[0].toInt() * 1000 + l[1].toInt();
         } else {
-            io->solar.unten_ost = 0;
+            io->sy.unten_ost = 0;
         }
-        solarChanged =true;
-        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.unten_ost;
+        solarChanged = true;
         break;
     case 126:
         l = message.split('.');
         if (l.count() == 1) {
-            io->solar.unten_mitte = l[0].toInt();
+            io->sy.unten_mitte = l[0].toInt();
         } else if (l.count() == 2) {
-            io->solar.unten_mitte = l[0].toInt() * 1000 + l[1].toInt();
+            io->sy.unten_mitte = l[0].toInt() * 1000 + l[1].toInt();
         } else {
-            io->solar.unten_mitte = 0;
+            io->sy.unten_mitte = 0;
         }
-        solarChanged =true;
-        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.unten_mitte;
+        solarChanged = true;
         break;
     case 127:
         l = message.split('.');
         if (l.count() == 1) {
-            io->solar.unten_west = l[0].toInt();
+            io->sy.unten_west = l[0].toInt();
         } else if (l.count() == 2) {
-            io->solar.unten_west = l[0].toInt() * 1000 + l[1].toInt();
+            io->sy.unten_west = l[0].toInt() * 1000 + l[1].toInt();
         } else {
-            io->solar.unten_west = 0;
+            io->sy.unten_west = 0;
         }
-        solarChanged =true;
-        qDebug() << topic.name() << "1: " << index << ": " << message << " " << io->solar.unten_west;
+        solarChanged = true;
+        break;
+    case 128:
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->sp.rechts = l[0].toInt();
+        } else if (l.count() == 2) {
+            io->sp.rechts = l[0].toInt() * 10 + l[1].toInt();
+        } else {
+            io->sp.rechts = 0;
+        }
+        solarChanged = true;
+        break;
+    case 129:
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->sp.mitte= l[0].toInt();
+        } else if (l.count() == 2) {
+            io->sp.mitte = l[0].toInt() * 10 + l[1].toInt();
+        } else {
+            io->sp.mitte = 0;
+        }
+        solarChanged = true;
+        break;
+    case 130:
+        l = message.split('.');
+        if (l.count() == 1) {
+            io->sp.links = l[0].toInt();
+        } else if (l.count() == 2) {
+            io->sp.links = l[0].toInt() * 10 + l[1].toInt();
+        } else {
+            io->sp.links = 0;
+        }
+        solarChanged = true;
         break;
     default:
         break;

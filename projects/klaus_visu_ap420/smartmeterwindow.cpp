@@ -48,6 +48,8 @@ void smartmeterwindow::show(void) {
     ui->label_aminus_day->setText(str);
     str = "PV Tag";
     ui->label_solar_day->setText(str);
+    str = "PV Leistung";
+    ui->label_solar_power->setText(str);
 
     QDialog::show();
 }
@@ -63,6 +65,7 @@ void smartmeterwindow::hide(void) {
 void smartmeterwindow::onIoStateChanged(void) {
 
     uint32_t counter;
+    uint32_t power;
 
     if (!isVisible) {
         return;
@@ -85,9 +88,12 @@ void smartmeterwindow::onIoStateChanged(void) {
     counter = io->sm.a_minus - io->sm.a_minus_midnight;
     ui->label_aminus_day_val->setText(QString::asprintf("%d.%03d kWh", counter / 1000, counter % 1000));
 
-    counter = io->solar.oben_ost + io->solar.oben_mitte + io->solar.oben_west +
-              io->solar.unten_ost + io->solar.unten_mitte + io->solar.unten_west;
+    counter = io->sy.oben_ost + io->sy.oben_mitte + io->sy.oben_west +
+              io->sy.unten_ost + io->sy.unten_mitte + io->sy.unten_west;
     ui->label_solar_day_val->setText(QString::asprintf("%d.%03d kWh", counter / 1000, counter % 1000));
+
+    power = io->sp.rechts + io->sp.mitte + io->sp.links;
+    ui->label_solar_power_val->setText(QString::asprintf("%d.%01d W", power / 10, power % 10));
 
 }
 
