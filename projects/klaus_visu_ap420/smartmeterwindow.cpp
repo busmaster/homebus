@@ -36,10 +36,6 @@ void smartmeterwindow::show(void) {
     ui->label_aplus->setText(str);
     str = "Zählerstand A\u2212";
     ui->label_aminus->setText(str);
-    str = "Wirkleistung P+";
-    ui->label_pplus->setText(str);
-    str = "Wirkleistung P\u2212";
-    ui->label_pminus->setText(str);
     str = "Wirkleistung P";
     ui->label_p->setText(str);
     str = "Bezug Tag";
@@ -73,8 +69,6 @@ void smartmeterwindow::onIoStateChanged(void) {
 
     ui->label_aplus_val->setText(QString::asprintf("%d.%03d kWh", io->sm.a_plus / 1000, io->sm.a_plus % 1000));
     ui->label_aminus_val->setText(QString::asprintf("%d.%03d kWh", io->sm.a_minus / 1000, io->sm.a_minus % 1000));
-    ui->label_pplus_val->setText(QString::number(io->sm.p_plus) + " W");
-    ui->label_pminus_val->setText(QString::number(io->sm.p_minus) + " W");
     if (io->sm.p_plus > io->sm.p_minus) {
         ui->label_p_val->setStyleSheet("background-color: rgba(255, 255, 255, 0);color: red;font: 24pt \"Sans\"");
         ui->label_p_val->setText(QString::number(io->sm.p_plus - io->sm.p_minus) + " W");
