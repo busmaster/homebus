@@ -69,32 +69,6 @@ font: 24pt &quot;Sans&quot;;</string>
     <string/>
    </property>
   </widget>
-  <widget class="QLabel" name="label_pplus">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>100</y>
-     <width>280</width>
-     <height>40</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Sans</family>
-     <pointsize>24</pointsize>
-     <italic>false</italic>
-     <bold>false</bold>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">background-color: rgba(255, 255, 255, 0);
-color: rgb(255, 255, 255);
-font: 24pt &quot;Sans&quot;;</string>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-  </widget>
   <widget class="QLabel" name="label_aminus">
    <property name="geometry">
     <rect>
@@ -121,37 +95,11 @@ font: 24pt &quot;Sans&quot;;</string>
     <string/>
    </property>
   </widget>
-  <widget class="QLabel" name="label_pminus">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>140</y>
-     <width>280</width>
-     <height>40</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Sans</family>
-     <pointsize>24</pointsize>
-     <italic>false</italic>
-     <bold>false</bold>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">background-color: rgba(255, 255, 255, 0);
-color: rgb(255, 255, 255);
-font: 24pt &quot;Sans&quot;;</string>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-  </widget>
   <widget class="QLabel" name="label_p">
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>180</y>
+     <y>100</y>
      <width>280</width>
      <height>40</height>
     </rect>
@@ -226,58 +174,6 @@ font: 24pt &quot;Sans&quot;;</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_p_val">
-   <property name="geometry">
-    <rect>
-     <x>300</x>
-     <y>180</y>
-     <width>200</width>
-     <height>40</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Sans</family>
-     <pointsize>24</pointsize>
-     <italic>false</italic>
-     <bold>false</bold>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">background-color: rgba(255, 255, 255, 0);
-color: rgb(255, 255, 255);
-font: 24pt &quot;Sans&quot;;</string>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_pminus_val">
-   <property name="geometry">
-    <rect>
-     <x>300</x>
-     <y>140</y>
-     <width>200</width>
-     <height>40</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Sans</family>
-     <pointsize>24</pointsize>
-     <italic>false</italic>
-     <bold>false</bold>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">background-color: rgba(255, 255, 255, 0);
-color: rgb(255, 255, 255);
-font: 24pt &quot;Sans&quot;;</string>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_pplus_val">
    <property name="geometry">
     <rect>
      <x>300</x>
