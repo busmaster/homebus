@@ -24,7 +24,7 @@ signals:
     void messagePublish(const char *, const char *);
 
 private slots:
-    void onIoStateChanged(void);
+    void onMeterChanged(void);
     void onScreenSaverActivation(void);
     void on_pushButtonBack_clicked();
 
