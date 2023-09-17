@@ -12,8 +12,8 @@ smartmeterwindow::smartmeterwindow(QWidget *parent, ioState *state) :
     connect(parent, SIGNAL(screenSaverActivated()), this, SLOT(onScreenSaverActivation()));
     connect(this, SIGNAL(messagePublish(const char*,const char*)),
             parent, SLOT(onMessagePublish(const char*,const char*)));
-    connect(parent, SIGNAL(ioChanged()),
-            this, SLOT(onIoStateChanged()));
+    connect(parent, SIGNAL(meterChanged()),
+            this, SLOT(onMeterChanged()));
 }
 
 smartmeterwindow::~smartmeterwindow() {
@@ -28,7 +28,7 @@ void smartmeterwindow::onScreenSaverActivation(void) {
 
 void smartmeterwindow::show(void) {
 
-    emit messagePublish("home/smartmeter/enable-event/set", "01"); // variable as hex number
+//    emit messagePublish("home/smartmeter/enable-event/set", "01"); // variable as hex number
 
     isVisible = true;
     QString str;
@@ -47,18 +47,20 @@ void smartmeterwindow::show(void) {
     str = "PV Leistung";
     ui->label_solar_power->setText(str);
 
+    onMeterChanged();
+
     QDialog::show();
 }
 
 void smartmeterwindow::hide(void) {
 
-    emit messagePublish("home/smartmeter/enable-event/set", "00"); // variable as hex number
+//    emit messagePublish("home/smartmeter/enable-event/set", "00"); // variable as hex number
 
     isVisible = false;
     QDialog::hide();
 }
 
-void smartmeterwindow::onIoStateChanged(void) {
+void smartmeterwindow::onMeterChanged(void) {
 
     uint32_t counter;
     uint32_t power;

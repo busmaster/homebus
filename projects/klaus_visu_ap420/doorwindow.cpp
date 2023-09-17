@@ -11,8 +11,8 @@ doorwindow::doorwindow(QWidget *parent, ioState *state) :
     ui->pushButtonUnlock->setStyleSheet("background-color: red; color: black");
     io = state;
     isVisible = false;
-    connect(parent, SIGNAL(ioChanged()),
-            this, SLOT(onIoStateChanged()));
+    connect(parent, SIGNAL(doorChanged()),
+            this, SLOT(onDoorChanged()));
     connect(this, SIGNAL(messagePublish(const char*,const char*)),
             parent, SLOT(onMessagePublish(const char*,const char*)));
 
@@ -36,7 +36,7 @@ doorwindow::~doorwindow() {
 
 void doorwindow::show(void) {
     isVisible = true;
-    onIoStateChanged();
+    onDoorChanged();
     ui->pushButtonRefresh->setStyleSheet("background-color: grey; color:black");
     ui->pushButtonRefresh->setText("Aktualisieren");
 
@@ -71,7 +71,7 @@ void doorwindow::refreshButtonTimerEvent() {
 }
 
 
-void doorwindow::onIoStateChanged(void) {
+void doorwindow::onDoorChanged(void) {
 
     if (!isVisible) {
         return;

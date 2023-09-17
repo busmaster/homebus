@@ -24,7 +24,7 @@ signals:
     void messagePublish(const char *, const char *);
 
 private slots:
-    void onIoStateChanged(void);
+    void onDoorChanged(void);
 
     void on_pushButtonRefresh_clicked();
     void on_pushButtonLock_pressed();

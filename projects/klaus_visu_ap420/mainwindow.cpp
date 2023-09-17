@@ -630,11 +630,16 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         (sockets != io->sockets)                             ||
         (glocke_taster != io->glocke_taster)                 ||
         (var_glocke_disable != io->var_glocke_disable)       ||
-        (var_mode_LightEingang != io->var_mode_LightEingang) ||
-        smChanged                                            ||
-        doorStateChanged                                     ||
-        solarChanged) {
+        (var_mode_LightEingang != io->var_mode_LightEingang)) {
         emit ioChanged();
+    }
+
+    if (doorStateChanged) {
+        emit doorChanged();
+    }
+
+    if (solarChanged || smChanged) {
+        emit meterChanged();
     }
 
     if (egLight != io->egLight) {
