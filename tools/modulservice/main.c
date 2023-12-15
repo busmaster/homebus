@@ -287,7 +287,11 @@ int main(int argc, char *argv[]) {
             eepromAddress = atoi(argv[argi]);
             eepromLength = 0;
             for (j = argi + 1, k = 0; (j < argc) && (k < (int)sizeof(eepromData)); j++, k++) {
-                eepromData[k] = atoi(argv[j]);
+                int base = 10;
+                if ((strncmp(argv[j], "0x", 2) == 0) || (strncmp(argv[j], "0X", 2) == 0)) {
+                    base = 16;
+                }
+                eepromData[k] = (uint8_t)strtoul(argv[j], 0, base);
                 eepromLength++;
             }
             ret = ModuleWriteEeprom(moduleAddr, eepromData, eepromLength, eepromAddress);
@@ -332,6 +336,9 @@ int main(int argc, char *argv[]) {
                     break;
                 case eBusDevTypeKeyRc:
                     printf("KEYRC");
+                    break;
+                case eBusDevTypeSg:
+                    printf("SG");
                     break;
                 default:
                     break;
@@ -454,6 +461,9 @@ int main(int argc, char *argv[]) {
                     }
                     printf("\n");
                     break;
+                case eBusDevTypeSg:
+                    printf("\n");
+                    printf("output: %02x\n", actVal.actualValue.sg.output);
                 default:
                     break;
                 }
@@ -580,6 +590,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeKeyRc:
                     printf("KEYRC");
                     break;
+                case eBusDevTypeSg:
+                    printf("SG");
+                    break;
                 default:
                     break;
                 }
@@ -639,6 +652,9 @@ int main(int argc, char *argv[]) {
                             break;
                         case eBusDevTypeKeyRc:
                             printf("%-8s", "KEYRC");
+                            break;
+                        case eBusDevTypeSg:
+                            printf("%-8s", "SG");
                             break;
                         default:
                             break;
@@ -742,6 +758,9 @@ int main(int argc, char *argv[]) {
                     break;
                 case eBusDevTypeKeyRc:
                     printf("KEYRC");
+                    break;
+                case eBusDevTypeSg:
+                    printf("SG");
                     break;
                 default:
                     break;
@@ -1006,6 +1025,9 @@ static bool ModuleGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) 
             break;
         case eBusDevTypeKeyRc:
             pBuf->actualValue.keyrc.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.keyrc.state;
+            break;
+        case eBusDevTypeSg:
+            pBuf->actualValue.sg.output = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sg.output;
             break;
         default:
             break;
