@@ -41,10 +41,15 @@
 *  Macros
 */
 /* offset addresses in EEPROM */
-#define MODUL_ADDRESS      0
-#define OSCCAL_CORR        1
-#define SWITCH_ADDR        2
-#define SWITCH_INPUT       3
+#define MODUL_ADDRESS       0
+#define OSCCAL_CORR         1
+#define SWITCH_ADDR         2
+#define SWITCH_INPUT        3
+#define OFF_CNT_LOW         4
+#define OFF_CNT_HIGH        5
+
+#define CLIENT_ADDRESS_BASE     6  /* BUS_MAX_CLIENT_NUM from bus.h (16 byte) */
+#define CLIENT_RETRY_CNT        22 /* size: 16 byte (BUS_MAX_CLIENT_NUM)      */
 
 /* our bus address */
 #define MY_ADDR            sMyAddr
@@ -77,6 +82,11 @@
 #define MIN_ADC            1
 #define MAX_ADC            3
 
+/* acual value event */
+#define RESPONSE_TIMEOUT_MS         100  /* time in ms */
+/* timeout for unreachable client  */
+#define RETRY_CYCLE_TIME_MS         200 /* time in ms */
+
 /*-----------------------------------------------------------------------------
 *  Typedefs
 */
@@ -100,10 +110,31 @@ typedef enum {
    ePresenceRespWait
 } TPresenceState;
 
+typedef enum {
+    eInit,
+    eSkip,
+    eWaitForConfirmation1,
+    eWaitForConfirmation2,
+    eConfirmationOK
+} TState;
+
+typedef struct {
+    uint8_t  address;
+    uint8_t  maxRetry;
+    uint8_t  curRetry;
+    enum {
+        eEventInit,
+        eEventWaitForConfirmation,
+        eEventConfirmationOK,
+        eEventMaxRetry
+    } state;
+    uint16_t requestTimeStamp;
+} TClient;
+
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-char version[] = "stoveguard 0.00";
+char version[] = "stoveguard 0.01";
 
 static TBusTelegram   *spRxBusMsg;
 static TBusTelegram   sTxBusMsg;
@@ -113,6 +144,7 @@ volatile uint16_t     gTimeMs16;
 volatile uint16_t     gTimeS;
 
 static uint8_t        sMyAddr;
+static uint16_t       sOffCnt;
 
 static int            sSioHandle;
 
@@ -126,6 +158,10 @@ static bool           sPresenceSwitchStateReceived;
 
 static TPowerState    sPowerState = ePowerOff;
 static TPresenceState sPresenceState = ePresenceIdle;
+static bool           sOutputOff = false;
+
+static TClient        sClient[BUS_MAX_CLIENT_NUM];
+static uint8_t        sNumClients;
 
 /*-----------------------------------------------------------------------------
 *  Functions
@@ -140,8 +176,9 @@ static void InitTimer1(void);
 static void InitComm(void);
 static void ExitComm(void);
 static void PowerMonitor(void);
-static void PowerAve(void);
 static void Output(void);
+static void OutputEvent(void);
+static void GetClientListFromEeprom(void);
 
 /*-----------------------------------------------------------------------------
 *  program start
@@ -157,6 +194,10 @@ int main(void) {
     sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
     sPresenceSwitchAddr = eeprom_read_byte((const uint8_t *)SWITCH_ADDR);
     sPresenceSwitchInput = eeprom_read_byte((const uint8_t *)SWITCH_INPUT);
+    sOffCnt = eeprom_read_byte((const uint8_t *)OFF_CNT_LOW) +
+              eeprom_read_byte((const uint8_t *)OFF_CNT_HIGH) * 256;
+
+    GetClientListFromEeprom();
 
     PortInit();
     AdcInit();
@@ -173,8 +214,8 @@ int main(void) {
         ret = BusCheck();
         ProcessBus(ret);
         PowerMonitor();
-//        PowerAve();
         Output();
+        OutputEvent();
     }
     return 0;  /* never reached */
 }
@@ -192,54 +233,6 @@ static void BusTransceiverPowerDown(bool powerDown) {
         BUS_TRANSCEIVER_POWER_UP;
     }
 }
-
-static void PowerAve(void) {
-
-    TBusDevReqActualValueEvent *pAve;
-    static uint16_t sOldCurrent[3] = {0};
-    bool sendEvent = false;
-
-    uint16_t diff[3];
-    uint8_t flags;
-    uint8_t i;
-
-    flags = DISABLE_INT;
-    diff[0] = sAdc[0].diff;
-    diff[1] = sAdc[1].diff;
-    diff[2] = sAdc[2].diff;
-    RESTORE_INT(flags);
-
-    for (i = 0; i < 3; i++) {
-        if (sOldCurrent[i] > diff[i]) {
-            if (((uint16_t)(sOldCurrent[i] - diff[i])) > 20) {
-                sendEvent = true;
-                break;
-            }
-        } else if (diff[i] > sOldCurrent[i]) {
-            if (((uint16_t)(diff[i] - sOldCurrent[i])) > 20) {
-                sendEvent = true;
-                break;
-            }
-        }
-    }
-
-    if (sendEvent) {
-        pAve = &sTxBusMsg.msg.devBus.x.devReq.actualValueEvent;
-        sTxBusMsg.type = eBusDevReqActualValueEvent;
-        sTxBusMsg.senderAddr = MY_ADDR;
-        sTxBusMsg.msg.devBus.receiverAddr = 0x55;
-        pAve->devType = eBusDevTypeSg;
-        pAve->actualValue.sg.current[0] = diff[0];
-        pAve->actualValue.sg.current[1] = diff[1];
-        pAve->actualValue.sg.current[2] = diff[2];
-        if (BusSend(&sTxBusMsg) == BUS_SEND_OK) {
-            sOldCurrent[0] = diff[0];
-            sOldCurrent[1] = diff[1];
-            sOldCurrent[2] = diff[2];
-        }
-    }
-}
-
 
 /*-----------------------------------------------------------------------------
  * wait for first low pulse that is longer than MIN_PULSE_CNT and return the
@@ -322,6 +315,7 @@ static void ProcessBus(uint8_t ret) {
     static bool                sTxRetry = false;
     static TBusTelegram        sTxMsg;
     TBusDevRespActualValue     *pAv;
+    TClient                    *pClient;
 
     if (sTxRetry) {
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
@@ -335,9 +329,13 @@ static void ProcessBus(uint8_t ret) {
         case eBusDevReqInfo:
         case eBusDevReqEepromRead:
         case eBusDevReqEepromWrite:
+        case eBusDevReqSetClientAddr:
+        case eBusDevReqGetClientAddr:
         case eBusDevReqDoClockCalib:
         case eBusDevReqDiag:
+        case eBusDevReqActualValue:
         case eBusDevRespActualValue:
+        case eBusDevRespActualValueEvent:
             if (spRxBusMsg->msg.devBus.receiverAddr == MY_ADDR) {
                 msgForMe = true;
             }
@@ -384,6 +382,27 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
         p = &(spRxBusMsg->msg.devBus.x.devReq.writeEeprom.data);
         eeprom_write_byte((uint8_t *)spRxBusMsg->msg.devBus.x.devReq.readEeprom.addr, *p);
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        break;
+    case eBusDevReqSetClientAddr:
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespSetClientAddr;
+        sTxMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
+        for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
+            uint8_t *p = &(spRxBusMsg->msg.devBus.x.devReq.setClientAddr.clientAddr[i]);
+            eeprom_write_byte((uint8_t *)(CLIENT_ADDRESS_BASE + i), *p);
+        }
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        GetClientListFromEeprom();
+        break;
+    case eBusDevReqGetClientAddr:
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespGetClientAddr;
+        sTxMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
+        for (i = 0; i < BUS_MAX_CLIENT_NUM; i++) {
+            uint8_t *p = &(sTxMsg.msg.devBus.x.devResp.getClientAddr.clientAddr[i]);
+            *p = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
+        }
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqDoClockCalib: {
@@ -499,6 +518,28 @@ static void ProcessBus(uint8_t ret) {
                 sPresenceSwitchState = true;
             }
             sPresenceSwitchStateReceived = true;
+        }
+        break;
+    case eBusDevReqActualValue:
+        /* response packet */
+        pAv = &sTxMsg.msg.devBus.x.devResp.actualValue;
+        sTxMsg.type = eBusDevRespActualValue;
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.msg.devBus.receiverAddr = spRxBusMsg->senderAddr;
+        pAv->devType = eBusDevTypeSg;
+        pAv->actualValue.sg.output = OUTPUT_STATE;
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        break;
+    case eBusDevRespActualValueEvent:
+        pClient = sClient;
+        for (i = 0; i < sNumClients; i++) {
+            if ((pClient->address == spRxBusMsg->senderAddr) &&
+                (pClient->state == eEventWaitForConfirmation)) {
+                if (spRxBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.sg.output == OUTPUT_STATE) {
+                    pClient->state = eEventConfirmationOK;
+                }
+            }
+            pClient++;
         }
         break;
     default:
@@ -636,12 +677,8 @@ static void SendStartupMsg(void) {
 
 #define MIN_DIFF 10
 
-static bool sOutputOff = false;
-
 static void PowerMonitor(void) {
 
-//    static TPowerState sPowerState = ePowerOff;
-//    static TPresenceState sPresenceState = ePresenceIdle;
     uint8_t i;
     bool on;
     static uint16_t sLatestOnTime = 0;
@@ -753,10 +790,166 @@ static void Output(void) {
         OUTPUT_ON; // NC contactor
         sOutputOff = false;
         sOffTime = actualTime;
+        sOffCnt++;
+        eeprom_write_byte((uint8_t *)OFF_CNT_LOW, sOffCnt & 0xff);
+        eeprom_write_byte((uint8_t *)OFF_CNT_HIGH, (sOffCnt & 0xff00) >> 8);
     }
 
     if (OUTPUT_STATE && (((uint16_t)(actualTime - sOffTime)) > 30000)) {
         OUTPUT_OFF;
+    }
+}
+
+/*-----------------------------------------------------------------------------
+*  get next client array index
+*  if all clients are processed 0xff is returned
+*/
+static uint8_t GetUnconfirmedClient(uint8_t actualClient) {
+
+    uint8_t  i;
+    uint8_t  nextClient;
+    TClient  *pClient;
+
+    if (actualClient >= sNumClients) {
+        return 0xff;
+    }
+
+    for (i = 0; i < sNumClients; i++) {
+        nextClient = actualClient + i +1;
+        nextClient %= sNumClients;
+        pClient = &sClient[nextClient];
+        if (pClient->state == eEventMaxRetry) {
+            continue;
+        }
+        if (pClient->state != eEventConfirmationOK) {
+            break;
+        }
+    }
+    if (i == sNumClients) {
+        /* all client's confirmations received or retry count expired */
+        nextClient = 0xff;
+    }
+    return nextClient;
+}
+
+static void InitClientState(void) {
+
+    TClient *pClient;
+    uint8_t  i;
+
+    for (i = 0, pClient = sClient; i < sNumClients; i++) {
+        pClient->state = eEventInit;
+        pClient->curRetry = 0;
+        pClient++;
+    }
+}
+
+static void GetClientListFromEeprom(void) {
+
+    TClient *pClient;
+    uint8_t i;
+    uint8_t numClients;
+    uint8_t clientAddr;
+    uint8_t retryCnt;
+
+    for (i = 0, numClients = 0, pClient = sClient; i < BUS_MAX_CLIENT_NUM; i++) {
+        clientAddr = eeprom_read_byte((const uint8_t *)(CLIENT_ADDRESS_BASE + i));
+        retryCnt = eeprom_read_byte((const uint8_t *)(CLIENT_RETRY_CNT + i));
+        if (clientAddr != BUS_CLIENT_ADDRESS_INVALID) {
+            pClient->address = clientAddr;
+            pClient->maxRetry = retryCnt;
+            pClient->state = eEventInit;
+            pClient++;
+            numClients++;
+        }
+    }
+    sNumClients = numClients;
+}
+
+/*-----------------------------------------------------------------------------
+*  send output state change to registered clients
+*/
+static void OutputEvent(void) {
+
+    static uint8_t   sActualClient = 0xff; /* actual client's index being processed */
+    TClient          *pClient;
+    uint16_t         actualTime16;
+    static bool      sNewClientCycleDelay = false;
+    static uint16_t  sNewClientCycleTimeStamp;
+    TBusDevReqActualValueEvent *pActVal;
+    bool             getNextClient;
+    uint8_t          nextClient;
+    static uint8_t   sOldOutputState = 0;
+    uint8_t          outputState;
+
+    if (sNumClients == 0) {
+        return;
+    }
+
+    GET_TIME_MS16(actualTime16);
+    outputState = OUTPUT_STATE;
+    if (outputState != sOldOutputState) {
+       sActualClient = 0;
+       sOldOutputState = outputState;
+       sNewClientCycleDelay = false;
+       InitClientState();
+    }
+
+    if (sActualClient == 0xff) {
+        return;
+    }
+
+    if (sNewClientCycleDelay) {
+        if (((uint16_t)(actualTime16 - sNewClientCycleTimeStamp)) < RETRY_CYCLE_TIME_MS) {
+            return;
+        } else {
+            sNewClientCycleDelay = false;
+        }
+    }
+
+    pClient = &sClient[sActualClient];
+    getNextClient = true;
+    switch (pClient->state) {
+    case eEventInit:
+        pActVal = &sTxBusMsg.msg.devBus.x.devReq.actualValueEvent;
+        sTxBusMsg.type = eBusDevReqActualValueEvent;
+        sTxBusMsg.senderAddr = MY_ADDR;
+        sTxBusMsg.msg.devBus.receiverAddr = pClient->address;
+        pActVal->devType = eBusDevTypeSg;
+        pActVal->actualValue.sg.output = outputState;
+        if (BusSend(&sTxBusMsg) == BUS_SEND_OK) {
+            pClient->state = eEventWaitForConfirmation;
+            pClient->requestTimeStamp = actualTime16;
+        } else {
+            getNextClient = false;
+        }
+        break;
+    case eEventWaitForConfirmation:
+        if ((((uint16_t)(actualTime16 - pClient->requestTimeStamp)) >= RESPONSE_TIMEOUT_MS) &&
+            (pClient->state != eEventMaxRetry)) {
+            if (pClient->curRetry < pClient->maxRetry) {
+                /* try again */
+                pClient->curRetry++;
+                getNextClient = false;
+                pClient->state = eEventInit;
+            } else {
+                pClient->state = eEventMaxRetry;
+            }
+        }
+        break;
+    case eEventConfirmationOK:
+        break;
+    default:
+        break;
+    }
+
+    if (getNextClient) {
+        nextClient = GetUnconfirmedClient(sActualClient);
+        if (nextClient <= sActualClient) {
+            sNewClientCycleDelay = true;
+            sNewClientCycleTimeStamp = actualTime16;
+        }
+        sActualClient = nextClient;
     }
 }
 
