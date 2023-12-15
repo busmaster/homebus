@@ -451,7 +451,7 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevActualValueKeyrc;
 
 typedef struct {
-    uint16_t current[3];
+    uint8_t output;
 } __attribute__ ((packed)) TBusDevActualValueSg;
 
 typedef struct {
