@@ -337,6 +337,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeKeyRc:
                     printf("KEYRC");
                     break;
+                case eBusDevTypeSg:
+                    printf("SG");
+                    break;
                 default:
                     break;
                 }
@@ -458,6 +461,9 @@ int main(int argc, char *argv[]) {
                     }
                     printf("\n");
                     break;
+                case eBusDevTypeSg:
+                    printf("\n");
+                    printf("output: %02x\n", actVal.actualValue.sg.output);
                 default:
                     break;
                 }
@@ -584,6 +590,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeKeyRc:
                     printf("KEYRC");
                     break;
+                case eBusDevTypeSg:
+                    printf("SG");
+                    break;
                 default:
                     break;
                 }
@@ -643,6 +652,9 @@ int main(int argc, char *argv[]) {
                             break;
                         case eBusDevTypeKeyRc:
                             printf("%-8s", "KEYRC");
+                            break;
+                        case eBusDevTypeSg:
+                            printf("%-8s", "SG");
                             break;
                         default:
                             break;
@@ -746,6 +758,9 @@ int main(int argc, char *argv[]) {
                     break;
                 case eBusDevTypeKeyRc:
                     printf("KEYRC");
+                    break;
+                case eBusDevTypeSg:
+                    printf("SG");
                     break;
                 default:
                     break;
@@ -1010,6 +1025,9 @@ static bool ModuleGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) 
             break;
         case eBusDevTypeKeyRc:
             pBuf->actualValue.keyrc.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.keyrc.state;
+            break;
+        case eBusDevTypeSg:
+            pBuf->actualValue.sg.output = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sg.output;
             break;
         default:
             break;
