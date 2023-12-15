@@ -332,6 +332,9 @@ static void BusMonDecoded(int sioHandle) {
                 case eBusDevTypeSmIf:
                     fprintf(spOutput, SPACE "device: SMIF\r\n");
                     break;
+                case eBusDevTypeSg:
+                    fprintf(spOutput, SPACE "device: SG\r\n");
+                    break;
                 default:
                     break;
                 }
@@ -399,6 +402,9 @@ static void BusMonDecoded(int sioHandle) {
                     break;
                 case eBusDevTypeKeyRc:
                     fprintf(spOutput, SPACE "device: KEYRC\r\n");
+                    break;
+                case eBusDevTypeSg:
+                    fprintf(spOutput, SPACE "device: SG\r\n");
                     break;
                 default:
                     fprintf(spOutput, SPACE "device: unknown\r\n");
@@ -796,6 +802,12 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, " (%d)", state);
                     break;
                 }
+                case eBusDevTypeSg: {
+                    uint8_t output = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sg.output;
+                    fprintf(spOutput, SPACE "device: SG\r\n");
+                    fprintf(spOutput, SPACE "output: %02x", output);
+                    break;
+                }
                 default:
                     fprintf(spOutput, SPACE "device: unknown");
                     break;
@@ -888,6 +900,12 @@ static void BusMonDecoded(int sioHandle) {
                     uint8_t keyEvent = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.keyb.keyEvent;
                     fprintf(spOutput, SPACE "device: KEYB\r\n");
                     fprintf(spOutput, SPACE "key event: %d %s", keyEvent & ~0x80, (keyEvent & 0x80) ? "pressed": "released");
+                    break;
+                }
+                case eBusDevTypeSg: {
+                    uint8_t output = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sg.output;
+                    fprintf(spOutput, SPACE "device: SG\r\n");
+                    fprintf(spOutput, SPACE "output: %02x", output);
                     break;
                 }
                 default:
