@@ -623,12 +623,12 @@ void ApplicationReleased24_1(void) {}
 
 void ApplicationPressed25_0(void) {
    /* Ess */
-   DigOutToggle(eDigOut15);
+   DigOutToggle(eDigOut13);
 }
 void ApplicationReleased25_0(void) {}
 void ApplicationPressed25_1(void) {
    /* Wohn */
-   DigOutToggle(eDigOut13);
+   DigOutToggle(eDigOut15);
 }
 void ApplicationReleased25_1(void) {}
 
