@@ -78,6 +78,13 @@ char *kameraeingangwindow::copyJpgData(char *buf, unsigned int bufSize) {
     return ch;
 }
 
+void kameraeingangwindow::showJpg(void) {
+
+    pic.loadFromData(jpgBuf, jpgLen, "JPG");
+    small = pic.scaledToHeight(480);
+    ui->label->setPixmap(small);
+}
+
 void kameraeingangwindow::proto(char *buf, unsigned int bufSize) {
 
     bool         again = false;
@@ -118,10 +125,17 @@ void kameraeingangwindow::proto(char *buf, unsigned int bufSize) {
             if (ch) {
                 ch += sizeof("Content-Length:");
                 jpgLen = strtoul(ch, &ch, 10);
+
                 ch += 4; /* \r\n\r\n */
                 chunkIdx += (ch - pos);
                 ch = copyJpgData(ch, bufSize - (ch - buf));
-                if ((bufSize - (ch - buf)) > 0) {
+                if (jpgLen == jpgIdx) {
+                    kameraeingangwindow::showJpg();
+                    ch += 4; /* terminating \r\n\r\n */
+                    jpgLen = 0;
+                    httpState = eStateChunkHdr;
+                    again = true;
+                } else if ((bufSize - (ch - buf)) > 0) {
                     again = true;
                     httpState = eStateChunkHdr;
                 } else {
@@ -130,16 +144,14 @@ void kameraeingangwindow::proto(char *buf, unsigned int bufSize) {
                 }
             } else {
                 httpState = eStateHttpGet;
-                again = true;
+                again = false;
                 socket->disconnectFromHost();
             }
             break;
         case eStateChunkNext:
             ch = copyJpgData(ch, bufSize - (ch - buf));
             if (jpgIdx == jpgLen) {
-                pic.loadFromData(jpgBuf, jpgLen, "JPG");
-                small = pic.scaledToHeight(480);
-                ui->label->setPixmap(small);
+                kameraeingangwindow::showJpg();
                 ch += 4; /* terminating \r\n\r\n */
                 jpgLen = 0;
                 httpState = eStateChunkHdr;

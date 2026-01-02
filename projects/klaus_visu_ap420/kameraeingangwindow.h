@@ -36,6 +36,7 @@ private:
 
     void proto(char *buf, unsigned int bufSize);
     char *copyJpgData(char *ch, unsigned int bufSize);
+    void showJpg(void);
 
     QTcpSocket *socket;
     QByteArray data;
