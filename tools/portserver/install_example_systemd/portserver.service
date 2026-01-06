@@ -1,0 +1,13 @@
+[Unit]
+Description=Portserver
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/root/portserver.sh
+StandardOutput=null
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
