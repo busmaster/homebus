@@ -38,7 +38,7 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Include Directories
-INCLUDES = -I . -I ../../include -I ../../include/avr -I ../../include/devices/do31 -I ../../include/devices/common
+INCLUDES = -I . -I ../../../include -I ../../../include/avr -I ../../../include/devices/do31 -I ../../../include/devices/common
 
 ## Objects that must be built in order to link
 OBJECTS = main.o bus.o siotype2.o flashasm.o applasm.o flash.o led.o 
@@ -59,16 +59,16 @@ applasm.o: applasm.s
 main.o: main.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-bus.o: ../../bus/bus.c
+bus.o: ../../../bus/bus.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-siotype2.o: ../../sio/avr/siotype2.c
+siotype2.o: ../../../sio/avr/siotype2.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 flash.o: flash.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
-led.o: ../../devices/do31/led.c
+led.o: ../../../devices/do31/led.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
