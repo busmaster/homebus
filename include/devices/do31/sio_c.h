@@ -71,6 +71,7 @@ extern "C" {
 #undef TXEN
 #undef UDRIE
 #undef TXCIE
+#undef U2X
 
 #ifdef __cplusplus
 }
