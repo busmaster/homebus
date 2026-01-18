@@ -87,7 +87,7 @@ $(TARGET): $(OBJECTS)
 
 size: ${TARGET}
 	@echo
-	@avr-size -C --mcu=${MCU} ${TARGET}
+	@avr-size --mcu=${MCU} ${TARGET}
 
 ## Clean target
 .PHONY: clean
