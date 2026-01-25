@@ -1,17 +1,17 @@
 avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U flash:w:do31_bootloader.hex
 
 #fuses
-#E:ff H:D0 L:1F
+#E:ff H:d0 L:1f
 
 #fuses read
-avrdude -P /dev/ttyACM1 -p m128 -c stk500v2 -U efuse:r:-:h
-avrdude -P /dev/ttyACM1 -p m128 -c stk500v2 -U hfuse:r:-:h
-avrdude -P /dev/ttyACM1 -p m128 -c stk500v2 -U lfuse:r:-:h
+avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U efuse:r:-:h
+avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U hfuse:r:-:h
+avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U lfuse:r:-:h
 
 #fuses write
 avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U efuse:w:0xff:m
-avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U hfuse:w:0xd4:m
-avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U lfuse:w:0x1F:m
+avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U hfuse:w:0xd0:m
+avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U lfuse:w:0x1f:m
 
 #eeprom read
 avrdude -P /dev/ttyACM0 -p m128 -c stk500v2 -U eeprom:r:eeprom.bin

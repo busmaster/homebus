@@ -40,10 +40,10 @@
 #include "flash.h"
 
 /*-----------------------------------------------------------------------------
-*  ATMega128 fuse bit settings (3.6864 MHz crystal)
+*  ATMega128 fuse bit settings (1.0000 MHz crystal)
 *
 *  CKSEL0    = 1
-*  CKSEL1    = 1
+*  CKSEL1    = 0
 *  CKSEL2    = 1
 *  CKSEL3    = 1
 *  SUT0      = 1
