@@ -1654,7 +1654,7 @@ int main(int argc, char *argv[]) {
         case eBusDevTypeDo31:
             switch (topic_entry->io.do31.type) {
             case e_do31_digout:
-                type = "digin";
+                type = "digout";
                 break;
             case e_do31_shader:
                 type = "shader";
