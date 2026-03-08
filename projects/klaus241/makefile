@@ -46,7 +46,7 @@ OBJECTS = application.o bus.o busvar.o main.o button.o digout.o shader.o led.o s
 LINKONLYOBJECTS = 
 
 ## Build
-all: $(TARGET) kaus241.hex klaus241.eep size
+all: $(TARGET) klaus241.hex klaus241.eep size
 
 ## Compile
 application.o: application.c
