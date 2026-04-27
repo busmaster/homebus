@@ -39,6 +39,7 @@ signals:
     void ioChanged(void);
     void meterChanged(void);
     void doorChanged(void);
+    void storageChanged(void);
     void screenSaverActivated(void);
 
 public slots:
