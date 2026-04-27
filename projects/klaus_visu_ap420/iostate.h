@@ -123,6 +123,12 @@ public:
     struct door {
         enum doorState lockstate;
     } door;
+
+    struct storage {
+        qint32 ac_power;
+        qint32 grid_power;
+        qint32 soc;
+    } storage;
 };
 
 #endif // IOSTATE_H

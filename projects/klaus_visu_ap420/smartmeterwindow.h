@@ -25,6 +25,7 @@ signals:
 
 private slots:
     void onMeterChanged(void);
+    void onStorageChanged(void);
     void onScreenSaverActivation(void);
     void on_pushButtonBack_clicked();
 

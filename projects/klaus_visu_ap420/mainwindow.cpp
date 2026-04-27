@@ -277,6 +277,8 @@ void MainWindow::onMqtt_connected() {
     mqtt_subscribe("solar/114181014906/0/power", 128);
     mqtt_subscribe("solar/114183081983/0/power", 129);
     mqtt_subscribe("solar/114183084705/0/power", 130);
+
+    mqtt_subscribe("home/storage/actual", 131);
 }
 void MainWindow::onMqtt_disconnected() {
 
@@ -408,6 +410,7 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
     bool smChanged = false;
     bool doorStateChanged = false;
     bool solarChanged = false;
+    bool accuChanged = false;
     int index = topic_hash[topic.name()];
     QList<QByteArray> l;
 
@@ -618,6 +621,16 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         }
         solarChanged = true;
         break;
+    case 131: {
+        QJsonDocument doc = QJsonDocument::fromJson(message);
+        QJsonObject jObject = doc.object();
+
+        io->storage.ac_power = jObject["ac-power"].toInt();
+        io->storage.grid_power = jObject["grid-power"].toInt();
+        io->storage.soc = jObject["soc"].toInt();
+        accuChanged = true;
+        break;
+    }
     default:
         break;
     }
@@ -640,6 +653,10 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
 
     if (solarChanged || smChanged) {
         emit meterChanged();
+    }
+
+    if (accuChanged) {
+        emit storageChanged();
     }
 
     if (egLight != io->egLight) {

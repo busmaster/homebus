@@ -12,8 +12,8 @@ smartmeterwindow::smartmeterwindow(QWidget *parent, ioState *state) :
     connect(parent, SIGNAL(screenSaverActivated()), this, SLOT(onScreenSaverActivation()));
     connect(this, SIGNAL(messagePublish(const char*,const char*)),
             parent, SLOT(onMessagePublish(const char*,const char*)));
-    connect(parent, SIGNAL(meterChanged()),
-            this, SLOT(onMeterChanged()));
+    connect(parent, SIGNAL(meterChanged()), this, SLOT(onMeterChanged()));
+    connect(parent, SIGNAL(storageChanged()), this, SLOT(onStorageChanged()));
 }
 
 smartmeterwindow::~smartmeterwindow() {
@@ -28,15 +28,13 @@ void smartmeterwindow::onScreenSaverActivation(void) {
 
 void smartmeterwindow::show(void) {
 
-//    emit messagePublish("home/smartmeter/enable-event/set", "01"); // variable as hex number
-
     isVisible = true;
     QString str;
-    str = "Zählerstand A+";
-    ui->label_aplus->setText(str);
-    str = "Zählerstand A\u2212";
-    ui->label_aminus->setText(str);
-    str = "Wirkleistung P";
+    str = "Speicher";
+    ui->label_storage_power->setText(str);
+    str = "Speicherstand";
+    ui->label_storage_soc->setText(str);
+    str = "Netzleistung";
     ui->label_p->setText(str);
     str = "Bezug Tag";
     ui->label_aplus_day->setText(str);
@@ -48,13 +46,12 @@ void smartmeterwindow::show(void) {
     ui->label_solar_power->setText(str);
 
     onMeterChanged();
+    onStorageChanged();
 
     QDialog::show();
 }
 
 void smartmeterwindow::hide(void) {
-
-//    emit messagePublish("home/smartmeter/enable-event/set", "00"); // variable as hex number
 
     isVisible = false;
     QDialog::hide();
@@ -69,8 +66,6 @@ void smartmeterwindow::onMeterChanged(void) {
         return;
     }
 
-    ui->label_aplus_val->setText(QString::asprintf("%d.%03d kWh", io->sm.a_plus / 1000, io->sm.a_plus % 1000));
-    ui->label_aminus_val->setText(QString::asprintf("%d.%03d kWh", io->sm.a_minus / 1000, io->sm.a_minus % 1000));
     if (io->sm.p_plus > io->sm.p_minus) {
         ui->label_p_val->setStyleSheet("background-color: rgba(255, 255, 255, 0);color: red;font: 24pt \"Sans\"");
         ui->label_p_val->setText(QString::number(io->sm.p_plus - io->sm.p_minus) + " W");
@@ -78,7 +73,6 @@ void smartmeterwindow::onMeterChanged(void) {
         ui->label_p_val->setStyleSheet("background-color: rgba(255, 255, 255, 0);color: green;font: 24pt \"Sans\"");
         ui->label_p_val->setText(QString::number(io->sm.p_minus - io->sm.p_plus) + " W");
     }
-
     counter = io->sm.a_plus - io->sm.a_plus_midnight;
     ui->label_aplus_day_val->setText(QString::asprintf("%d.%03d kWh", counter / 1000, counter % 1000));
     counter = io->sm.a_minus - io->sm.a_minus_midnight;
@@ -90,6 +84,30 @@ void smartmeterwindow::onMeterChanged(void) {
 
     power = io->sp.rechts + io->sp.mitte + io->sp.links;
     ui->label_solar_power_val->setText(QString::asprintf("%d.%01d W", power / 10, power % 10));
+
+}
+
+void smartmeterwindow::onStorageChanged(void) {
+
+    QString str;
+    int sign;
+
+    if (!isVisible) {
+        return;
+    }
+
+    ui->label_storage_soc_val->setText(QString::asprintf("%d %%", io->storage.soc));
+    if (io->storage.ac_power > 0) {
+        ui->label_storage_power_val->setStyleSheet("background-color: rgba(255, 255, 255, 0);color: red;font: 24pt \"Sans\"");
+        str = "Speicher entladen";
+        sign = 1;
+    } else {
+        ui->label_storage_power_val->setStyleSheet("background-color: rgba(255, 255, 255, 0);color: green;font: 24pt \"Sans\"");
+        str = "Speicher laden";
+        sign = -1;
+    }
+    ui->label_storage_power->setText(str);
+    ui->label_storage_power_val->setText(QString::asprintf("%d W", sign * io->storage.ac_power));
 
 }
 
