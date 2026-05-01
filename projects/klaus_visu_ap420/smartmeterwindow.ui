@@ -48,7 +48,7 @@
     <rect>
      <x>20</x>
      <y>20</y>
-     <width>280</width>
+     <width>320</width>
      <height>40</height>
     </rect>
    </property>
@@ -74,7 +74,7 @@ font: 24pt &quot;Sans&quot;;</string>
     <rect>
      <x>20</x>
      <y>60</y>
-     <width>280</width>
+     <width>320</width>
      <height>40</height>
     </rect>
    </property>
@@ -100,7 +100,7 @@ font: 24pt &quot;Sans&quot;;</string>
     <rect>
      <x>20</x>
      <y>100</y>
-     <width>280</width>
+     <width>320</width>
      <height>40</height>
     </rect>
    </property>
@@ -124,7 +124,7 @@ font: 24pt &quot;Sans&quot;;</string>
   <widget class="QLabel" name="label_storage_power_val">
    <property name="geometry">
     <rect>
-     <x>300</x>
+     <x>340</x>
      <y>20</y>
      <width>300</width>
      <height>40</height>
@@ -150,7 +150,7 @@ font: 24pt &quot;Sans&quot;;</string>
   <widget class="QLabel" name="label_storage_soc_val">
    <property name="geometry">
     <rect>
-     <x>300</x>
+     <x>340</x>
      <y>60</y>
      <width>300</width>
      <height>40</height>
@@ -176,7 +176,7 @@ font: 24pt &quot;Sans&quot;;</string>
   <widget class="QLabel" name="label_p_val">
    <property name="geometry">
     <rect>
-     <x>300</x>
+     <x>340</x>
      <y>100</y>
      <width>200</width>
      <height>40</height>
@@ -204,7 +204,7 @@ font: 24pt &quot;Sans&quot;;</string>
     <rect>
      <x>20</x>
      <y>280</y>
-     <width>280</width>
+     <width>320</width>
      <height>40</height>
     </rect>
    </property>
@@ -228,7 +228,7 @@ font: 24pt &quot;Sans&quot;;</string>
   <widget class="QLabel" name="label_aminus_day_val">
    <property name="geometry">
     <rect>
-     <x>300</x>
+     <x>340</x>
      <y>280</y>
      <width>200</width>
      <height>40</height>
@@ -256,7 +256,7 @@ font: 24pt &quot;Sans&quot;;</string>
     <rect>
      <x>20</x>
      <y>240</y>
-     <width>280</width>
+     <width>320</width>
      <height>40</height>
     </rect>
    </property>
@@ -280,7 +280,7 @@ font: 24pt &quot;Sans&quot;;</string>
   <widget class="QLabel" name="label_aplus_day_val">
    <property name="geometry">
     <rect>
-     <x>300</x>
+     <x>340</x>
      <y>240</y>
      <width>200</width>
      <height>40</height>
@@ -308,7 +308,7 @@ font: 24pt &quot;Sans&quot;;</string>
     <rect>
      <x>20</x>
      <y>320</y>
-     <width>280</width>
+     <width>320</width>
      <height>40</height>
     </rect>
    </property>
@@ -332,7 +332,7 @@ font: 24pt &quot;Sans&quot;;</string>
   <widget class="QLabel" name="label_solar_day_val">
    <property name="geometry">
     <rect>
-     <x>300</x>
+     <x>340</x>
      <y>320</y>
      <width>200</width>
      <height>40</height>
@@ -360,7 +360,7 @@ font: 24pt &quot;Sans&quot;;</string>
     <rect>
      <x>20</x>
      <y>360</y>
-     <width>280</width>
+     <width>320</width>
      <height>40</height>
     </rect>
    </property>
@@ -384,7 +384,7 @@ font: 24pt &quot;Sans&quot;;</string>
   <widget class="QLabel" name="label_solar_power_val">
    <property name="geometry">
     <rect>
-     <x>300</x>
+     <x>340</x>
      <y>360</y>
      <width>200</width>
      <height>40</height>
