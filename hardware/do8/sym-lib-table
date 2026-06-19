@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "atmel_isp") (type "KiCad") (uri "/home/klaus/git/kicad-lib/atmel_isp.kicad_sym") (options "") (descr ""))
+)
