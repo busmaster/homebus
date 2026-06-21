@@ -1571,26 +1571,26 @@
 			(on_board yes)
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "U"
-				(at -12.7 44.45 0)
+			(property "Reference" "U2"
+				(at 2.1433 -45.72 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
-					(justify left bottom)
+					(justify left)
 				)
 			)
 			(property "Value" "ATmega32U4-A"
-				(at 2.54 -44.45 0)
+				(at 2.1433 -48.26 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
-					(justify left top)
+					(justify left)
 				)
 			)
 			(property "Footprint" "Package_QFP:TQFP-44_10x10mm_P0.8mm"
@@ -1810,7 +1810,7 @@
 				(pin bidirectional line
 					(at 15.24 35.56 180)
 					(length 2.54)
-					(name "PB1"
+					(name "PB1/SCLK"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1828,7 +1828,7 @@
 				(pin bidirectional line
 					(at 15.24 33.02 180)
 					(length 2.54)
-					(name "PB2"
+					(name "PB2/MOSI"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1846,7 +1846,7 @@
 				(pin bidirectional line
 					(at 15.24 30.48 180)
 					(length 2.54)
-					(name "PB3"
+					(name "PB3/MISO"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1972,7 +1972,7 @@
 				(pin bidirectional line
 					(at 15.24 7.62 180)
 					(length 2.54)
-					(name "PD0"
+					(name "PD0/INT0"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1990,7 +1990,7 @@
 				(pin bidirectional line
 					(at 15.24 5.08 180)
 					(length 2.54)
-					(name "PD1"
+					(name "PD1/INT1"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -2008,7 +2008,7 @@
 				(pin bidirectional line
 					(at 15.24 2.54 180)
 					(length 2.54)
-					(name "PD2"
+					(name "PD2/RXD"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -2026,7 +2026,7 @@
 				(pin bidirectional line
 					(at 15.24 0 180)
 					(length 2.54)
-					(name "PD3"
+					(name "PD3/TXD"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -6652,6 +6652,16 @@
 		)
 		(uuid "25b56395-f877-4535-85dd-46b9236b2b41")
 	)
+	(label "PB7"
+		(at 81.28 68.58 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "274dc0da-f4d1-4d8d-9d3c-578b01d1e5ae")
+	)
 	(label "DO0"
 		(at 261.62 95.25 0)
 		(effects
@@ -9226,7 +9236,7 @@
 				)
 			)
 		)
-		(property "Footprint" "mylib:phoenix-bc178-reduced-1"
+		(property "Footprint" "mylib:phoenix-bc178-reduced-3"
 			(at 45.72 16.51 0)
 			(hide yes)
 			(show_name no)
@@ -9357,10 +9367,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "699af556-f4ac-48bf-b0f6-e5e84b0eb602")
 		(property "Reference" "J4"
-			(at 284.48 153.6699 0)
+			(at 280.924 146.05 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9371,7 +9380,7 @@
 			)
 		)
 		(property "Value" "PHOENIX_MKDSO_2.5_3_L"
-			(at 284.48 156.2099 0)
+			(at 259.08 148.082 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10055,10 +10064,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "7b7153ea-7a51-4876-944f-0032f53392c9")
 		(property "Reference" "J3"
-			(at 284.48 119.3799 0)
+			(at 280.416 111.506 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10069,7 +10077,7 @@
 			)
 		)
 		(property "Value" "PHOENIX_MKDSO_2.5_3_L"
-			(at 284.48 121.9199 0)
+			(at 259.08 113.538 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11625,10 +11633,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "b71584a8-a77b-4a47-9484-44be29a4ccaa")
 		(property "Reference" "J5"
-			(at 284.48 72.3899 0)
+			(at 280.416 64.262 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11639,7 +11646,7 @@
 			)
 		)
 		(property "Value" "PHOENIX_MKDSO_2.5_3_R"
-			(at 284.48 74.9299 0)
+			(at 258.572 66.548 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12490,10 +12497,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "cc7d16ca-bd17-43f1-8404-82f17394a60c")
 		(property "Reference" "J6"
-			(at 284.48 96.5199 0)
+			(at 280.67 88.392 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12504,7 +12510,7 @@
 			)
 		)
 		(property "Value" "PHOENIX_MKDSO_2.5_3_R"
-			(at 284.48 99.0599 0)
+			(at 258.826 90.678 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
