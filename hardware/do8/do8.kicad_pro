@@ -568,7 +568,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "./",
-      "plot": "",
+      "plot": "jlc",
       "specctra_dsn": "",
       "step": "",
       "vrml": ""
