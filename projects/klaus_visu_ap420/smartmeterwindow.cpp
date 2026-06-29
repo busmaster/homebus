@@ -96,7 +96,7 @@ void smartmeterwindow::onStorageChanged(void) {
         return;
     }
 
-    ui->label_storage_soc_val->setText(QString::asprintf("%d %%", io->storage.soc));
+    ui->label_storage_soc_val->setText(QString::asprintf("%.3f kWh (%.1f %%)", (qreal)io->storage.energy / 1000.0, io->storage.soc));
     if (io->storage.ac_power > 0) {
         ui->label_storage_power_val->setStyleSheet("background-color: rgba(255, 255, 255, 0);color: red;font: 24pt \"Sans\"");
         str = "Speicher entladen";
