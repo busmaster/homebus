@@ -127,7 +127,8 @@ public:
     struct storage {
         qint32 ac_power;
         qint32 grid_power;
-        qint32 soc;
+        qreal  soc;
+        qint32 energy;
     } storage;
 };
 

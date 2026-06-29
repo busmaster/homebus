@@ -627,7 +627,8 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
 
         io->storage.ac_power = jObject["ac-power"].toInt();
         io->storage.grid_power = jObject["grid-power"].toInt();
-        io->storage.soc = jObject["soc"].toInt();
+        io->storage.soc = jObject["soc"].toDouble();
+        io->storage.energy = jObject["energy"].toInt();
         accuChanged = true;
         break;
     }
