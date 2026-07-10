@@ -49,11 +49,14 @@
 #define BUS_TRANSCEIVER_POWER_DOWN   (PORTE |= 0b10000000)
 #define BUS_TRANSCEIVER_POWER_UP     (PORTE &= ~0b10000000)
                        
-/* Anzahl der digitalen Ausgänge */                       
+/* number digital outputs */
 #define NUM_DIGOUT   31
 
+/* number of shaders */
+#define NUM_SHADER   15
 
-/* Ausgänge */
+
+/* outputs */
 
 /* Port A-D wären Bit-adressierbar */
 

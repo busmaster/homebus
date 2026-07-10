@@ -1,0 +1,6 @@
+avrdude -P /dev/ttyACM0 -p m32u4 -c stk500v2 -U flash:w:do8_bootloader.hex
+
+eeprom rd/wr
+avrdude -P /dev/ttyACM0 -p m32u4 -c stk500v2 -U eeprom:r:eeprom.bin
+avrdude -P /dev/ttyACM0 -p m32u4 -c stk500v2 -U eeprom:w:eeprom.bin
+

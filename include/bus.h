@@ -46,6 +46,17 @@ extern "C" {
 #define BUS_DO31_SHADER_SIZE_SET_VALUE     15   /* 1 byte for each shader */
 #define BUS_DO31_SHADER_SIZE_ACTUAL_VALUE  15   /* 1 byte for each shader */
 
+#define BUS_DO8_NUM_SHADER         4    /* max number of shaders */
+#define BUS_DO8_DIGOUT_SIZE_SET    2    /* 2 bytes for 8 dig outs (2 bit for each) */
+#define BUS_DO8_SHADER_SIZE_SET    1    /* 1 byte for 4 shader groups (2 bit for each) */
+#define BUS_DO8_DIGOUT_SIZE_GET    1    /* 1 bytes for 8 dig outs (1 bit for each) */
+#define BUS_DO8_SHADER_SIZE_GET    1    /* 1 bytes for 4 shader groups (2 bit for each) */
+
+#define BUS_DO8_DIGOUT_SIZE_SET_VALUE     2   /* 2 bytes for 8 dig outs (2 bit for each) */
+#define BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE  1   /* 1 byte for 8 dig outs (1 bit for each) */
+#define BUS_DO8_SHADER_SIZE_SET_VALUE     4   /* 1 byte for each shader */
+#define BUS_DO8_SHADER_SIZE_ACTUAL_VALUE  4   /* 1 byte for each shader */
+
 #define BUS_SW8_DIGOUT_SIZE_SET_VALUE      2    /* 2 byte for 8 DO (2 bit each) */
 #define BUS_SW16_LED_SIZE_SET_VALUE        4    /* 8 leds, 4 bit each -> 4 byte for 8 Leds */
 
@@ -126,6 +137,11 @@ typedef struct {
 } __attribute__ ((packed)) TBusDevInfoDo31;
 
 typedef struct {
+   uint8_t dirSwitch[BUS_DO8_NUM_SHADER];
+   uint8_t onSwitch[BUS_DO8_NUM_SHADER];
+} __attribute__ ((packed)) TBusDevInfoDo8;
+
+typedef struct {
 } __attribute__ ((packed)) TBusDevInfoSw8;
 
 typedef struct {
@@ -179,6 +195,7 @@ typedef enum {
    eBusDevTypeKeyb    = 0x0b,
    eBusDevTypeKeyRc   = 0x0c, /* cff3100if */
    eBusDevTypeSg      = 0x0d, /* stoveguard */
+   eBusDevTypeDo8     = 0x0e, /* DO8 */
    eBusDevTypeInv     = 0xff
 } __attribute__ ((packed)) TBusDevType;
 
@@ -187,6 +204,7 @@ typedef struct {
    uint8_t  version[BUS_DEV_INFO_VERSION_LEN];
    union {
       TBusDevInfoDo31    do31;
+      TBusDevInfoDo8     do8;
       TBusDevInfoSw8     sw8;
       TBusDevInfoLum     lum;
       TBusDevInfoLed     led;
@@ -310,9 +328,20 @@ typedef struct {
                                                   /*                     10: set output to 0 */
                                                   /*                     11: set output to 1 */
    uint8_t shader[BUS_DO31_SHADER_SIZE_SET_VALUE];/* 1 byte per shader:  0 .. 100: new set value */
-                                                  /*                     255:      stop                    */
-                                                  /*                     254:      no change               */
+                                                  /*                     255:      stop      */
+                                                  /*                     254:      no change */
 } __attribute__ ((packed)) TBusDevSetValueDo31;
+
+typedef struct {
+   uint8_t digOut[BUS_DO8_DIGOUT_SIZE_SET_VALUE];/* 2 bits per output:                      */
+                                                 /*                     00: no change       */
+                                                 /*                     01: trigger pulse   */
+                                                 /*                     10: set output to 0 */
+                                                 /*                     11: set output to 1 */
+   uint8_t shader[BUS_DO8_SHADER_SIZE_SET_VALUE];/* 1 byte per shader:  0 .. 100: new set value */
+                                                 /*                     255:      stop      */
+                                                 /*                     254:      no change */
+} __attribute__ ((packed)) TBusDevSetValueDo8;
 
 typedef struct {
    uint8_t led_state[BUS_SW16_LED_SIZE_SET_VALUE];
@@ -356,6 +385,7 @@ typedef struct {
    union {
       TBusDevSetValueSw8     sw8;
       TBusDevSetValueDo31    do31;
+      TBusDevSetValueDo8     do8;
       TBusDevSetValueSw16    sw16;
       TBusDevSetValueRs485if rs485if;
       TBusDevSetValuePwm4    pwm4;
@@ -379,6 +409,15 @@ typedef struct {
                                                      /*                    254:     opening                    */
                                                      /*                    255:     error                      */
 } __attribute__ ((packed)) TBusDevActualValueDo31;
+
+typedef struct {
+   uint8_t digOut[BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE];/* 1 bit per output                                       */
+   uint8_t shader[BUS_DO8_SHADER_SIZE_ACTUAL_VALUE];/* 1 byte per shader: current position 0 .. 100 (stopped) */
+                                                     /*                    252:     not configured             */
+                                                     /*                    253:     closing                    */
+                                                     /*                    254:     opening                    */
+                                                     /*                    255:     error                      */
+} __attribute__ ((packed)) TBusDevActualValueDo8;
 
 typedef struct {
    uint8_t state;
@@ -458,6 +497,7 @@ typedef struct {
    TBusDevType devType;
    union {
       TBusDevActualValueDo31    do31;
+      TBusDevActualValueDo8     do8;
       TBusDevActualValueSw8     sw8;
       TBusDevActualValueLum     lum;
       TBusDevActualValueLed     led;
@@ -478,6 +518,7 @@ typedef struct {
    TBusDevType devType;
    union {
       TBusDevActualValueDo31    do31;
+      TBusDevActualValueDo8     do8;
       TBusDevActualValueSw8     sw8;
       TBusDevActualValueLum     lum;
       TBusDevActualValueLed     led;
@@ -496,6 +537,7 @@ typedef struct {
    TBusDevType devType;
    union {
       TBusDevActualValueDo31    do31;
+      TBusDevActualValueDo8     do8;
       TBusDevActualValueSw8     sw8;
       TBusDevActualValueLum     lum;
       TBusDevActualValueLed     led;

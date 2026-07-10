@@ -69,7 +69,6 @@ typedef enum {
    eDigOut28 = 28,
    eDigOut29 = 29,
    eDigOut30 = 30,
-   eDigOutNum = 31,
    eDigOutInvalid = 255
 } TDigOutNumber;       
 

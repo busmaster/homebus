@@ -168,6 +168,35 @@ int main(int argc, char *argv[]) {
                             txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeDo31;
                         }
                         break;
+                    case eBusDevTypeDo8:
+                        Print("DO8\n");
+                        for (i = 0; i < BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
+                            for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
+                                if (pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do8.digOut[i] & mask) {
+                                    Print("1");
+                                } else {
+                                    Print("0");
+                                }
+                            }
+                        }
+                        Print("\n");
+                        for (i = 0; i < BUS_DO8_SHADER_SIZE_ACTUAL_VALUE; i++) {
+                            Print("%02x",
+                                pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do8.shader[i]);
+                            if (i < (BUS_DO8_SHADER_SIZE_ACTUAL_VALUE - 1)) {
+                                Print(" ");
+                            }
+                        }
+                        if (!listenOnly) {
+                            memcpy(txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.do8.digOut,
+                                   pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do8.digOut,
+                                   BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE);
+                            memcpy(txBusMsg.msg.devBus.x.devResp.actualValueEvent.actualValue.do8.shader,
+                                   pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do8.shader,
+                                   BUS_DO8_SHADER_SIZE_ACTUAL_VALUE);
+                            txBusMsg.msg.devBus.x.devResp.actualValueEvent.devType = eBusDevTypeDo8;
+                        }
+                        break;
                     case eBusDevTypePwm4:
                         Print("PWM4\n");
                         val8 = pRxBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.pwm4.state;

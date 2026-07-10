@@ -73,6 +73,8 @@
 #define OP_DIAG                             22
 #define OP_SET_VAR                          23
 #define OP_GET_VAR                          24
+#define OP_SET_VALUE_DO8_DO                 25
+#define OP_SET_VALUE_DO8_SH                 26
 
 #define SIZE_CLIENT_LIST                    BUS_MAX_CLIENT_NUM
 
@@ -307,6 +309,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeDo31:
                     printf("DO31");
                     break;
+                case eBusDevTypeDo8:
+                    printf("DO8");
+                    break;
                 case eBusDevTypeSw8:
                     printf("SW8");
                     break;
@@ -363,6 +368,24 @@ int main(int argc, char *argv[]) {
                     printf("\nshader: ");
                     for (i = 0; i < sizeof(actVal.actualValue.do31.shader); i++) {
                         printf("%02x ", actVal.actualValue.do31.shader[i]);
+                    }
+                    printf("\n");
+                    break;
+                case eBusDevTypeDo8:
+                    printf("\ndigout: ");
+                    for (i = 0; i < sizeof(actVal.actualValue.do8.digOut); i++) {
+                        for (j = 0, mask = 1; j < 8; j++, mask <<= 1) {
+                            if (actVal.actualValue.do8.digOut[i] & mask) {
+                                printf("1");
+                            } else {
+                                printf("0");
+                            }
+                        }
+                        printf(" ");
+                    }
+                    printf("\nshader: ");
+                    for (i = 0; i < sizeof(actVal.actualValue.do8.shader); i++) {
+                        printf("%02x ", actVal.actualValue.do8.shader[i]);
                     }
                     printf("\n");
                     break;
@@ -494,6 +517,30 @@ int main(int argc, char *argv[]) {
                 printf("OK\n");
             }
             break;
+        case OP_SET_VALUE_DO8_DO:
+            setVal.devType = eBusDevTypeDo8;
+            memset(setVal.setValue.do8.digOut, 0, sizeof(setVal.setValue.do8.digOut)); // default: no change
+            memset(setVal.setValue.do8.shader, 254, sizeof(setVal.setValue.do8.shader)); // default: no change
+            for (j = argi, k = 0; (j < argc) && (k < (int)(sizeof(setVal.setValue.do8.digOut) * 4)); j++, k++) {
+                setVal.setValue.do8.digOut[k / 4] |= ((uint8_t)atoi(argv[j]) & 0x03) << ((k % 4) * 2);
+            }
+            ret = ModuleSetValue(moduleAddr, &setVal);
+            if (ret) {
+                printf("OK\n");
+            }
+            break;
+        case OP_SET_VALUE_DO8_SH:
+            setVal.devType = eBusDevTypeDo8;
+            memset(setVal.setValue.do8.digOut, 0, sizeof(setVal.setValue.do8.digOut)); // default: no change
+            memset(setVal.setValue.do8.shader, 254, sizeof(setVal.setValue.do8.shader)); // default: no change
+            for (j = argi, k = 0; (j < argc) && (k < (int)sizeof(setVal.setValue.do8.shader)); j++, k++) {
+                setVal.setValue.do8.shader[k] = (uint8_t)atoi(argv[j]);
+            }
+            ret = ModuleSetValue(moduleAddr, &setVal);
+            if (ret) {
+                printf("OK\n");
+            }
+            break;
         case OP_SET_VALUE_SW8:
             setVal.devType = eBusDevTypeSw8;
             memset(setVal.setValue.sw8.digOut, 0, sizeof(setVal.setValue.sw8.digOut)); // default: no change
@@ -560,6 +607,9 @@ int main(int argc, char *argv[]) {
                 case eBusDevTypeDo31:
                     printf("DO31");
                     break;
+                case eBusDevTypeDo8:
+                    printf("DO8");
+                    break;
                 case eBusDevTypeSw8:
                     printf("SW8");
                     break;
@@ -622,6 +672,9 @@ int main(int argc, char *argv[]) {
                         switch (info.devType) {
                         case eBusDevTypeDo31:
                             printf("%-8s", "DO31");
+                            break;
+                        case eBusDevTypeDo8:
+                            printf("%-8s", "DO8");
                             break;
                         case eBusDevTypeSw8:
                             printf("%-8s", "SW8");
@@ -728,6 +781,9 @@ int main(int argc, char *argv[]) {
                 switch (diag.devType) {
                 case eBusDevTypeDo31:
                     printf("DO31");
+                    break;
+                case eBusDevTypeDo8:
+                    printf("DO8");
                     break;
                 case eBusDevTypeSw8:
                     printf("SW8");
@@ -879,6 +935,9 @@ static bool ModuleInfo(uint8_t address, TBusDevRespInfo *pBuf, uint16_t resp_tim
         case eBusDevTypeDo31:
             memcpy(&pBuf->devInfo.do31 , &pBusMsg->msg.devBus.x.devResp.info.devInfo.do31, sizeof(pBuf->devInfo.do31));
             break;
+        case eBusDevTypeDo8:
+            memcpy(&pBuf->devInfo.do8 , &pBusMsg->msg.devBus.x.devResp.info.devInfo.do8, sizeof(pBuf->devInfo.do8));
+            break;
         case eBusDevTypeSw8:
             memcpy(&pBuf->devInfo.sw8 , &pBusMsg->msg.devBus.x.devResp.info.devInfo.sw8, sizeof(pBuf->devInfo.sw8));
             break;
@@ -981,6 +1040,14 @@ static bool ModuleGetActualValue(uint8_t address, TBusDevRespActualValue *pBuf) 
             memcpy(pBuf->actualValue.do31.shader,
                    pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do31.shader,
                    sizeof(pBuf->actualValue.do31.shader));
+            break;
+        case eBusDevTypeDo8:
+            memcpy(pBuf->actualValue.do8.digOut,
+                   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do8.digOut,
+                   sizeof(pBuf->actualValue.do8.digOut));
+            memcpy(pBuf->actualValue.do8.shader,
+                   pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do8.shader,
+                   sizeof(pBuf->actualValue.do8.shader));
             break;
         case eBusDevTypeSw8:
             pBuf->actualValue.sw8.state = pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.sw8.state;
@@ -1649,6 +1716,20 @@ static int GetOperation(int argc, char *argv[], int *pArgi) {
             } else {
                 break;
             }
+        } else if (strcmp(argv[i], "-setvaldo8_do") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SET_VALUE_DO8_DO;
+            } else {
+                break;
+            }
+        } else if (strcmp(argv[i], "-setvaldo8_sh") == 0) {
+            if (argc > i) {
+                *pArgi = i + 1;
+                operation = OP_SET_VALUE_DO8_SH;
+            } else {
+                break;
+            }
         } else if (strcmp(argv[i], "-setvalsw8") == 0) {
             if (argc > i) {
                 *pArgi = i + 1;
@@ -1749,6 +1830,8 @@ static void PrintUsage(void) {
     printf("                              -actval                            |\n");
     printf("                              -setvaldo31_do do0 .. do30         |\n");
     printf("                              -setvaldo31_sh sh0 .. sh14         |\n");
+    printf("                              -setvaldo8_do do0 .. do7           |\n");
+    printf("                              -setvaldo8_sh sh0 .. sh3           |\n");
     printf("                              -setvalsw8 do0 .. do7              |\n");
     printf("                              -setvalsw16 led0 .. led7           |\n");
     printf("                              -setvalrs485if data0 .. data31     |\n");
@@ -1775,6 +1858,8 @@ static void PrintUsage(void) {
     printf("-actval: read actual values from modul\n");
     printf("-setvaldo31_do do0 .. do30: set value for dig out\n");
     printf("-setvaldo31_sh sh0 .. sh14: set value for shader\n");
+    printf("-setvaldo8_do do0 .. do7: set value for dig out\n");
+    printf("-setvaldo8_sh sh0 .. sh3: set value for shader\n");
     printf("-setvalsw8 do0 .. do7: set value for dig out\n");
     printf("-setvalsw16 led0 .. led7: set value for led\n");
     printf("-setvalrs485if data0 .. data31: set byte value for rs485if\n");

@@ -55,7 +55,6 @@ typedef enum {
    eShader12 = 12,
    eShader13 = 13,
    eShader14 = 14,
-   eShaderNum = 15,
    eShaderInvalid = 255
 } TShaderNumber;
 

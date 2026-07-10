@@ -370,6 +370,25 @@ static void BusMonDecoded(int sioHandle) {
                         }
                     }
                     break;
+                case eBusDevTypeDo8:
+                    fprintf(spOutput, SPACE "device: DO8\r\n");
+                    fprintf(spOutput, SPACE "shader configuration:\r\n");
+                    for (i = 0; i < BUS_DO8_NUM_SHADER; i++) {
+                        uint8_t onSw = pBusMsg->msg.devBus.x.devResp.info.devInfo.do8.onSwitch[i];
+                        uint8_t dirSw = pBusMsg->msg.devBus.x.devResp.info.devInfo.do8.dirSwitch[i];
+                        if ((dirSw == 0xff) &&
+                            (onSw == 0xff)) {
+                            continue;
+                        }
+                        fprintf(spOutput, SPACE "   shader %d:\r\n", i);
+                        if (dirSw != 0xff) {
+                            fprintf(spOutput, SPACE "      onSwitch: %d\r\n", onSw);
+                        }
+                        if (onSw != 0xff) {
+                            fprintf(spOutput, SPACE "      dirSwitch: %d\r\n", dirSw);
+                        }
+                    }
+                    break;
                 case eBusDevTypeSw8:
                     fprintf(spOutput, SPACE "device: SW8\r\n");
                     break;
@@ -610,7 +629,7 @@ static void BusMonDecoded(int sioHandle) {
                 fprintf(spOutput, SPACE "address: %04x", pBusMsg->msg.devBus.x.devReq.readEeprom.addr);
                 break;
             case eBusDevRespEepromRead:
-                fprintf(spOutput, "request read eeprom ");
+                fprintf(spOutput, "response read eeprom ");
                 fprintf(spOutput, "receiver %d\r\n", pBusMsg->msg.devBus.receiverAddr);
                 fprintf(spOutput, SPACE "data: %02x", pBusMsg->msg.devBus.x.devResp.readEeprom.data);
                 break;
@@ -639,6 +658,18 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, SPACE "SH: ");
                     for (i = 0; i < BUS_DO31_SHADER_SIZE_SET_VALUE; i++) {
                         fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i]);
+                    }
+                    break;
+                case eBusDevTypeDo8:
+                    fprintf(spOutput, SPACE "device: DO8\r\n");
+                    fprintf(spOutput, SPACE "DO: ");
+                    for (i = 0; i < BUS_DO8_DIGOUT_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.do8.digOut[i]);
+                    }
+                    fprintf(spOutput, "\r\n");
+                    fprintf(spOutput, SPACE "SH: ");
+                    for (i = 0; i < BUS_DO8_SHADER_SIZE_SET_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devReq.setValue.setValue.do8.shader[i]);
                     }
                     break;
                 case eBusDevTypeSw8:
@@ -710,6 +741,18 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, SPACE "SH: ");
                     for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do31.shader[i]);
+                    }
+                    break;
+                case eBusDevTypeDo8:
+                    fprintf(spOutput, SPACE "device: DO8\r\n");
+                    fprintf(spOutput, SPACE "DO: ");
+                    for (i = 0; i < BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do8.digOut[i]);
+                    }
+                    fprintf(spOutput, "\r\n");
+                    fprintf(spOutput, SPACE "SH: ");
+                    for (i = 0; i < BUS_DO8_SHADER_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValue.actualValue.do8.shader[i]);
                     }
                     break;
                 case eBusDevTypeSw8:
@@ -831,6 +874,20 @@ static void BusMonDecoded(int sioHandle) {
                                 pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do31.shader[i]);
                     }
                     break;
+                case eBusDevTypeDo8:
+                    fprintf(spOutput, SPACE "device: DO8\r\n");
+                    fprintf(spOutput, SPACE "DO: ");
+                    for (i = 0; i < BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ",
+                                pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do8.digOut[i]);
+                    }
+                    fprintf(spOutput, "\r\n");
+                    fprintf(spOutput, SPACE "SH: ");
+                    for (i = 0; i < BUS_DO8_SHADER_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ",
+                                pBusMsg->msg.devBus.x.devReq.actualValueEvent.actualValue.do8.shader[i]);
+                    }
+                    break;
                 case eBusDevTypeSw8:
                     fprintf(spOutput, SPACE "device: SW8\r\n");
                     fprintf(spOutput, SPACE "state: %02x",
@@ -927,6 +984,18 @@ static void BusMonDecoded(int sioHandle) {
                     fprintf(spOutput, SPACE "SH: ");
                     for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
                         fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do31.shader[i]);
+                    }
+                    break;
+                case eBusDevTypeDo8:
+                    fprintf(spOutput, SPACE "device: DO8\r\n");
+                    fprintf(spOutput, SPACE "DO: ");
+                    for (i = 0; i < BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do8.digOut[i]);
+                    }
+                    fprintf(spOutput, "\r\n");
+                    fprintf(spOutput, SPACE "SH: ");
+                    for (i = 0; i < BUS_DO8_SHADER_SIZE_ACTUAL_VALUE; i++) {
+                        fprintf(spOutput, "%02x ", pBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do8.shader[i]);
                     }
                     break;
                 case eBusDevTypeSw8:

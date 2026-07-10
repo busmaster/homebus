@@ -1,0 +1,17 @@
+fuse settings for atmega32u4 (see do8_bootloader/main.c)
+extended fuse byte:
+0xf8 (changed: hwbe disabled, bod level to 000: 4.0 .. 4.5 V)
+fuse byte high:
+0xd8 (changed: JTAG disabled, BOOTRST to bootloader)
+fuse byte low:
+0xdd (changed: ckdiv8 disabled, cklsel to 1101: 3-8 MHz crystal with bod enabled)
+
+chip erase
+avrdude -P /dev/ttyACM0 -p m32u4 -c stk500v2 -e
+
+fuses
+E:f8 H:d8 L:dd
+
+avrdude -P /dev/ttyACM0 -p m32u4 -c stk500v2 -U efuse:w:0xf8:m
+avrdude -P /dev/ttyACM0 -p m32u4 -c stk500v2 -U hfuse:w:0xd8:m
+avrdude -P /dev/ttyACM0 -p m32u4 -c stk500v2 -U lfuse:w:0xdd:m
