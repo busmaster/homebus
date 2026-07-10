@@ -28,6 +28,7 @@
 #include "sysdef.h"
 #include "digout.h"
 #include "shader.h"
+#include "board.h"
 
 /*-----------------------------------------------------------------------------
 *  Macros
@@ -79,7 +80,7 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Variables
 */
-static TShaderDesc sShader[eShaderNum];
+static TShaderDesc sShader[NUM_SHADER];
 
 /*-----------------------------------------------------------------------------
 * Init
@@ -110,7 +111,7 @@ void ShaderSetConfig(TShaderNumber number,
       
    TShaderDesc  *pShader;
 
-   if (number >= eShaderNum) {
+   if (number >= NUM_SHADER) {
       return;
    }
 
@@ -151,7 +152,7 @@ void ShaderSetAction(TShaderNumber number, TShaderAction action) {
 
    TShaderDesc *pShader;
 
-   if (number >= eShaderNum) {
+   if (number >= NUM_SHADER) {
       return;
    }
    pShader = &sShader[number];
@@ -180,7 +181,7 @@ bool ShaderGetState(TShaderNumber number, TShaderState *pState) {
 
    TShaderDesc *pShader;
 
-   if (number >= eShaderNum) {
+   if (number >= NUM_SHADER) {
       return false;
    }
    pShader = &sShader[number];
@@ -211,7 +212,7 @@ bool ShaderSetPosition(TShaderNumber number, uint8_t position) {
 
    TShaderDesc *pShader;
 
-   if (number >= eShaderNum) {
+   if (number >= NUM_SHADER) {
       return false;
    }
    pShader = &sShader[number];
@@ -235,7 +236,7 @@ bool ShaderGetPosition(TShaderNumber number, uint8_t *pPosition) {
 
    TShaderDesc *pShader;
    
-   if (number >= eShaderNum) {
+   if (number >= NUM_SHADER) {
       return false;
    }
    pShader = &sShader[number];
@@ -259,8 +260,6 @@ void ShaderCheck(void) {
    uint16_t             currentTime;
    uint32_t             actionPeriod;
 
-   sShaderNum++;
-   sShaderNum %= eShaderNum;
    pShader = &sShader[sShaderNum];
    if ((pShader->onSwitch == eDigOutInvalid) ||
        (pShader->dirSwitch == eDigOutInvalid)) {
@@ -448,5 +447,10 @@ void ShaderCheck(void) {
    }
    pShader->cmd = nextCmd;
    pShader->state = nextState;
+
+   sShaderNum++;
+   if (sShaderNum >= NUM_SHADER) {
+      sShaderNum = 0;
+   }
 }
 

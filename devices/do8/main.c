@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * Copyright 2026 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,7 +38,6 @@
 #include "board.h"
 #include "bus.h"
 #include "button.h"
-#include "led.h"
 #include "digout.h"
 #include "shader.h"
 #include "application.h"
@@ -46,22 +45,12 @@
 /*-----------------------------------------------------------------------------
 *  Macros
 */
-
-/* Bits in TCCR0 */
-#define CS00     0
-#define OCIE0    1
-#define WGM00    6
-#define WGM01    3
-
 /* Bits in WDTCR */
 #define WDCE     4
 #define WDE      3
 #define WDP0     0
 #define WDP1     1
 #define WDP2     2
-
-/* Bits in EECR */
-#define EEWE     1
 
 /* offset addresses in EEPROM */
 #define MODUL_ADDRESS           0  /* 1 byte */
@@ -71,12 +60,12 @@
 #ifdef BUSVAR
 /* non volatile bus variables memory */
 #define BUSVAR_NV_START         0x100
-#define BUSVAR_NV_END           0x2ff
+#define BUSVAR_NV_END           0x1ff
 #endif
 
 /* DO restore after power fail */
-#define EEPROM_DO_RESTORE_START  (uint8_t *)3072
-#define EEPROM_DO_RESTORE_END    (uint8_t *)4095
+#define EEPROM_DO_RESTORE_START  (uint8_t *)0x200
+#define EEPROM_DO_RESTORE_END    (uint8_t *)0x3ff
 
 /* our bus address */
 #define MY_ADDR    sMyAddr
@@ -92,7 +81,9 @@
 /* timeout for doClockCalibReq */
 #define CLOCK_CALIB_TIMEOUT_MS 200 /* time in ms */
 
-#define MAX_FIRMWARE_SIZE   (120UL * 1024UL)
+#define MAX_FIRMWARE_SIZE   (28UL * 1024UL)
+
+#define MAX_ADDR_SW8_AVE            64
 
 /*-----------------------------------------------------------------------------
 *  Typedefs
@@ -143,19 +134,20 @@ static uint8_t   sIdle = 0;
 static TClient sClient[BUS_MAX_CLIENT_NUM];
 static uint8_t sNumClients;
 
-static uint8_t sOldDigOutActVal[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
-static uint8_t sCurDigOutActVal[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
-static uint8_t sCurShaderActVal[BUS_DO31_SHADER_SIZE_ACTUAL_VALUE];
+static uint8_t sOldDigOutActVal[BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE];
+static uint8_t sCurDigOutActVal[BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE];
+static uint8_t sCurShaderActVal[BUS_DO8_SHADER_SIZE_ACTUAL_VALUE];
 
 static TClockCalib sClockCalib;
 
-static uint8_t sSw8State[256];
+static uint8_t sSw8State[MAX_ADDR_SW8_AVE];
+
 /*-----------------------------------------------------------------------------
 *  Functions
 */
-static void CpuInit(void);
 static void PortInit(void);
 static void TimerInit(void);
+static void TimerStart(void);
 static void CheckButton(void);
 static void ButtonEvent(uint8_t address, uint8_t button);
 static void SwitchEvent(uint8_t address, uint8_t button, bool pressed);
@@ -179,14 +171,11 @@ int main(void) {
    uint8_t ret;
    int   sioHdl;
 
-   CpuInit();
-
    /* get module address from EEPROM */
    sMyAddr = eeprom_read_byte((const uint8_t *)MODUL_ADDRESS);
    GetClientListFromEeprom();
 
    PortInit();
-   LedInit();
    TimerInit();
    ButtonInit();
    DigOutInit();
@@ -216,14 +205,13 @@ int main(void) {
 
    /* for delay in RestoreDigout the timer interruot is required */
    ENABLE_INT;
-
+   TimerStart();
+   
    RestoreDigOut();
 
    /* ext int for power fail: INT0 low level sensitive */
    EICRA &= ~((1 << ISC01) | (1 << ISC00));
    EIMSK |= (1 << INT0);
-
-   LedSet(eLedGreenFlashSlow);
 
    ApplicationStart();
 
@@ -238,7 +226,6 @@ int main(void) {
       CheckButton();
       DigOutStateCheck();
       ShaderCheck();
-      LedCheck();
       ApplicationCheck();
       CheckEvent();
 #ifdef BUSVAR
@@ -421,12 +408,12 @@ static void CheckEvent(void) {
         sTxBusMsg.type = eBusDevReqActualValueEvent;
         sTxBusMsg.senderAddr = MY_ADDR;
         sTxBusMsg.msg.devBus.receiverAddr = pClient->address;
-        pActVal->devType = eBusDevTypeDo31;
+        pActVal->devType = eBusDevTypeDo8;
 
-        memcpy(pActVal->actualValue.do31.digOut, sCurDigOutActVal,
-               sizeof(pActVal->actualValue.do31.digOut));
-        memcpy(pActVal->actualValue.do31.shader, sCurShaderActVal,
-               sizeof(pActVal->actualValue.do31.shader));
+        memcpy(pActVal->actualValue.do8.digOut, sCurDigOutActVal,
+               sizeof(pActVal->actualValue.do8.digOut));
+        memcpy(pActVal->actualValue.do8.shader, sCurShaderActVal,
+               sizeof(pActVal->actualValue.do8.shader));
 
         if (BusSend(&sTxBusMsg) == BUS_SEND_OK) {
             pClient->state = eEventWaitForConfirmation;
@@ -509,62 +496,54 @@ static void BusTransceiverPowerDown(bool powerDown) {
 
 
 /*-----------------------------------------------------------------------------
-*  Ausgangszustand wiederherstellen
-*  im EEPROM liegen jeweils 4 Byte mit den 31 Ausgangszuständen. Das MSB im
-*  letzten Byte zeigt mit dem Wert 0 die Gültigkeit der Daten an
+*  restore output state
+*  byte 0: 0x00 output data valid
+*  byte 1: 8 bit for 8 outputs. 
 */
 static void RestoreDigOut(void) {
 
    uint8_t *ptrToEeprom;
-   uint8_t buf[4];
+   uint8_t buf;
    uint8_t flags;
 
-   /* zuletzt gespeicherten Zustand der Ausgänge suchen */
-   for (ptrToEeprom = EEPROM_DO_RESTORE_START + 3;
-        ptrToEeprom <= EEPROM_DO_RESTORE_END;
-        ptrToEeprom += 4) {
-      if ((eeprom_read_byte(ptrToEeprom) & 0x80) == 0x00) {
-         break;
-      }
+   /* find the newest state */
+   for (ptrToEeprom = EEPROM_DO_RESTORE_START;
+        ptrToEeprom < EEPROM_DO_RESTORE_END;
+        ptrToEeprom += 2) {
+       if (eeprom_read_byte(ptrToEeprom) == 0x00) {
+           break;
+       }
    }
    if (ptrToEeprom > EEPROM_DO_RESTORE_END) {
-      /* nichts im EEPROM gefunden -> Ausgänge bleiben ausgeschaltet */
+       /* not found -> no restore */
       spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
       return;
    }
 
-   /* wieder auf durch vier teilbare Adresse zurückrechnen */
-   ptrToEeprom -= 3;
-   /* Schreibhäufigkeit im EEPROM auf alle Adressen verteilen (wegen Lebensdauer) */
-   spNextPtrToEeprom = (const uint8_t *)((int)ptrToEeprom + 4);
-   if (spNextPtrToEeprom > EEPROM_DO_RESTORE_END) {
-      spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
+    spNextPtrToEeprom = ptrToEeprom + 2;
+    if (spNextPtrToEeprom >= EEPROM_DO_RESTORE_END) {
+        spNextPtrToEeprom = EEPROM_DO_RESTORE_START;
     }
 
-   /* Ausgangszustand wiederherstellen */
+   /* restore */
    flags = DISABLE_INT;
-   buf[0] = eeprom_read_byte(ptrToEeprom);
-   buf[1] = eeprom_read_byte(ptrToEeprom + 1);
-   buf[2] = eeprom_read_byte(ptrToEeprom + 2);
-   buf[3] = eeprom_read_byte(ptrToEeprom + 3);
+   buf = eeprom_read_byte(ptrToEeprom + 1);
    RESTORE_INT(flags);
 
-   DigOutAll(buf, 4);
+   DigOutAll(&buf, 1);
 
-   /* alte Ausgangszustand löschen */
+   /* delete old */
    flags = DISABLE_INT;
-   eeprom_write_byte((uint8_t *)ptrToEeprom, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 1, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 2, 0xff);
-   eeprom_write_byte((uint8_t *)ptrToEeprom + 3, 0xff);
+   eeprom_write_byte(ptrToEeprom, 0xff);
    RESTORE_INT(flags);
 }
 
 /*-----------------------------------------------------------------------------
-*  Erkennung von Tasten-Loslass-Ereignissen
+*  detect button release
 */
 static void CheckButton(void) {
-   uint8_t        i = 0;
+
+   uint8_t      i = 0;
    TButtonEvent buttonEventData;
 
    while (ButtonReleased(&i) == true) {
@@ -581,7 +560,6 @@ static void ProcessBus(uint8_t ret) {
     TBusMsgType            msgType;
     uint8_t                i;
     bool                   msgForMe = false;
-    TShaderState           shaderState;
     union { // union for saving stack usage
         TBusDevRespInfo            *pInfo;
         TBusDevRespGetState        *pGetState;
@@ -605,14 +583,13 @@ static void ProcessBus(uint8_t ret) {
         switch (msgType) {
         case eBusDevReqReboot:
         case eBusDevReqInfo:
-        case eBusDevReqGetState:
-        case eBusDevReqSetState:
         case eBusDevReqActualValue:
         case eBusDevReqSetValue:
         case eBusDevReqSwitchState:
         case eBusDevReqSetAddr:
         case eBusDevReqEepromRead:
         case eBusDevReqEepromWrite:
+        case eBusDevReqDiag:
         case eBusDevReqSetClientAddr:
         case eBusDevReqGetClientAddr:
         case eBusDevRespActualValueEvent:
@@ -639,7 +616,6 @@ static void ProcessBus(uint8_t ret) {
             break;
         }
     } else if (ret == BUS_MSG_ERROR) {
-        LedSet(eLedRedBlinkOnceShort);
         ButtonTimeStampRefresh();
     }
 
@@ -672,104 +648,12 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespInfo;
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        t.pInfo->devType = eBusDevTypeDo31;
+        t.pInfo->devType = eBusDevTypeDo8;
         strncpy((char *)(t.pInfo->version), ApplicationVersion(), sizeof(t.pInfo->version));
         t.pInfo->version[sizeof(t.pInfo->version) - 1] = '\0';
-        for (i = 0; i < BUS_DO31_NUM_SHADER; i++) {
-            ShaderGetConfig(i, &(t.pInfo->devInfo.do31.onSwitch[i]), &(t.pInfo->devInfo.do31.dirSwitch[i]));
+        for (i = 0; i < BUS_DO8_NUM_SHADER; i++) {
+            ShaderGetConfig(i, &(t.pInfo->devInfo.do8.onSwitch[i]), &(t.pInfo->devInfo.do8.dirSwitch[i]));
         }
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
-        break;
-    case eBusDevReqGetState:
-        /* response packet */
-        t.pGetState = &sTxMsg.msg.devBus.x.devResp.getState;
-        sTxMsg.type = eBusDevRespGetState;
-        sTxMsg.senderAddr = MY_ADDR;
-        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        t.pGetState->devType = eBusDevTypeDo31;
-        DigOutStateAll(t.pGetState->state.do31.digOut, BUS_DO31_DIGOUT_SIZE_GET);
-
-        /* array init */
-        for (i = 0; i < BUS_DO31_SHADER_SIZE_GET; i++) {
-            t.pGetState->state.do31.shader[i] = 0;
-        }
-
-        for (i = 0; i < NUM_SHADER; i++) {
-            if (ShaderGetState(i, &shaderState) == true) {
-                switch (shaderState) {
-                case eShaderClosing:
-                    val8 = 0x02;
-                    break;
-                case eShaderOpening:
-                    val8 = 0x01;
-                    break;
-                case eShaderStopped:
-                    val8 = 0x03;
-                    break;
-                default:
-                    val8 = 0x00;
-                    break;
-                }
-            } else {
-                val8 = 0x00;
-            }
-            if ((i / 4) >= BUS_DO31_SHADER_SIZE_GET) {
-                /* falls im Bustelegram zuwenig Platz -> abbrechen */
-                /* (sollte nicht auftreten) */
-                break;
-            }
-            t.pGetState->state.do31.shader[i / 4] |= (val8 << ((i % 4) * 2));
-        }
-        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
-        break;
-    case eBusDevReqSetState:
-        if (spBusMsg->msg.devBus.x.devReq.setState.devType != eBusDevTypeDo31) {
-            break;
-        }
-        for (i = 0; i < NUM_DIGOUT; i++) {
-            /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */
-            if (!DigOutGetShaderFunction(i)) {
-                uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.digOut[i / 4] >>
-                                 ((i % 4) * 2)) & 0x03;
-                switch (action) {
-                case 0x00:
-                case 0x01:
-                    break;
-                case 0x02:
-                    DigOutOff(i);
-                    break;
-                case 0x3:
-                    DigOutOn(i);
-                    break;
-                default:
-                    break;
-                }
-            }
-        }
-        for (i = 0; i < NUM_SHADER; i++) {
-            uint8_t action = (spBusMsg->msg.devBus.x.devReq.setState.state.do31.shader[i / 4] >>
-                             ((i % 4) * 2)) & 0x03;
-            switch (action) {
-            case 0x00:
-                /* no action */
-                break;
-            case 0x01:
-                ShaderSetAction(i, eShaderOpen);
-                break;
-            case 0x02:
-                ShaderSetAction(i, eShaderClose);
-                break;
-            case 0x03:
-                ShaderSetAction(i, eShaderStop);
-                break;
-            default:
-                break;
-            }
-        }
-        /* response packet */
-        sTxMsg.type = eBusDevRespSetState;
-        sTxMsg.senderAddr = MY_ADDR;
-        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqActualValue:
@@ -778,26 +662,23 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.type = eBusDevRespActualValue;
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
-        t.pActVal->devType = eBusDevTypeDo31;
-        DigOutStateAll(t.pActVal->actualValue.do31.digOut, BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE);
+        t.pActVal->devType = eBusDevTypeDo8;
+        DigOutStateAll(t.pActVal->actualValue.do8.digOut, BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE);
 
-        /* array init */
-        for (i = 0; i < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE; i++) {
-            t.pActVal->actualValue.do31.shader[i] = 0;
-        }
+        memset(t.pActVal->actualValue.do8.shader, 0, sizeof(t.pActVal->actualValue.do8.shader));
         for (i = 0; i < NUM_SHADER; i++) {
-            t.pActVal->actualValue.do31.shader[i] = GetActualValueShader(i);
+            t.pActVal->actualValue.do8.shader[i] = GetActualValueShader(i);
         }
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
     case eBusDevReqSetValue:
-        if (spBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypeDo31) {
+        if (spBusMsg->msg.devBus.x.devReq.setValue.devType != eBusDevTypeDo8) {
             break;
         }
         for (i = 0; i < NUM_DIGOUT; i++) {
             /* für Rollladenfunktion konfigurierte Ausgänge werden nicht geändert */
             if (!DigOutGetShaderFunction(i)) {
-                uint8_t action = (spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.digOut[i / 4] >>
+                uint8_t action = (spBusMsg->msg.devBus.x.devReq.setValue.setValue.do8.digOut[i / 4] >>
                                  ((i % 4) * 2)) & 0x03;
                 switch (action) {
                 case 0x00:
@@ -817,7 +698,7 @@ static void ProcessBus(uint8_t ret) {
             }
         }
         for (i = 0; i < NUM_SHADER; i++) {
-            uint8_t position = spBusMsg->msg.devBus.x.devReq.setValue.setValue.do31.shader[i];
+            uint8_t position = spBusMsg->msg.devBus.x.devReq.setValue.setValue.do8.shader[i];
             if (position <= 100) {
                 ShaderSetPosition(i, position);
             } else if (position == 255) {
@@ -855,7 +736,6 @@ static void ProcessBus(uint8_t ret) {
         sTxMsg.msg.devBus.x.devResp.switchState.switchState = val8;
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
-
     case eBusDevReqSetAddr:
         sTxMsg.senderAddr = MY_ADDR;
         sTxMsg.type = eBusDevRespSetAddr;
@@ -879,25 +759,33 @@ static void ProcessBus(uint8_t ret) {
                           spBusMsg->msg.devBus.x.devReq.writeEeprom.data);
         sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
         break;
+    case eBusDevReqDiag:
+        sTxMsg.senderAddr = MY_ADDR;
+        sTxMsg.type = eBusDevRespDiag;
+        sTxMsg.msg.devBus.x.devResp.diag.devType = eBusDevTypeDo8;
+        sTxMsg.msg.devBus.receiverAddr = spBusMsg->senderAddr;
+        memset(sTxMsg.msg.devBus.x.devResp.diag.data, 0, sizeof(sTxMsg.msg.devBus.x.devResp.diag.data));
+        sTxRetry = BusSend(&sTxMsg) != BUS_SEND_OK;
+        break;
     case eBusDevRespActualValueEvent:
         pClient = sClient;
         for (i = 0; i < sNumClients; i++) {
             if ((pClient->address == spBusMsg->senderAddr) &&
                 (pClient->state == eEventWaitForConfirmation)) {
-                TBusDevActualValueDo31 *p;
+                TBusDevActualValueDo8 *p;
                 uint8_t j;
-                uint8_t buf[BUS_DO31_DIGOUT_SIZE_ACTUAL_VALUE];
+                uint8_t buf[BUS_DO8_DIGOUT_SIZE_ACTUAL_VALUE];
 
                 DigOutStateAllStandard(buf, sizeof(buf));
 
-                p = &spBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do31;
+                p = &spBusMsg->msg.devBus.x.devResp.actualValueEvent.actualValue.do8;
                 for (j = 0;
-                     (j < BUS_DO31_SHADER_SIZE_ACTUAL_VALUE) &&
+                     (j < BUS_DO8_SHADER_SIZE_ACTUAL_VALUE) &&
                      (p->shader[j] == GetActualValueShader(j));
                      j++);
-                if ((j == BUS_DO31_SHADER_SIZE_ACTUAL_VALUE) &&
+                if ((j == BUS_DO8_SHADER_SIZE_ACTUAL_VALUE) &&
                     (memcmp(p->digOut, buf, sizeof(buf)) == 0)) {
-                    pClient->state = eEventConfirmationOK;
+                     pClient->state = eEventConfirmationOK;
                 }
                 break;
             }
@@ -1122,6 +1010,10 @@ static void Sw8SwitchEvent(uint8_t address, uint8_t state) {
     uint8_t i;
     uint8_t mask;
 
+    if (address >= MAX_ADDR_SW8_AVE) {
+        return;
+    }
+
     for (mask = 1, i = 0; i < 8; i++, mask <<= 1) {
         if ((sSw8State[address] ^ state) & mask) {
             SwitchEvent(address, i + 1, state & mask);
@@ -1130,27 +1022,24 @@ static void Sw8SwitchEvent(uint8_t address, uint8_t state) {
     sSw8State[address] = state;
 }
 
-
 /*-----------------------------------------------------------------------------
-*  Power-Fail Interrupt (Ext. Int 0)
+*  powerfail interrupt (Ext. Int 0)
 */
 ISR(INT0_vect) {
+
    uint8_t *ptrToEeprom;
-   uint8_t buf[4];
+   uint8_t buf[2];
    uint8_t i;
 
-   LedSet(eLedGreenOff);
-   LedSet(eLedRedOff);
-
-   /* Ausgangszustände lesen */
-   DigOutStateAllStandard(buf, sizeof(buf));
-   /* zum Stromsparen alle Ausgänge abschalten */
+   /* read output state */
+   DigOutStateAllStandard(&buf[1], sizeof(buf[1]));
+   /* switch off */
    DigOutOffAll();
 
-   /* neue Zustände speichern */
+   /* save output state */
    ptrToEeprom = (uint8_t *)spNextPtrToEeprom;
    /* Kennzeichnungsbit löschen */
-   buf[3] &= ~0x80;
+   buf[0] = 0;
    for (i = 0; i < sizeof(buf); i++) {
       eeprom_write_byte(ptrToEeprom, buf[i]);
       ptrToEeprom++;
@@ -1159,45 +1048,16 @@ ISR(INT0_vect) {
    /* Wait for completion of previous write */
    while (!eeprom_is_ready());
 
-   LedSet(eLedRedOn);
-
-   /* auf Powerfail warten */
-   /* falls sich die Versorgungsspannung wieder erholt hat und */
-   /* daher kein Power-Up Reset passiert, wird ein Reset über */
-   /* den Watchdog ausgelöst */
+   /* wait for powerfail */
+   /* if supply comes up again we use the wtd to force a reboot */
    while (!POWER_GOOD);
 
-   /* Versorgung wieder OK */
-   /* Watchdogtimeout auf 2 s stellen */
+   /* supply ok again */
+   /* reset in 2 s */
    wdt_enable(WDTO_2S);
 
-   /* warten auf Reset */
+   /* wait for reset */
    while (1);
-}
-
-/*-----------------------------------------------------------------------------
-*  Timer-Interrupt für Zeitbasis (Timer 0 Compare)
-*/
-ISR(TIMER0_COMP_vect)  {
-   static uint16_t sCounter1 = 0;
-   static uint8_t  sCounter2 = 0;
-
-   /* Interrupt alle 2ms */
-   gTimeMs += 2;
-   gTimeMs16 += 2;
-   gTimeMs32 += 2;
-   sCounter1++;
-   if (sCounter1 >= 500) {
-      sCounter1 = 0;
-      /* Sekundenzähler */
-      gTimeS++;
-   }
-   sCounter2++;
-   if (sCounter2 >= 5) {
-      sCounter2 = 0;
-      /* 10 ms counter */
-      gTime10Ms16++;
-   }
 }
 
 /*-----------------------------------------------------------------------------
@@ -1205,33 +1065,70 @@ ISR(TIMER0_COMP_vect)  {
 */
 static void TimerInit(void) {
 
-   /* Verwendung des Compare-Match Interrupt von Timer0 */
-   /* Vorteiler bei 1 MHz: 8  */
-   /* Vorteiler bei 3.6864 MHz: 64  */
-   /* Vorteiler bei 16 MHz: 256  */
-   /* Compare-Match Portpin (OC0) wird nicht verwendet: COM01:0 = 0 */
-   /* Compare-Register:  */
-   /* 1 MHz: 250 -> 2 ms Zyklus */
-   /* 3.6864 MHz: 115 -> 1,9965 ms Zyklus */
-   /* 16 MHz: 125 -> 2 ms Zyklus */
-   /* Timer-Mode: CTC: WGM01:0=2 */
-#if (F_CPU == 1000000UL)
-   /* 1 MHz */
-   TCCR0 = (0b010 << CS00) | (0 << WGM00) | (1 << WGM01);
-   OCR0 = 250 - 1;
-#elif (F_CPU == 1600000UL)
-   /* 16 MHz */
-   TCCR0 = (0b110 << CS00) | (0 << WGM00) | (1 << WGM01);
-   OCR0 = 125 - 1;
+    /* use timer 3/output compare A */
+    /* timer3 compare B is used for sio timing - do not change the timer mode WGM 
+     * and change sio timer settings when changing the prescaler!
+     */
+   
+    /* prescaler @ 1.8432/3.6864/7.3728 MHz: 256  */
+    /* compare match pin not used: COM3A[1:0] = 00 */
+    /* compare register OCR3A:  */
+    /* 1.8432 MHz: 36 -> 5 ms */
+    /* 3.6864 MHz: 72 -> 5 ms */
+    /* 7.3728 MHz: 144 -> 5 ms */
+    /* timer mode 0: normal: WGM3[3:0]= 0000 */
+
+    TCCR3A = (0 << COM3A1) | (0 << COM3A0) | (0 << COM3B1) | (0 << COM3B0) | (0 << WGM31) | (0 << WGM30);
+    TCCR3B = (0 << ICNC3) | (0 << ICES3) |
+             (0 << WGM33) | (0 << WGM32) | 
+             (1 << CS32)  | (0 << CS31)  | (0 << CS30); 
+
+#if (F_CPU == 1843200UL)
+    #define TIMER_TCNT_INC    36
+    #define TIMER_INC_MS      5
 #elif (F_CPU == 3686400UL)
-   /* 3.6864 MHz */
-   TCCR0 = (0b100 << CS00) | (0 << WGM00) | (1 << WGM01);
-   OCR0 = 115 - 1;
+    #define TIMER_TCNT_INC    72
+    #define TIMER_INC_MS      5
+#elif (F_CPU == 7372800UL)
+    #define TIMER_TCNT_INC    144
+    #define TIMER_INC_MS      5
 #else
 #error adjust timer settings for your CPU clock frequency
 #endif
-   /* Timer Compare Match Interrupt enable */
-   TIMSK |= 1 << OCIE0;
+}
+
+static void TimerStart(void) {
+
+   OCR3A = TCNT3 + TIMER_TCNT_INC;
+   TIFR3 = 1 << OCF3A;
+   TIMSK3 |= 1 << OCIE3A;
+}
+
+/*-----------------------------------------------------------------------------
+* Timer irq
+*/
+ISR(TIMER3_COMPA_vect)  {
+
+   static uint16_t sCounter1 = 0;
+   static uint8_t  sCounter2 = 0;
+
+   OCR3A = OCR3A + TIMER_TCNT_INC;
+    
+   gTimeMs += TIMER_INC_MS;
+   gTimeMs16 += TIMER_INC_MS;
+   gTimeMs32 += TIMER_INC_MS;
+   sCounter1++;
+   if (sCounter1 >= (1000 / TIMER_INC_MS)) {
+      sCounter1 = 0;
+      /* seconds */
+      gTimeS++;
+   }
+   sCounter2++;
+   if (sCounter2 >= (10 / TIMER_INC_MS)) {
+      sCounter2 = 0;
+      /* 10 ms counter */
+      gTime10Ms16++;
+   }
 }
 
 /*-----------------------------------------------------------------------------
@@ -1239,52 +1136,44 @@ static void TimerInit(void) {
 */
 static void PortInit(void) {
 
-   /* PortA: DO0 .. DO7 */
-   PORTA = 0b00000000;   /* alle PortA-Leitung auf low */
-   DDRA  = 0b11111111;   /* alle PortA-Leitungen auf Ausgang */
+    /* PB.7: unused: output low */
+    /* PB.6, DO0: output low */
+    /* PB.5: unused: output low */
+    /* PB.4: unused: output low */
+    /* PB.3: MISO: output low */
+    /* PB.2: MOSI: output low */
+    /* PB.1: SCK: output low */
+    /* PB.0: unused: output low */
+    PORTB = 0b00000000;
+    DDRB  = 0b11111111;
 
-   /* PortC: DO8 .. DO15 */
-   PORTC = 0b00000000;   /* alle PortC-Leitung auf low */
-   DDRC  = 0b11111111;   /* alle PortC-Leitungen auf Ausgang */
+    /* PC.7: DO7: output low  */
+    /* PC.6: DO5: output low */
+    PORTC = 0b00000000;
+    DDRC  = 0b11000000;
 
-   /* PortB.4 .. PortB7: DO16 .. DO19: Ausgang low */
-   /* PortB.0, PortB.2, PortB.3: nicht benutzt, Ausgang, low*/
-   /* PortB.1: SCK-Eingang: Eingang, PullUp */
-   PORTB = 0b00000010;
-   DDRB  = 0b11111101;
+    /* PD.7: DO1: output low */
+    /* PD.6: unused: output low */
+    /* PD.5: transceiver power, output high */
+    /* PD.4: unused: output low */
+    /* PD.3: TXD: output high */
+    /* PD.2: RXD: input pull up */
+    /* PD.1: INT1: input high z */
+    /* PD.0: INT0: input high z */
+    PORTD = 0b00101100;
+    DDRD  = 0b11111000;
+    
+    /* PE.6: DO3: output low  */
+    /* PE.2: unused: output low */
+    PORTE = 0b00000000;
+    DDRE  = 0b01000100;
 
-   /* PortD.0: Interrupteingang für PowerFail: Eingang, kein PullUp*/
-   /* PortD.1: unbenutzt oder mit RXD1 verbunden, Eingang, PullUp */
-   /* PortD.2: UART RX, Eingang, PullUp */
-   /* PortD.3: UART TX, Ausgang, high */
-   /* PortD.4 .. PortD7: DO20 .. DO23 */
-   PORTD = 0b00001110;
-   DDRD  = 0b11111000;
-
-   /* PortE.0: RX/MOSI: Eingang, PullUp*/
-   /* PortE.1: TX/MISO, Ausgang high */
-   /* PortE.2 .. PortE.6: unbenutzt, Ausgang, low */
-   /* PortE.7: unbenutzt oder Transceiversteuerung, Ausgang, high*/
-   PORTE = 0b10000011;
-   DDRE  = 0b11111110;
-
-   /* PortF: DO24 .. DO30/31 */
-   PORTF = 0b00000000;    /* alle PortF-Leitung auf low */
-   DDRF  = 0b11111111;    /* alle PortF-Leitungen auf Ausgang */
-
-   /* PortG.0 .. PortG.2 unbenutzt, Ausgang, low*/
-   /* PortG.3, PortG.4 LED, Ausgang, high*/
-   PORTG = 0b00011000;
-   DDRG  = 0b00011111;
+    /* PF.7: unused: output low  */
+    /* PF.6: DO6: output low  */
+    /* PF.5: unused: output low  */
+    /* PF.4: unused: output low  */
+    /* PF.1: DO4: output low  */
+    /* PF.0: DO2: output low */
+    PORTF = 0b00000000;
+    DDRF  = 0b11110011;
 }
-
-/*-----------------------------------------------------------------------------
-*  Prepare CPU state: the bootloader might have left inappropriate settings
-*/
-static void CpuInit(void) {
-   /* clear interrupt enable bits */
-   TIMSK = 0;
-   UCSR0B = 0;
-   UCSR1B = 0;
-   EIMSK = 0;
- }

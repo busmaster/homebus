@@ -1,7 +1,7 @@
 /*
  * digout.c
  * 
- * Copyright 2013 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
+ * Copyright 2026 Klaus Gusenleitner <klaus.gusenleitner@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,7 +59,29 @@ typedef struct {
 /*-----------------------------------------------------------------------------
 *  Functions
 */
-#include "digout_l.h"
+static void On0(void);
+static void Off0(void);
+
+static void On1(void);
+static void Off1(void);
+
+static void On2(void);
+static void Off2(void);
+
+static void On3(void);
+static void Off3(void);
+
+static void On4(void);
+static void Off4(void);
+
+static void On5(void);
+static void Off5(void);
+
+static void On6(void);
+static void Off6(void);
+
+static void On7(void);
+static void Off7(void);
 
 /*-----------------------------------------------------------------------------
 *  Variables
@@ -72,34 +94,11 @@ static const TAccessFunc sDigOutFuncs[NUM_DIGOUT] PROGMEM = {
    {On4,  Off4 },
    {On5,  Off5 },
    {On6,  Off6 },
-   {On7,  Off7 },
-   {On8,  Off8 },
-   {On9,  Off9 },
-   {On10, Off10},
-   {On11, Off11},
-   {On12, Off12},
-   {On13, Off13},
-   {On14, Off14},
-   {On15, Off15},
-   {On16, Off16},
-   {On17, Off17},
-   {On18, Off18},
-   {On19, Off19},
-   {On20, Off20},
-   {On21, Off21},
-   {On22, Off22},
-   {On23, Off23},
-   {On24, Off24},
-   {On25, Off25},
-   {On26, Off26},
-   {On27, Off27},
-   {On28, Off28},
-   {On29, Off29},
-   {On30, Off30}
+   {On7,  Off7 }
 };
 
 static TDigoutDesc sState[NUM_DIGOUT];
-static uint32_t    sDigOutShadow;
+static uint8_t     sDigOutShadow;
           
 /*-----------------------------------------------------------------------------
 *  init
@@ -242,7 +241,6 @@ void DigOutAll(uint8_t *pBuf, uint8_t bufLen) {
       }      
    }
 }
-
 
 /*-----------------------------------------------------------------------------
 *  Ausgang wechseln
@@ -419,165 +417,3 @@ static void On7(void) {
 static void Off7(void) {
    DIGOUT_7_OFF;
 }
-
-static void On8(void) {
-   DIGOUT_8_ON;
-}
-static void Off8(void) {
-   DIGOUT_8_OFF;
-}
-
-static void On9(void) {
-   DIGOUT_9_ON;
-}
-static void Off9(void) {
-   DIGOUT_9_OFF;
-}
-
-static void On10(void) {
-   DIGOUT_10_ON;
-}
-static void Off10(void) {
-   DIGOUT_10_OFF;
-}
-
-static void On11(void) {
-   DIGOUT_11_ON;
-}
-static void Off11(void) {
-   DIGOUT_11_OFF;
-}
-
-static void On12(void) {
-   DIGOUT_12_ON;
-}
-static void Off12(void) {
-   DIGOUT_12_OFF;
-}
-
-static void On13(void) {
-   DIGOUT_13_ON;
-}
-static void Off13(void) {
-   DIGOUT_13_OFF;
-}
-
-static void On14(void) {
-   DIGOUT_14_ON;
-}
-static void Off14(void) {
-   DIGOUT_14_OFF;
-}
-
-static void On15(void) {
-   DIGOUT_15_ON;
-}
-static void Off15(void) {
-   DIGOUT_15_OFF;
-}
-
-static void On16(void) {
-   DIGOUT_16_ON;
-}
-static void Off16(void) {
-   DIGOUT_16_OFF;
-}
-
-static void On17(void) {
-   DIGOUT_17_ON;
-}
-static void Off17(void) {
-   DIGOUT_17_OFF;
-}
-
-static void On18(void) {
-   DIGOUT_18_ON;
-}
-static void Off18(void) {
-   DIGOUT_18_OFF;
-}
-
-static void On19(void) {
-   DIGOUT_19_ON;
-}
-static void Off19(void) {
-   DIGOUT_19_OFF;
-}
-
-static void On20(void) {
-   DIGOUT_20_ON;
-}
-static void Off20(void) {
-   DIGOUT_20_OFF;
-}
-
-static void On21(void) {
-   DIGOUT_21_ON;
-}
-static void Off21(void) {
-   DIGOUT_21_OFF;
-}
-
-static void On22(void) {
-   DIGOUT_22_ON;
-}
-static void Off22(void) {
-   DIGOUT_22_OFF;
-}
-
-static void On23(void) {
-   DIGOUT_23_ON;
-}
-static void Off23(void) {
-   DIGOUT_23_OFF;
-}
-
-static void On24(void) {
-   DIGOUT_24_ON;
-}
-static void Off24(void) {
-   DIGOUT_24_OFF;
-}
-
-static void On25(void) {
-   DIGOUT_25_ON;
-}
-static void Off25(void) {
-   DIGOUT_25_OFF;
-}
-
-static void On26(void) {
-   DIGOUT_26_ON;
-}
-static void Off26(void) {
-   DIGOUT_26_OFF;
-}
-
-static void On27(void) {
-   DIGOUT_27_ON;
-}
-static void Off27(void) {
-   DIGOUT_27_OFF;
-}
-
-static void On28(void) {
-   DIGOUT_28_ON;
-}
-static void Off28(void) {
-   DIGOUT_28_OFF;
-}
-
-static void On29(void) {
-   DIGOUT_29_ON;
-}
-static void Off29(void) {
-   DIGOUT_29_OFF;
-}
-
-static void On30(void) {
-   DIGOUT_30_ON;
-}
-static void Off30(void) {
-   DIGOUT_30_OFF;
-}
-

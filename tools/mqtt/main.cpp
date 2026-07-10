@@ -73,6 +73,12 @@ typedef enum {
 } T_do31_output_type;
 
 typedef enum {
+    e_do8_digout = 0,
+    e_do8_digout_activelow = 1,
+    e_do8_shader = 2
+} T_do8_output_type;
+
+typedef enum {
     e_sw8_digin = 0,
     e_sw8_digout = 1,
     e_sw8_pulseout = 2
@@ -87,6 +93,11 @@ typedef struct {
             uint8_t output;
             T_do31_output_type type;
         } do31;
+        struct {
+            uint8_t address;
+            uint8_t output;
+            T_do8_output_type type;
+        } do8;
         struct {
             uint8_t address;
             uint8_t output;
@@ -129,6 +140,7 @@ typedef struct {
     /* shadow copy of IO state of device */
     union {
         TBusDevActualValueDo31  do31;
+        TBusDevActualValueDo8   do8;
         TBusDevActualValuePwm4  pwm4;
         TBusDevActualValueSw8   sw8;
         TBusDevActualValueSmif  smif;
@@ -334,6 +346,87 @@ static void do31_set_output(uint8_t address, uint8_t output, T_do31_output_type 
 
     if (do31_ReqSetValue(address, digout, shader) != 0) {
         syslog(LOG_ERR, "DO31 %d: can't set value %s%d to %d", address, str, output, value);
+    }
+}
+
+/*-----------------------------------------------------------------------------
+*  set a DO8 output using ReqSetValue telegram
+*/
+static int do8_ReqSetValue(uint8_t addr, uint8_t *digout, uint8_t *shader) {
+
+    TBusDevSetValueDo8               *sv;
+    T_bus_tx                         *tx;
+    struct respSetValue_compare_data *p;
+
+    tx = (T_bus_tx *)malloc(sizeof(T_bus_tx));
+    p = (struct respSetValue_compare_data *)malloc(sizeof(struct respSetValue_compare_data));
+    if ((tx == 0) || (p == 0)) {
+        return -1;
+    }
+
+    tx->tx_msg.type = eBusDevReqSetValue;
+    tx->tx_msg.senderAddr = my_addr;
+    tx->tx_msg.msg.devBus.receiverAddr = addr;
+    tx->tx_msg.msg.devBus.x.devReq.setValue.devType = eBusDevTypeDo8;
+    sv = &tx->tx_msg.msg.devBus.x.devReq.setValue.setValue.do8;
+    memcpy(sv->digOut, digout, sizeof(sv->digOut));
+    memcpy(sv->shader, shader, sizeof(sv->shader));
+
+    p->type = eBusDevRespSetValue;
+    p->receiverAddr = my_addr;
+    p->senderAddr = addr;
+
+    tx->compare = RespSetValue_compare;
+    tx->param = p;
+    tx->sent = false;
+    tx->timeout = BUS_RESPONSE_TIMEOUT;
+
+    LL_APPEND(bus_txq, tx);
+    set_alarm(timerFd, 0); /* run serve_bus immediately */
+
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------
+*  set a DO8 output
+*/
+static void do8_set_output(uint8_t address, uint8_t output, T_do8_output_type type, uint8_t value) {
+
+    int        byteIdx;
+    int        bitPos;
+    uint8_t    digout[BUS_DO8_DIGOUT_SIZE_SET_VALUE];
+    uint8_t    shader[BUS_DO8_SHADER_SIZE_SET_VALUE];
+    const char *str = "";
+
+    memset(digout, 0, sizeof(digout));
+    memset(shader, 254, sizeof(shader));
+    if (type == e_do8_digout) {
+        /* calculate the bit position (2 bits for each output) */
+        byteIdx = output / 4;
+        bitPos = (output % 4) * 2;
+        if (value == 0) {
+            digout[byteIdx] = 2 << bitPos;
+        } else {
+            digout[byteIdx] = 3 << bitPos;
+        }
+        str = "DO";
+    } else if (type == e_do8_digout_activelow) {
+        /* calculate the bit position (2 bits for each output) */
+        byteIdx = output / 4;
+        bitPos = (output % 4) * 2;
+        if (value == 0) {
+            digout[byteIdx] = 3 << bitPos;
+        } else {
+            digout[byteIdx] = 2 << bitPos;
+        }
+        str = "DO";
+    } else if (type == e_do8_shader) {
+        shader[output] = value;
+        str = "SH";
+    }
+
+    if (do8_ReqSetValue(address, digout, shader) != 0) {
+        syslog(LOG_ERR, "DO8 %d: can't set value %s%d to %d", address, str, output, value);
     }
 }
 
@@ -806,6 +899,10 @@ printf("subscribed: %s %s\n", message->topic, (char *)message->payload);
         value[0] = (uint8_t)strtoul((char *)message->payload, 0, 0);
         do31_set_output(cfg->io.do31.address, cfg->io.do31.output, cfg->io.do31.type, value[0]);
         break;
+    case eBusDevTypeDo8:
+        value[0] = (uint8_t)strtoul((char *)message->payload, 0, 0);
+        do8_set_output(cfg->io.do8.address, cfg->io.do8.output, cfg->io.do8.type, value[0]);
+        break;
     case eBusDevTypePwm4:
         value[0] = (uint8_t)strtoul((char *)message->payload, 0, 0);
         pwm4_set_output(cfg->io.pwm4.address, cfg->io.pwm4.output, value[0] != 0);
@@ -911,6 +1008,35 @@ static int ReadConfig(const char *pFile)  {
                 topic_entry->io.do31.output = (uint8_t)strtoul(physical["shader"].as<std::string>().c_str(), 0, 0);
                 io_entry->phys_io |= topic_entry->io.do31.output << 16;
                 io_entry->phys_io |= topic_entry->io.do31.type << 24;
+            } else {
+                printf("missing digout or shader at topic %s\n", node["topic"].as<std::string>().c_str());
+                break;
+            }
+        } else if (physical["type"] && (physical["type"].as<std::string>().compare("do8") == 0)) {
+            /* DO8 */
+            topic_entry->devtype = eBusDevTypeDo8;
+            io_entry->phys_io = (uint8_t)topic_entry->devtype;
+            if (physical["address"]) {
+                topic_entry->io.do8.address = (uint8_t)strtoul(physical["address"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= (topic_entry->io.do8.address << 8);
+            } else {
+               printf("missing address at topic %s\n", node["topic"].as<std::string>().c_str());
+               break;
+            }
+            if (physical["digout"]) {
+                if (physical["activelow"]) {
+                    topic_entry->io.do8.type = e_do8_digout_activelow;
+                } else {
+                    topic_entry->io.do8.type = e_do8_digout;
+                }
+                topic_entry->io.do8.output = (uint8_t)strtoul(physical["digout"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= topic_entry->io.do8.output << 16;
+                io_entry->phys_io |= topic_entry->io.do8.type << 24;
+            } else if (physical["shader"]) {
+                topic_entry->io.do8.type = e_do8_shader;
+                topic_entry->io.do8.output = (uint8_t)strtoul(physical["shader"].as<std::string>().c_str(), 0, 0);
+                io_entry->phys_io |= topic_entry->io.do8.output << 16;
+                io_entry->phys_io |= topic_entry->io.do8.type << 24;
             } else {
                 printf("missing digout or shader at topic %s\n", node["topic"].as<std::string>().c_str());
                 break;
@@ -1079,6 +1205,92 @@ printf("publish %s %d\n", topic, actval8);
         if (publish_unconditional ||
             (shadow->shader[i] != av->shader[i])) {
             phys_io = phys_dev | (i << 16) | (e_do31_shader << 24);
+            HASH_FIND_INT(io_desc, &phys_io, io_entry);
+            if (io_entry) {
+                snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
+                payloadlen = 0;
+                actval8 = av->shader[i];
+                if (actval8 <= 100) {
+                    payloadlen = snprintf(payload, sizeof(payload), "%d", actval8);
+                } else {
+                    switch (actval8) {
+                    case 252:
+                        payloadlen = snprintf(payload, sizeof(payload), "not configured");
+                        break;
+                    case 253:
+                        payloadlen = snprintf(payload, sizeof(payload), "closing");
+                        break;
+                    case 254:
+                        payloadlen = snprintf(payload, sizeof(payload), "opening");
+                        break;
+                    case 255:
+                        payloadlen = snprintf(payload, sizeof(payload), "error");
+                        break;
+                    default:
+                        printf("unsupported shader state %d\n", actval8);
+                        break;
+                    }
+                }
+                if (payloadlen) {
+printf("publish %s %s\n", topic, payload);
+                    mosquitto_publish(mosq, 0, topic, payloadlen, payload, 1, true);
+                }
+            }
+        }
+    }
+    memcpy(shadow->shader, av->shader, sizeof(av->shader));
+}
+
+static void publish_do8(
+    uint32_t              phys_dev,
+    TBusDevActualValueDo8 *shadow,
+    TBusDevActualValueDo8 *av,
+    bool                  publish_unconditional
+    ) {
+    int                    i;
+    int                    byteIdx;
+    int                    bitPos;
+    uint8_t                actval8;
+    bool                   active_low;
+    uint32_t               phys_io;
+    T_io_desc              *io_entry;
+    char                   topic[MAX_LEN_TOPIC];
+    char                   payload[MAX_LEN_PAYLOAD];
+    int                    payloadlen;
+
+    /* digout */
+    for (i = 0; i < 8; i++) {
+        byteIdx = i / 8;
+        bitPos = i % 8;
+        if (publish_unconditional ||
+            ((shadow->digOut[byteIdx] & (1 << bitPos)) !=
+             (av->digOut[byteIdx] & (1 << bitPos)))) {
+            phys_io = phys_dev | (i << 16) | (e_do8_digout << 24);
+            HASH_FIND_INT(io_desc, &phys_io, io_entry);
+            active_low = false;
+            if (!io_entry) {
+                phys_io = phys_dev | (i << 16) | (e_do8_digout_activelow << 24);
+                HASH_FIND_INT(io_desc, &phys_io, io_entry);
+                active_low = true;
+            }
+            if (io_entry) {
+                actval8 = (av->digOut[byteIdx] & (1 << bitPos)) != 0;
+                if (active_low) {
+                    actval8 = !actval8;
+                }
+                snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
+printf("publish %s %d\n", topic, actval8);
+                mosquitto_publish(mosq, 0, topic, 1, actval8 ? "1" : "0", 1, true);
+            }
+        }
+    }
+    memcpy(shadow->digOut, av->digOut, sizeof(av->digOut));
+
+    /* shader */
+    for (i = 0; i < 4; i++) {
+        if (publish_unconditional ||
+            (shadow->shader[i] != av->shader[i])) {
+            phys_io = phys_dev | (i << 16) | (e_do8_shader << 24);
             HASH_FIND_INT(io_desc, &phys_io, io_entry);
             if (io_entry) {
                 snprintf(topic, sizeof(topic), "%s/actual", io_entry->topic);
@@ -1348,6 +1560,9 @@ static void serve_bus(void) {
     case eBusDevTypeDo31:
         publish_do31(dev_entry->phys_dev, &dev_entry->io.do31, &ave->actualValue.do31, false);
         break;
+    case eBusDevTypeDo8:
+        publish_do8(dev_entry->phys_dev, &dev_entry->io.do8, &ave->actualValue.do8, false);
+        break;
     case eBusDevTypePwm4:
         publish_pwm4(dev_entry->phys_dev, &dev_entry->io.pwm4, &ave->actualValue.pwm4, false);
         break;
@@ -1441,6 +1656,10 @@ static int init_state_io(void) {
             case eBusDevTypeDo31:
 printf("publish init state: DO31 at %d\n", address);
                 publish_do31(dev_entry->phys_dev, &dev_entry->io.do31, &av->actualValue.do31, true);
+                break;
+            case eBusDevTypeDo8:
+printf("publish init state: DO8 at %d\n", address);
+                publish_do8(dev_entry->phys_dev, &dev_entry->io.do8, &av->actualValue.do8, true);
                 break;
             case eBusDevTypePwm4:
 printf("publish init state: PWM4 at %d\n", address);
@@ -1664,6 +1883,20 @@ int main(int argc, char *argv[]) {
                 break;
             }
             printf("DO31, address %d, output %d, type %s", topic_entry->io.do31.address, topic_entry->io.do31.output, type);
+            break;
+        case eBusDevTypeDo8:
+            switch (topic_entry->io.do8.type) {
+            case e_do8_digout:
+                type = "digout";
+                break;
+            case e_do8_shader:
+                type = "shader";
+                break;
+            default:
+                type = "unknown";
+                break;
+            }
+            printf("DO8, address %d, output %d, type %s", topic_entry->io.do8.address, topic_entry->io.do8.output, type);
             break;
         case eBusDevTypePwm4:
             printf("PWM4, address %d, output %d", topic_entry->io.pwm4.address, topic_entry->io.pwm4.output);
