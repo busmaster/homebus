@@ -639,6 +639,7 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         QJsonObject jObject = doc.object();
 
         io->pv.output_power = (quint32)(jObject["OutputPower"].toDouble() * 10.0);
+        io->pv.yield = (quint32)(jObject["TodayGenerateEnergy"].toDouble() * 1000.0);
         solarChanged = true;
         break;
     }
