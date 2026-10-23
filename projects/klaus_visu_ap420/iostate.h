@@ -94,6 +94,7 @@ public:
         quint32 a_minus_midnight;
     } sm;
 
+    // Hoymiles PV
     struct solaryield {
         quint32 oben_ost;
         quint32 oben_mitte;
@@ -108,6 +109,11 @@ public:
         quint32 mitte;
         quint32 rechts;
     } sp;
+
+    // Growatt PV
+    struct pv {
+        quint32 output_power;
+    } pv;
 
     enum doorState {
         locked,

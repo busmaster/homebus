@@ -279,6 +279,8 @@ void MainWindow::onMqtt_connected() {
     mqtt_subscribe("solar/114183084705/0/power", 130);
 
     mqtt_subscribe("home/storage/actual", 131);
+
+    mqtt_subscribe("pv", 132);
 }
 void MainWindow::onMqtt_disconnected() {
 
@@ -630,6 +632,14 @@ void MainWindow::onMqtt_messageReceived(const QByteArray &message, const QMqttTo
         io->storage.soc = jObject["soc"].toDouble();
         io->storage.energy = jObject["energy"].toInt();
         accuChanged = true;
+        break;
+    }
+    case 132: {
+        QJsonDocument doc = QJsonDocument::fromJson(message);
+        QJsonObject jObject = doc.object();
+
+        io->pv.output_power = (quint32)(jObject["OutputPower"].toDouble() * 10.0);
+        solarChanged = true;
         break;
     }
     default:
