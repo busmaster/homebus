@@ -113,6 +113,7 @@ public:
     // Growatt PV
     struct pv {
         quint32 output_power;
+        quint32 yield;
     } pv;
 
     enum doorState {

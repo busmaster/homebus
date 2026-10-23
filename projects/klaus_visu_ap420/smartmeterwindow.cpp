@@ -79,7 +79,8 @@ void smartmeterwindow::onMeterChanged(void) {
     ui->label_aminus_day_val->setText(QString::asprintf("%d.%03d kWh", counter / 1000, counter % 1000));
 
     counter = io->sy.oben_ost + io->sy.oben_mitte + io->sy.oben_west +
-              io->sy.unten_ost + io->sy.unten_mitte + io->sy.unten_west;
+              io->sy.unten_ost + io->sy.unten_mitte + io->sy.unten_west +
+              io->pv.yield;
     ui->label_solar_day_val->setText(QString::asprintf("%d.%03d kWh", counter / 1000, counter % 1000));
 
     power = io->sp.rechts + io->sp.mitte + io->sp.links + io->pv.output_power;
